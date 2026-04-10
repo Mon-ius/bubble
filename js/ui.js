@@ -472,7 +472,11 @@ const UI = {
   renderVolumeChart(v, config) {
     const { ctx, width, height } = this.charts.volume;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
+    // padT 28: extra headroom so the legend can sit above the plot frame
+    // instead of inside it. The canvas is only 160px tall, so an in-plot
+    // legend would overlap the tallest bars (which are usually green on
+    // green and unreadable).
+    const rect = Viz.plotRect(width, height, 44, 14, 28, 38);
 
     // Share the totalTicks coordinate frame with the price and bubble
     // charts so all three row-1 figures anchor periods to the same
@@ -515,7 +519,7 @@ const UI = {
     Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
     Viz.legendRow(ctx, rect, [
       { color: this.theme.green, label: '▮ shares traded' },
-    ]);
+    ], { padY: -10 });
   },
 
   /* -------- Price × period trade-density heatmap -------- */
