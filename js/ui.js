@@ -681,8 +681,8 @@ const UI = {
       ctx.fillText(label, legendX, y);
       legendX += ctx.measureText(label).width + gap;
     };
-    drawEntry('▬ FV_t', this.theme.amber);
-    drawEntry('▬ V̂_{i,t}', this.theme.fg2);
+    drawEntry('▬ FVₜ', this.theme.amber);
+    drawEntry('▬ V̂ᵢ,ₜ', this.theme.fg2);
     for (const id of ids) {
       const name = v.agents[id] ? v.agents[id].name : 'U' + id;
       drawEntry('● ' + name, this.agentColor(id));
@@ -1099,15 +1099,15 @@ const UI = {
       <div class="metric-group-label">Market quality · Dufwenberg, Lindqvist &amp; Moore (2005)</div>
       <div class="metric-row"><span>Haessel R²&nbsp;&nbsp;<em>1 − Σ(P̄−FV)² / Σ(P̄−P̄̄)²</em></span><strong>${fmt(haessel, 3)}</strong></div>
       <div class="metric-row"><span>Norm. absolute price deviation&nbsp;&nbsp;<em>Σ|P−FV|·q / Q</em></span><strong>${fmt(normAbsDev, 2)}</strong></div>
-      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>Σ|P̄_t−FV_t| / Q</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
+      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>Σ|P̄<sub>t</sub>−FV<sub>t</sub>| / Q</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
       <div class="metric-row"><span>Price amplitude&nbsp;&nbsp;<em>(max−min)(P̄−FV) / FV₁</em></span><strong>${fmt(amplitude, 3)}</strong></div>
       <div class="metric-row"><span>Turnover&nbsp;&nbsp;<em>Σ q / Q</em></span><strong>${fmt(turnover, 3)}</strong></div>
       <div class="metric-row"><span>P / FV ratio&nbsp;&nbsp;<em>ρ (Lopez-Lira 2025)</em></span><strong>${fmt(rho, 3)}</strong></div>
 
       <div class="metric-group-label">Utility-agent welfare &amp; deception</div>
-      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>⟨V̂_i⟩</em></span><strong>${fmt(avgV)}</strong></div>
-      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>Σ V̂_i·q_i / (V̂* · Q)</em></span><strong>${fmt(efficiency, 3)}</strong></div>
-      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>Σ u_i(w_t)</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
+      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>⟨V̂<sub>i</sub>⟩</em></span><strong>${fmt(avgV)}</strong></div>
+      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>Σ V̂<sub>i</sub>·q<sub>i</sub> / (V̂* · Q)</em></span><strong>${fmt(efficiency, 3)}</strong></div>
+      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>Σ u<sub>i</sub>(w<sub>t</sub>)</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
       <div class="metric-row"><span>|P − ⟨V̂⟩|</span><strong>${fmt(pDev)}</strong></div>
       <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨|Ṽ − V̂|⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
       <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
