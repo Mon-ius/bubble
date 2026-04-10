@@ -77,9 +77,9 @@
       <details class="psec" open>
         <summary>Population mix <span class="muted" id="mix-total">(total 6)</span></summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="Total number of agents in the simulation. Moving this slider proportionally rescales the F/T/R/E/U counts below to hit the new total, preserving whichever mix ratio you already have. With every type slider at zero, increasing the total fills Utility agents by default. Editing an individual type slider below will update this total automatically.">
+          <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = Σ N_X for X ∈ {F, T, R, E, U}, where N_F, N_T, N_R, N_E, N_U are the counts of Fundamentalist, Trend follower, Random ZI, Experienced, and Utility EU-maximizer agents respectively. Moving this slider rescales each N_X proportionally to satisfy the new N: N_X^new = ⌊N_X · N^new / N^old⌋, with the residual N^new − Σ ⌊·⌋ distributed via largest-remainder rounding so the integer counts sum to N exactly. From an all-zero mix, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. Editing any individual N_X slider recomputes N automatically as the new sum.">
             <div class="param-head">
-              <label for="p-total">Total agents</label>
+              <label for="p-total">N · Total agents</label>
               <span class="pval" id="v-total">6</span>
             </div>
             <input type="range" id="p-total" min="0" max="30" step="1" value="6">
