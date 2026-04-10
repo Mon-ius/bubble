@@ -33,12 +33,20 @@ const UI = {
     this.els.replayPos    = document.getElementById('replay-position');
     this.els.replaySlider = document.getElementById('replay-slider');
 
+    // Extended-mode elements (may be absent in legacy builds).
+    this.els.metricsBody = document.getElementById('metrics-body');
+
     this.canvases = {
-      price:    document.getElementById('chart-price'),
-      bubble:   document.getElementById('chart-bubble'),
-      volume:   document.getElementById('chart-volume'),
-      timeline: document.getElementById('chart-timeline'),
-      heatmap:  document.getElementById('chart-heatmap'),
+      price:     document.getElementById('chart-price'),
+      bubble:    document.getElementById('chart-bubble'),
+      volume:    document.getElementById('chart-volume'),
+      timeline:  document.getElementById('chart-timeline'),
+      heatmap:   document.getElementById('chart-heatmap'),
+      valuation: document.getElementById('chart-valuation'),
+      utility:   document.getElementById('chart-utility'),
+      messages:  document.getElementById('chart-messages'),
+      trust:     document.getElementById('chart-trust'),
+      ownership: document.getElementById('chart-ownership'),
     };
 
     this.resizeCanvases();
@@ -51,8 +59,20 @@ const UI = {
   resizeCanvases() {
     this.charts = {};
     for (const [k, c] of Object.entries(this.canvases)) {
+      if (!c) continue;
+      // Skip canvases that are currently hidden (display:none makes
+      // getBoundingClientRect return 0×0). They'll be re-setup next
+      // time extended mode toggles on.
+      const rect = c.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
       this.charts[k] = Viz.setupHiDPI(c);
     }
+  },
+
+  /** Deterministic color per utility agent id for multi-series charts. */
+  agentColor(id) {
+    const palette = ['#4fa3ff', '#ffb347', '#7ed6a5', '#ff5e78', '#c792ea', '#ffd166'];
+    return palette[(Number(id) - 1) % palette.length];
   },
 
   /* -------- Top-level render dispatcher -------- */
@@ -67,6 +87,13 @@ const UI = {
     this.renderVolumeChart(view, config);
     this.renderHeatmapChart(view, config);
     this.renderTimelineChart(view, config);
+    // Extended panels — no-ops when their canvases are absent/hidden.
+    this.renderValuationChart(view, config);
+    this.renderUtilityChart(view, config);
+    this.renderMessagesChart(view, config);
+    this.renderTrustChart(view, config);
+    this.renderOwnershipChart(view, config);
+    this.renderMetrics(view, config);
     this.renderTraces(view);
   },
 
@@ -104,17 +131,26 @@ const UI = {
     const initialFV = config.dividendMean * config.periods;
     const html = Object.values(v.agents).map(a => {
       const action = a.lastAction || 'hold';
-      const wealth = a.cash + a.inventory * v.fv;
-      const init   = 1000 + 3 * initialFV;
+      const isUtil = a.riskPref != null;
+      const valueAnchor = isUtil && a.subjectiveValuation != null ? a.subjectiveValuation : v.fv;
+      const wealth = a.cash + a.inventory * valueAnchor;
+      const init   = a.initialWealth != null ? a.initialWealth : (1000 + 3 * initialFV);
       const pnl    = wealth - init;
       const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
       const pnlColor = pnl >= 0 ? 'var(--volume)' : 'var(--ask)';
+      const borderStyle = isUtil ? ` style="border-left-color:${this.agentColor(a.id)}"` : '';
+      const subtitle = isUtil ? `${a.riskPref} · ${a.deceptionMode}` : a.type;
+      const extraRows = isUtil ? `
+          <span class="metric">Risk</span>   <span class="metric-val">${a.riskPref}</span>
+          <span class="metric">Subj V</span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
+          <span class="metric">Report</span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>
+          <span class="metric">Belief</span> <span class="metric-val">${a.beliefMode}</span>` : '';
       return `
-        <div class="agent-card ${a.type}">
+        <div class="agent-card ${a.type}"${borderStyle}>
           <div class="agent-header">
             <div>
               <div class="agent-name">${a.name || ('A' + a.id)}</div>
-              <div class="agent-type">${a.type}</div>
+              <div class="agent-type">${subtitle}</div>
             </div>
             <span class="last-action ${action}">${action}</span>
           </div>
@@ -122,7 +158,7 @@ const UI = {
             <span class="metric">Cash</span>   <span class="metric-val">${a.cash.toFixed(0)}</span>
             <span class="metric">Shares</span> <span class="metric-val">${a.inventory}</span>
             <span class="metric">Wealth</span> <span class="metric-val">${wealth.toFixed(0)}</span>
-            <span class="metric">P&amp;L</span>   <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>
+            <span class="metric">P&amp;L</span>   <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
           </div>
         </div>`;
     }).join('');
@@ -414,6 +450,426 @@ const UI = {
     ctx.restore();
   },
 
+  /* ============================================================
+     Extended panels (utility experiment mode).
+     Each panel is a no-op when its canvas is missing/hidden or
+     when the required data array is empty — legacy populations
+     render nothing from these methods.
+     ============================================================ */
+
+  /* -------- Valuation chart: true vs reported over time -------- */
+  renderValuationChart(v, config) {
+    const chart = this.charts.valuation;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height);
+
+    const totalTicks = config.periods * config.ticksPerPeriod;
+    const hist       = v.valuationHistory || [];
+    const byAgent    = {};
+    for (const row of hist) {
+      if (!byAgent[row.agentId]) byAgent[row.agentId] = [];
+      byAgent[row.agentId].push({ x: row.tick, y: row.subjV });
+    }
+
+    let yMax = config.dividendMean * config.periods * 1.4;
+    for (const row of hist) {
+      if (row.subjV != null && row.subjV > yMax) yMax = row.subjV;
+    }
+    if (v.messages && v.messages.length) {
+      for (const m of v.messages) {
+        if (m.claimedValuation > yMax) yMax = m.claimedValuation;
+      }
+    }
+    yMax = Math.max(10, yMax * 1.08);
+
+    Viz.axes(ctx, rect, {
+      xMin: 0, xMax: totalTicks, yMin: 0, yMax,
+      xTicks: config.periods, yTicks: 4,
+      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      yFmt: y => y.toFixed(0),
+    });
+
+    // Dashed FV reference step line.
+    const fvPoints = [];
+    for (let p = 1; p <= config.periods; p++) {
+      const fv = config.dividendMean * (config.periods - p + 1);
+      fvPoints.push({ x: (p - 1) * config.ticksPerPeriod, y: fv });
+      fvPoints.push({ x:  p      * config.ticksPerPeriod, y: fv });
+    }
+    Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: '#ffb347', width: 2, dashed: true });
+
+    // One subjective-valuation line per agent.
+    const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    for (const id of ids) {
+      Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.agentColor(id), width: 1.6 });
+    }
+
+    // Reported-valuation markers. Deceptive messages are ringed red
+    // and connected to the sender's true valuation by a dotted line,
+    // so you can see the "lie gap" directly.
+    const msgs = v.messages || [];
+    if (msgs.length) {
+      ctx.save();
+      for (const m of msgs) {
+        const x     = Viz.mapX(rect, m.tick, 0, totalTicks);
+        const yRep  = Viz.mapY(rect, m.claimedValuation, 0, yMax);
+        ctx.fillStyle = this.agentColor(m.senderId);
+        ctx.beginPath(); ctx.arc(x, yRep, 3, 0, Math.PI * 2); ctx.fill();
+        if (m.deceptive) {
+          const yTrue = Viz.mapY(rect, m.trueValuation, 0, yMax);
+          ctx.strokeStyle = '#ff5e78';
+          ctx.setLineDash([2, 2]);
+          ctx.beginPath(); ctx.moveTo(x, yRep); ctx.lineTo(x, yTrue); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = '#ff5e78';
+          ctx.beginPath(); ctx.arc(x, yRep, 5, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Legend row.
+    ctx.save();
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffb347'; ctx.fillText('▬ FV', rect.x + 10, rect.y + 12);
+    let legendX = rect.x + 52;
+    for (const id of ids) {
+      const name = v.agents[id] ? v.agents[id].name : 'U' + id;
+      ctx.fillStyle = this.agentColor(id);
+      ctx.fillText('●' + name, legendX, rect.y + 12);
+      legendX += 36;
+    }
+    ctx.fillStyle = '#ff5e78';
+    ctx.fillText('○ lie', legendX, rect.y + 12);
+    ctx.restore();
+  },
+
+  /* -------- Utility-over-time chart -------- */
+  renderUtilityChart(v, config) {
+    const chart = this.charts.utility;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height);
+
+    const totalTicks = config.periods * config.ticksPerPeriod;
+    const hist       = v.utilityHistory || [];
+    const byAgent    = {};
+    for (const row of hist) {
+      if (!byAgent[row.agentId]) byAgent[row.agentId] = [];
+      byAgent[row.agentId].push({ x: row.tick, y: row.utility });
+    }
+
+    let yMin = 0.7, yMax = 1.3;
+    for (const row of hist) {
+      if (row.utility != null) {
+        if (row.utility < yMin) yMin = row.utility;
+        if (row.utility > yMax) yMax = row.utility;
+      }
+    }
+    const span = Math.max(0.2, yMax - yMin);
+    yMin = Math.max(0, yMin - span * 0.1);
+    yMax = yMax + span * 0.1;
+
+    Viz.axes(ctx, rect, {
+      xMin: 0, xMax: totalTicks, yMin, yMax,
+      xTicks: config.periods, yTicks: 4,
+      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      yFmt: y => y.toFixed(2),
+    });
+
+    // Baseline at U = 1.0 (each agent's initial utility).
+    const baseY = Viz.mapY(rect, 1, yMin, yMax);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(rect.x, baseY); ctx.lineTo(rect.x + rect.w, baseY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    for (const id of ids) {
+      Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
+    }
+  },
+
+  /* -------- Messages timeline -------- */
+  renderMessagesChart(v, config) {
+    const chart = this.charts.messages;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height, 56);
+
+    const totalTicks = config.periods * config.ticksPerPeriod;
+    const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA         = Math.max(1, ids.length);
+    const rowH       = rect.h / nA;
+
+    ctx.save();
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign    = 'right';
+    for (let i = 0; i < nA; i++) {
+      const y = rect.y + i * rowH;
+      if (i % 2 === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.025)';
+        ctx.fillRect(rect.x, y, rect.w, rowH);
+      }
+      ctx.fillStyle = this.agentColor(ids[i]);
+      const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
+      ctx.fillText(name, rect.x - 6, y + rowH / 2);
+    }
+    ctx.strokeStyle = '#2a3344';
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
+    ctx.restore();
+
+    // Period separators.
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    for (let p = 1; p < config.periods; p++) {
+      const x = Viz.mapX(rect, p * config.ticksPerPeriod, 0, totalTicks);
+      ctx.beginPath(); ctx.moveTo(x, rect.y); ctx.lineTo(x, rect.y + rect.h); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Messages: one dot per broadcast, colored by signal, ringed red if deceptive.
+    const msgs = v.messages || [];
+    for (const m of msgs) {
+      const rowIdx = ids.indexOf(m.senderId);
+      if (rowIdx < 0) continue;
+      const x = Viz.mapX(rect, m.tick, 0, totalTicks);
+      const y = rect.y + rowIdx * rowH + rowH / 2;
+      const sigColor = m.signal === 'buy' ? '#2ecc71'
+                     : m.signal === 'sell' ? '#ff5a5a'
+                     : '#7a8599';
+      ctx.fillStyle = sigColor;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+      if (m.deceptive) {
+        ctx.strokeStyle = '#ff5e78';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    }
+
+    // X labels.
+    ctx.save();
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.fillStyle = '#5a6580';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let p = 1; p <= config.periods; p++) {
+      const x = Viz.mapX(rect, (p - 0.5) * config.ticksPerPeriod, 0, totalTicks);
+      ctx.fillText('P' + p, x, rect.y + rect.h + 6);
+    }
+    ctx.restore();
+  },
+
+  /* -------- Trust matrix heatmap -------- */
+  renderTrustChart(v, config) {
+    const chart = this.charts.trust;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height, 52, 12, 14, 48);
+
+    const agentIds = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const n = agentIds.length;
+    if (!n) return;
+
+    const cellW = rect.w / n;
+    const cellH = rect.h / n;
+    const trust = v.trust || null;
+
+    for (let i = 0; i < n; i++) {          // i = receiver (row)
+      for (let j = 0; j < n; j++) {        // j = sender   (col)
+        const r = agentIds[i];
+        const s = agentIds[j];
+        const val = trust && trust[r] && trust[r][s] != null ? trust[r][s] : 0.5;
+        const x = rect.x + j * cellW;
+        const y = rect.y + i * cellH;
+        if (r === s) {
+          ctx.fillStyle = 'rgba(255,255,255,0.06)';
+          ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+        } else {
+          ctx.fillStyle = Viz.heatColor(val);
+          ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+          if (cellW > 24 && cellH > 18) {
+            ctx.fillStyle = '#0b0f16';
+            ctx.font = '10px ui-monospace, Menlo, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(val.toFixed(2), x + cellW / 2, y + cellH / 2);
+          }
+        }
+      }
+    }
+    ctx.strokeStyle = '#2a3344';
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
+
+    // Axis labels.
+    ctx.save();
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.fillStyle = '#5a6580';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) {
+      const name = v.agents[agentIds[i]] ? v.agents[agentIds[i]].name : 'U' + agentIds[i];
+      ctx.fillText(name, rect.x - 4, rect.y + i * cellH + cellH / 2);
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let j = 0; j < n; j++) {
+      const name = v.agents[agentIds[j]] ? v.agents[agentIds[j]].name : 'U' + agentIds[j];
+      ctx.fillText(name, rect.x + j * cellW + cellW / 2, rect.y + rect.h + 6);
+    }
+    ctx.fillStyle = '#7a8599';
+    ctx.fillText('sender →', rect.x + rect.w / 2, rect.y + rect.h + 22);
+    ctx.restore();
+  },
+
+  /* -------- Ownership over time (stacked) -------- */
+  renderOwnershipChart(v, config) {
+    const chart = this.charts.ownership;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height);
+
+    const totalTicks  = config.periods * config.ticksPerPeriod;
+    const ids         = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const n           = ids.length;
+    if (!n) return;
+
+    // Reconstruct per-tick inventory by replaying trades.
+    // Starting inventory is whatever each agent's initial inventory is
+    // — here always 3, giving totalShares = n * 3.
+    const initialInv  = 3;
+    const totalShares = n * initialInv;
+    const yMax        = Math.max(totalShares, totalShares + 2);
+
+    Viz.axes(ctx, rect, {
+      xMin: 0, xMax: totalTicks, yMin: 0, yMax,
+      xTicks: config.periods, yTicks: 4,
+      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      yFmt: y => y.toFixed(0),
+    });
+
+    // Build inv[tick][id] by walking through trades in order.
+    const invByTick = new Array(totalTicks + 1);
+    const start = {};
+    for (const id of ids) start[id] = initialInv;
+    invByTick[0] = start;
+    let tIdx = 0;
+    const sortedTrades = v.trades;   // already append-order
+    for (let tick = 1; tick <= totalTicks; tick++) {
+      const cur = {};
+      const prev = invByTick[tick - 1];
+      for (const id of ids) cur[id] = prev[id];
+      while (tIdx < sortedTrades.length && sortedTrades[tIdx].timestamp <= tick) {
+        const t = sortedTrades[tIdx];
+        if (cur[t.buyerId]  != null) cur[t.buyerId]  += t.quantity;
+        if (cur[t.sellerId] != null) cur[t.sellerId] -= t.quantity;
+        tIdx++;
+      }
+      invByTick[tick] = cur;
+    }
+
+    const series = ids.map(id => ({
+      color: this.agentColor(id),
+      name:  v.agents[id] ? v.agents[id].name : 'U' + id,
+      points: invByTick.map((m, tick) => ({ x: tick, y: Math.max(0, m[id] || 0) })),
+    }));
+    Viz.stackedArea(ctx, rect, series, { xMin: 0, xMax: totalTicks, yMin: 0, yMax });
+
+    // Inline legend at the top of the plot.
+    ctx.save();
+    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.textBaseline = 'middle';
+    let legendX = rect.x + 8;
+    for (const s of series) {
+      ctx.fillStyle = s.color;
+      ctx.fillRect(legendX, rect.y + 4, 10, 10);
+      ctx.fillStyle = '#e8ecf2';
+      ctx.fillText(s.name, legendX + 13, rect.y + 10);
+      legendX += 44;
+    }
+    ctx.restore();
+  },
+
+  /* -------- Extended metrics panel -------- */
+  renderMetrics(v, config) {
+    const el = this.els.metricsBody;
+    if (!el) return;
+
+    const hasExtended = (v.valuationHistory && v.valuationHistory.length) ||
+                        (v.utilityHistory && v.utilityHistory.length);
+    if (!hasExtended) {
+      el.innerHTML = '<div class="muted">Select the Utility population to see extended metrics.</div>';
+      return;
+    }
+
+    // Latest per-agent subjective valuation.
+    const latestV = {};
+    for (const row of v.valuationHistory) latestV[row.agentId] = row.subjV;
+    const Vlist = Object.entries(latestV).map(([id, vv]) => ({ id: Number(id), vv }));
+    const avgV  = Vlist.length ? Vlist.reduce((s, c) => s + c.vv, 0) / Vlist.length : null;
+
+    // Allocative efficiency: ratio of actual Σ V_i·q_i to the optimum
+    // where all shares go to the highest-valuation agent.
+    let efficiency = null;
+    if (Vlist.length) {
+      let maxVV = -Infinity, maxId = null;
+      for (const c of Vlist) if (c.vv > maxVV) { maxVV = c.vv; maxId = c.id; }
+      let totalShares = 0;
+      for (const a of Object.values(v.agents)) totalShares += (a.inventory || 0);
+      let actual = 0;
+      for (const c of Vlist) {
+        const agent = v.agents[c.id];
+        if (agent) actual += c.vv * (agent.inventory || 0);
+      }
+      const optimal = maxVV * totalShares;
+      efficiency = optimal > 0 ? actual / optimal : 0;
+    }
+
+    // Total welfare: sum of current (latest) per-agent normalized utility.
+    let totalWelfare = null;
+    const latestU = {};
+    for (const row of v.utilityHistory) latestU[row.agentId] = row.utility;
+    const uvals = Object.values(latestU);
+    if (uvals.length) totalWelfare = uvals.reduce((s, x) => s + x, 0);
+
+    // Price deviation from average subjective valuation.
+    const pDev = (v.lastPrice != null && avgV != null) ? Math.abs(v.lastPrice - avgV) : null;
+
+    // Deception impact: mean |claim - true| magnitude + count.
+    let deceptionMag = null;
+    let nDeceptive = 0;
+    const msgs = v.messages || [];
+    if (msgs.length) {
+      let total = 0;
+      for (const m of msgs) {
+        total += Math.abs(m.claimedValuation - m.trueValuation);
+        if (m.deceptive) nDeceptive++;
+      }
+      deceptionMag = total / msgs.length;
+    }
+
+    const fmt = (x, d = 2) => x == null ? '—' : x.toFixed(d);
+    el.innerHTML = `
+      <div class="metric-row"><span>Avg subjective V</span><strong>${fmt(avgV)}</strong></div>
+      <div class="metric-row"><span>Allocative efficiency</span><strong>${fmt(efficiency, 3)}</strong></div>
+      <div class="metric-row"><span>Total welfare (ΣU)</span><strong>${fmt(totalWelfare, 3)}</strong></div>
+      <div class="metric-row"><span>|P − avgV|</span><strong>${fmt(pDev)}</strong></div>
+      <div class="metric-row"><span>Mean lie magnitude</span><strong>${fmt(deceptionMag)}</strong></div>
+      <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
+    `;
+  },
+
   /* -------- Trace inspector -------- */
 
   renderTraces(v) {
@@ -436,6 +892,25 @@ const UI = {
       const kindLabel = kind === 'hold'
         ? 'hold'
         : `${kind} ${qtyStr} @ ${priceStr}${t.filled ? ' ✓' : ''}`;
+
+      // Extended: expected-utility candidate table.
+      const u = r.utility;
+      const uBlock = u ? `
+          <div class="trace-row">subj V <strong>${u.subjectiveValue != null ? u.subjectiveValue.toFixed(2) : '—'}</strong> <span class="muted">(true ${u.trueValuation != null ? u.trueValuation.toFixed(2) : '—'})</span></div>
+          <div class="trace-row">w₀ <strong>${u.wealth0 != null ? u.wealth0.toFixed(0) : '—'}</strong> · U₀ <strong>${u.U0 != null ? u.U0.toFixed(3) : '—'}</strong> <span class="muted">(${u.riskPref})</span></div>
+          <div class="trace-eu">
+            ${(u.candidates || []).map(c => `
+              <div class="eu-row${c.label === u.chosen ? ' chosen' : ''}">
+                <span class="eu-lbl">${c.label}</span>
+                <span class="eu-val">${c.eu.toFixed(4)}</span>
+              </div>`).join('')}
+          </div>` : '';
+
+      // Extended: messages heard this period.
+      const msgBlock = (r.receivedMsgs && r.receivedMsgs.length)
+        ? `<div class="trace-row muted">heard ${r.receivedMsgs.map(m => `${m.from}:${m.claim.toFixed(0)}(${m.sig})`).join(', ')}</div>`
+        : '';
+
       return `
         <div class="trace-card">
           <div class="trace-head">
@@ -446,6 +921,8 @@ const UI = {
           <div class="trace-row">trigger <strong>${r.triggerCondition || '—'}</strong></div>
           <div class="trace-row">est value <strong>${valStr}</strong> · E[π] <strong>${profitStr}</strong></div>
           <div class="trace-row">cash <strong>${t.state.cash.toFixed(0)}</strong> · inv <strong>${t.state.inventory}</strong></div>
+          ${uBlock}
+          ${msgBlock}
         </div>`;
     }).join('');
   },

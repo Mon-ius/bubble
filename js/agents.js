@@ -321,6 +321,314 @@ class ExperiencedAgent extends Agent {
   }
 }
 
+/* ---------- Utility-maximizing LLM-style agent ------------------------ */
+/*
+ * UtilityAgent replaces heuristic trading with an explicit expected-
+ * utility maximization pipeline. Each decision runs through five
+ * named phases:
+ *
+ *   1. observe    — snapshot the market (best bid, best ask, last
+ *                   trade, FV, horizon).
+ *   2. updateBelief — fold three inputs into `subjectiveValuation`:
+ *                     (a) a persistent personal bias vs FV,
+ *                     (b) per-tick Gaussian-ish noise,
+ *                     (c) last period's messages weighted by
+ *                         beliefMode (naive / skeptical / adaptive,
+ *                         the last using TrustTracker).
+ *   3. evaluate   — enumerate candidate actions — hold, cross best
+ *                   ask, lift best bid, post passive bid, post passive
+ *                   ask — and compute expected post-trade utility
+ *                   using this agent's risk preference. Passive posts
+ *                   use a fill-probability weighted EU.
+ *   4. choose     — argmax EU across candidates.
+ *   5. execute    — emit the chosen order (or hold). The full trace,
+ *                   including every candidate's EU, is written into
+ *                   decision.reasoning.utility so the replay inspector
+ *                   can show the whole argmax.
+ *
+ * Communication (called once per period at period-end by the engine):
+ *   communicate() emits a Message with trueValuation AND a
+ *   claimedValuation that can diverge based on deceptionMode:
+ *     - honest    tiny Gaussian noise around the truth
+ *     - biased    fixed-sign tilt (from biasMode/biasAmount)
+ *     - deceptive reports LOW when the agent wants to buy (inventory
+ *                 below baseline) and HIGH when it wants to sell
+ *                 (inventory above baseline). This aligns incentives
+ *                 with the required spec: asset-poor agents understate,
+ *                 asset-rich agents overstate.
+ *
+ * Configurable constructor options:
+ *   riskPref       'averse' | 'neutral' | 'loving'
+ *   biasMode       'over' | 'under' | 'none'
+ *   biasAmount     magnitude (signed by biasMode), e.g. 0.15 = ±15%
+ *   valuationNoise per-tick random perturbation (default 0.03)
+ *   deceptionMode  'honest' | 'biased' | 'deceptive'
+ *   beliefMode     'naive' | 'skeptical' | 'adaptive'
+ */
+class UtilityAgent extends Agent {
+  constructor(id, name, opts = {}) {
+    super(id, 'utility', 1000, 3, name);
+    this.riskPref       = opts.riskPref       || 'neutral';
+    this.biasMode       = opts.biasMode       || 'none';
+    this.biasAmount     = opts.biasAmount     || 0;
+    this.valuationNoise = opts.valuationNoise != null ? opts.valuationNoise : 0.03;
+    this.deceptionMode  = opts.deceptionMode  || 'honest';
+    this.beliefMode     = opts.beliefMode     || 'naive';
+
+    // Valuation state — recomputed each decide().
+    this.trueValuation       = 100;
+    this.subjectiveValuation = 100;
+    this.reportedValuation   = null;
+    this.receivedMsgs        = [];
+
+    // Frozen baseline — used to normalize utility so U(w0) = 1.
+    this.initialWealth = this.cash + this.inventory * 100;
+  }
+
+  /* ---- Pipeline step 1: observe ---- */
+  observe(market) {
+    const bestBid = market.book.bestBid();
+    const bestAsk = market.book.bestAsk();
+    return {
+      bid:       bestBid ? bestBid.price : null,
+      ask:       bestAsk ? bestAsk.price : null,
+      last:      market.lastPrice,
+      fv:        market.fundamentalValue(),
+      period:    market.period,
+      remaining: Math.max(0, market.config.periods - market.period + 1),
+    };
+  }
+
+  /* ---- Pipeline step 2: update belief ---- */
+  updateBelief(market, ctx, rng) {
+    const fv    = market.fundamentalValue();
+    const sign  = this.biasMode === 'over'  ?  1
+                : this.biasMode === 'under' ? -1
+                : 0;
+    const bias  = sign * this.biasAmount;
+    const noise = (rng() - 0.5) * 2 * this.valuationNoise;
+    const prior = Math.max(0, fv * (1 + bias + noise));
+    this.trueValuation = prior;
+
+    let subjective = prior;
+    const bus        = ctx && ctx.messageBus;
+    const trust      = ctx && ctx.trustTracker;
+    const ext        = ctx && ctx.extended;
+    const canListen  = !ext || ext.communication !== false;
+    const prevPeriod = market.period - 1;
+    const msgs       = (bus && canListen && prevPeriod >= 1) ? bus.byPeriod(prevPeriod) : [];
+    this.receivedMsgs = msgs;
+
+    if (msgs.length) {
+      const foreign = msgs.filter(m => m.senderId !== this.id);
+      if (foreign.length) {
+        if (this.beliefMode === 'naive') {
+          // Equal-weight average of own prior and every broadcast claim.
+          const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
+          subjective = 0.6 * prior + 0.4 * avg;
+        } else if (this.beliefMode === 'skeptical') {
+          // Heavy discount — messages move the prior only 10%.
+          const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
+          subjective = 0.9 * prior + 0.1 * avg;
+        } else if (this.beliefMode === 'adaptive' && trust) {
+          // Weighted by per-sender trust. If the aggregate trust is
+          // high, the prior moves a lot toward the trust-weighted
+          // message mean; if low, the agent ignores the messages.
+          let wsum = 0, acc = 0;
+          for (const m of foreign) {
+            const w = trust.get(this.id, m.senderId);
+            wsum += w;
+            acc  += w * m.claimedValuation;
+          }
+          if (wsum > 0) {
+            const msgAvg = acc / wsum;
+            const weight = Math.min(0.5, wsum / Math.max(1, foreign.length * 2));
+            subjective   = (1 - weight) * prior + weight * msgAvg;
+          }
+        }
+      }
+    }
+    this.subjectiveValuation = Math.max(0, subjective);
+    return { trueV: this.trueValuation, subjectiveV: this.subjectiveValuation };
+  }
+
+  /* ---- Pipeline step 3: evaluate candidate actions ---- */
+  evaluate(market, rng) {
+    const v    = this.subjectiveValuation;
+    const bid  = market.book.bestBid();
+    const ask  = market.book.bestAsk();
+    const cash = this.cash;
+    const inv  = this.inventory;
+    const w0   = cash + inv * v;
+    const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth);
+    const U0   = U(w0);
+    const candidates = [];
+
+    candidates.push({
+      label:    'hold',
+      type:     'hold',
+      price:    null,
+      quantity: null,
+      wealthIf: w0,
+      eu:       U0,
+    });
+
+    // Cross the book: hit best ask (buy). Deterministic fill.
+    if (ask && cash >= ask.price) {
+      const w1 = (cash - ask.price) + (inv + 1) * v;
+      candidates.push({
+        label:    `buy@ask ${ask.price.toFixed(2)}`,
+        type:     'bid',
+        price:    ask.price,
+        quantity: 1,
+        wealthIf: w1,
+        eu:       U(w1),
+      });
+    }
+    // Lift best bid (sell). Deterministic fill.
+    if (bid && inv > 0) {
+      const w1 = (cash + bid.price) + (inv - 1) * v;
+      candidates.push({
+        label:    `sell@bid ${bid.price.toFixed(2)}`,
+        type:     'ask',
+        price:    bid.price,
+        quantity: 1,
+        wealthIf: w1,
+        eu:       U(w1),
+      });
+    }
+    // Passive bid at v × (0.96–0.98). Probabilistic fill.
+    {
+      const price = round2(v * (0.96 + rng() * 0.02));
+      if (price > 0 && cash >= price) {
+        const pFill = 0.3;
+        const w1    = (cash - price) + (inv + 1) * v;
+        const eu    = pFill * U(w1) + (1 - pFill) * U0;
+        candidates.push({
+          label:    `passive bid ${price.toFixed(2)}`,
+          type:     'bid',
+          price,
+          quantity: 1,
+          passive:  true,
+          pFill,
+          wealthIf: w1,
+          eu,
+        });
+      }
+    }
+    // Passive ask at v × (1.02–1.04). Probabilistic fill.
+    if (inv > 0) {
+      const price = round2(v * (1.02 + rng() * 0.02));
+      const pFill = 0.3;
+      const w1    = (cash + price) + (inv - 1) * v;
+      const eu    = pFill * U(w1) + (1 - pFill) * U0;
+      candidates.push({
+        label:    `passive ask ${price.toFixed(2)}`,
+        type:     'ask',
+        price,
+        quantity: 1,
+        passive:  true,
+        pFill,
+        wealthIf: w1,
+        eu,
+      });
+    }
+    return { candidates, w0, U0 };
+  }
+
+  /* ---- Pipeline step 4 + 5: choose + execute ---- */
+  decide(market, rng, ctx = {}) {
+    this.observe(market);
+    this.updateBelief(market, ctx, rng);
+    const { candidates, w0, U0 } = this.evaluate(market, rng);
+
+    let chosen = candidates[0];
+    for (const c of candidates) if (c.eu > chosen.eu) chosen = c;
+
+    const reasoning = {
+      ruleUsed:         `utility_max_${this.riskPref}`,
+      estimatedValue:   this.subjectiveValuation,
+      expectedProfit:   (chosen.wealthIf != null ? chosen.wealthIf : w0) - w0,
+      triggerCondition: `argmax EU over ${candidates.length} candidates`,
+      utility: {
+        riskPref:        this.riskPref,
+        initialWealth:   this.initialWealth,
+        wealth0:         w0,
+        U0,
+        trueValuation:   this.trueValuation,
+        subjectiveValue: this.subjectiveValuation,
+        candidates: candidates.map(c => ({
+          label:    c.label,
+          type:     c.type,
+          price:    c.price,
+          wealthIf: c.wealthIf,
+          eu:       c.eu,
+          passive:  !!c.passive,
+        })),
+        chosen: chosen.label,
+      },
+      beliefMode:   this.beliefMode,
+      receivedMsgs: this.receivedMsgs.map(m => ({
+        from:  m.senderName,
+        claim: m.claimedValuation,
+        sig:   m.signal,
+      })),
+    };
+
+    if (chosen.type === 'hold') return { type: 'hold', reasoning };
+    return {
+      type:     chosen.type,
+      price:    chosen.price,
+      quantity: chosen.quantity || 1,
+      reasoning,
+    };
+  }
+
+  /* ---- Communication (called once per period by engine) ---- */
+  communicate(market, rng) {
+    const v = this.subjectiveValuation || market.fundamentalValue();
+    let report = v;
+
+    if (this.deceptionMode === 'honest') {
+      report = v * (1 + (rng() - 0.5) * 0.02);
+    } else if (this.deceptionMode === 'biased') {
+      let tilt;
+      if (this.biasMode === 'over')       tilt = +0.10;
+      else if (this.biasMode === 'under') tilt = -0.10;
+      else                                tilt = (rng() - 0.5) * 0.20;
+      report = v * (1 + tilt);
+    } else if (this.deceptionMode === 'deceptive') {
+      // Asset-poor agents understate (to depress price and buy cheap);
+      // asset-rich agents overstate (to inflate price and sell dear).
+      const wantsToSell = this.inventory > this.initialInventory;
+      const wantsToBuy  = this.inventory < this.initialInventory;
+      if (wantsToSell)      report = v * 1.18;
+      else if (wantsToBuy)  report = v * 0.82;
+      else                  report = v * (1 + (rng() - 0.5) * 0.20);
+    }
+    report = Math.max(0, report);
+    this.reportedValuation = report;
+
+    const signal = report > v * 1.03 ? 'buy'
+                 : report < v * 0.97 ? 'sell'
+                 : 'hold';
+    const deceptive = this.deceptionMode !== 'honest' &&
+                      Math.abs(report - v) / Math.max(1, v) > 0.05;
+
+    return {
+      senderId:         this.id,
+      senderName:       this.displayName,
+      period:           market.period,
+      tick:             market.tick,
+      trueValuation:    v,
+      claimedValuation: report,
+      signal,
+      deceptionMode:    this.deceptionMode,
+      deceptive,
+    };
+  }
+}
+
 /* ---------- Helpers + populations ------------------------------------- */
 
 function order(type, price, quantity, reasoning) {
@@ -358,12 +666,40 @@ const POPULATIONS = {
   ],
 };
 
-function buildAgents(populationKey) {
+/* ---------- Utility (expected-utility) population ----------
+ * Six agents span the full strategy cube (risk × bias × deception ×
+ * belief), so one run of this preset exercises every branch of the
+ * UtilityAgent decision engine and every belief-update path.
+ *
+ *   U1  averse  · unbiased   · honest    · adaptive   (rational core)
+ *   U2  averse  · under      · honest    · skeptical  (cautious)
+ *   U3  neutral · unbiased   · biased    · naive      (gullible biaser)
+ *   U4  neutral · over       · deceptive · adaptive   (strategic liar)
+ *   U5  loving  · over       · deceptive · naive      (bubble pump)
+ *   U6  loving  · unbiased   · honest    · skeptical  (risk taker)
+ */
+const UTILITY_SLOTS = [
+  { name: 'U1', riskPref: 'averse',  biasMode: 'none',  biasAmount: 0,    deceptionMode: 'honest',    beliefMode: 'adaptive'  },
+  { name: 'U2', riskPref: 'averse',  biasMode: 'under', biasAmount: 0.10, deceptionMode: 'honest',    beliefMode: 'skeptical' },
+  { name: 'U3', riskPref: 'neutral', biasMode: 'none',  biasAmount: 0,    deceptionMode: 'biased',    beliefMode: 'naive'     },
+  { name: 'U4', riskPref: 'neutral', biasMode: 'over',  biasAmount: 0.15, deceptionMode: 'deceptive', beliefMode: 'adaptive'  },
+  { name: 'U5', riskPref: 'loving',  biasMode: 'over',  biasAmount: 0.20, deceptionMode: 'deceptive', beliefMode: 'naive'     },
+  { name: 'U6', riskPref: 'loving',  biasMode: 'none',  biasAmount: 0,    deceptionMode: 'honest',    beliefMode: 'skeptical' },
+];
+POPULATIONS.utility = UTILITY_SLOTS.map(s => ({ cls: UtilityAgent, name: s.name, opts: s }));
+
+function buildAgents(populationKey, overrides = {}) {
   const spec = POPULATIONS[populationKey] || POPULATIONS.inexperienced;
   const out = {};
   spec.forEach((s, i) => {
     const id = i + 1;
-    out[id] = new s.cls(id, s.name);
+    if (s.opts) {
+      const opts = Object.assign({}, s.opts);
+      if (overrides.forceHonest) opts.deceptionMode = 'honest';
+      out[id] = new s.cls(id, s.name, opts);
+    } else {
+      out[id] = new s.cls(id, s.name);
+    }
   });
   return out;
 }

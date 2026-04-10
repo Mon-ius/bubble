@@ -145,6 +145,17 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .panel-feed     { grid-column: span 4; }
 .panel-replay   { grid-column: span 12; }
 
+/* Extended panels (utility experiment mode) */
+.chart-valuation { grid-column: span 8; }
+.panel-metrics   { grid-column: span 4; }
+.chart-utility   { grid-column: span 6; }
+.chart-ownership { grid-column: span 6; }
+.chart-messages  { grid-column: span 8; }
+.chart-trust     { grid-column: span 4; }
+
+/* Hide the extended cluster unless body.extended is set by main.js */
+body:not(.extended) .ext-only { display: none !important; }
+
 /* ---------- Stats cells ---------- */
 .stat {
   display: flex;
@@ -179,6 +190,11 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .chart-volume canvas,
 .chart-heatmap canvas { height: 160px; }
 .chart-timeline canvas { height: 190px; }
+.chart-valuation canvas { height: 220px; }
+.chart-utility canvas,
+.chart-ownership canvas { height: 200px; }
+.chart-messages canvas { height: 200px; }
+.chart-trust canvas    { height: 220px; }
 
 /* ---------- Order book ---------- */
 .book-tables {
@@ -374,6 +390,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   font-size: 10px;
   color: var(--muted);
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 .legend span { display: inline-flex; align-items: center; gap: 4px; }
 .legend i {
@@ -386,6 +403,69 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .legend i.ask   { background: var(--ask); }
 .legend i.hold  { background: var(--hold); }
 .legend i.trade { background: var(--accent); border-radius: 50%; }
+.legend i.lie   { background: transparent; border: 1.5px solid var(--bubble); border-radius: 50%; }
+
+/* ---------- Extended-mode controls ---------- */
+.ext-controls {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 6px 10px;
+  background: var(--panel2);
+  border: 1px dashed var(--border);
+  border-radius: 5px;
+}
+.ext-controls .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.ext-controls input[type=checkbox] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+/* ---------- Metrics panel ---------- */
+#metrics-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 10px;
+  column-gap: 14px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  padding-top: 4px;
+}
+#metrics-body .metric-row { display: contents; }
+#metrics-body .metric-row span   { color: var(--muted); }
+#metrics-body .metric-row strong { color: var(--text); text-align: right; font-weight: 700; }
+
+/* ---------- EU candidate table in trace cards ---------- */
+.trace-card .trace-eu {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trace-card .eu-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+  gap: 10px;
+}
+.trace-card .eu-row.chosen {
+  color: var(--bid);
+  font-weight: 700;
+}
+.trace-card .eu-lbl { flex: 1; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
@@ -393,6 +473,8 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   .panel-stats { grid-template-columns: repeat(3, 1fr); }
   .chart-price, .chart-timeline, .panel-agents { grid-column: span 6; }
   .panel-book, .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed { grid-column: span 6; }
+  .chart-valuation, .panel-metrics, .chart-utility,
+  .chart-ownership, .chart-messages, .chart-trust { grid-column: span 6; }
   .agents-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
@@ -400,7 +482,9 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   .agents-grid { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr; }
   .chart-price, .chart-timeline, .panel-agents, .panel-book,
-  .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed, .panel-replay { grid-column: span 1; }
+  .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed, .panel-replay,
+  .chart-valuation, .panel-metrics, .chart-utility,
+  .chart-ownership, .chart-messages, .chart-trust { grid-column: span 1; }
 }
 
 /* ---------- Scrollbars ---------- */

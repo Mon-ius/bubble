@@ -148,6 +148,43 @@ const Viz = {
     ctx.restore();
   },
 
+  /**
+   * Stacked area: each series adds on top of the previous baseline.
+   * seriesList: [{ color, name, points: [{x, y}] }]
+   * All series must share the same x grid and length.
+   */
+  stackedArea(ctx, rect, seriesList, { xMin, xMax, yMin, yMax }) {
+    if (!seriesList.length) return;
+    const n = seriesList[0].points.length;
+    if (!n) return;
+    const cum = new Array(n).fill(0);
+    for (const s of seriesList) {
+      ctx.save();
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      // Top edge (forward).
+      for (let j = 0; j < n; j++) {
+        const p = s.points[j];
+        const top = cum[j] + (p.y || 0);
+        const x = this.mapX(rect, p.x, xMin, xMax);
+        const y = this.mapY(rect, top, yMin, yMax);
+        if (j === 0) ctx.moveTo(x, y);
+        else         ctx.lineTo(x, y);
+      }
+      // Bottom edge (reverse), closing the polygon.
+      for (let j = n - 1; j >= 0; j--) {
+        const p = s.points[j];
+        const x = this.mapX(rect, p.x, xMin, xMax);
+        const y = this.mapY(rect, cum[j], yMin, yMax);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      for (let j = 0; j < n; j++) cum[j] += (s.points[j].y || 0);
+    }
+  },
+
   /** Scale a value in [0,1] to a cool→hot heat color for the heatmap. */
   heatColor(t) {
     t = Math.max(0, Math.min(1, t));

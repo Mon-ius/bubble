@@ -3,42 +3,70 @@
 /* =====================================================================
    logger.js — Append-only trace + snapshot store.
 
-   Three streams of data are recorded:
-     * traces    — one record per agent decision (see trace shape below)
-     * snapshots — one record per tick holding the minimal state needed
-                   to reconstruct the UI at that moment. Market-level
-                   append-only arrays (trades, priceHistory, traces) are
-                   *not* copied; the snapshot just records their current
-                   length so Replay can slice them.
-     * events    — dividend payments, period transitions, etc.
+   Streams recorded by the simulation (all append-only so replay can
+   slice them at a snapshot's recorded length):
 
-   Trace shape:
+     * traces              — one record per agent decision
+     * snapshots           — indexed by tick; enough state to rebuild
+                             the UI at that moment. Large arrays are
+                             not copied; length fields are recorded.
+     * events              — dividend payments, period transitions
+     * messages            — inter-agent broadcasts (utility agents)
+     * valuationHistory    — per-tick per-agent {trueV, subjV, reportedV}
+     * utilityHistory      — per-tick per-agent {wealth, utility, riskPref}
+     * decisionEvaluations — per-decision EU candidate table
+     * beliefChanges       — per-update {prior, posterior, mode, source}
+     * trustHistory        — per-period trust matrix snapshot
+
+   Trace shape (base):
    {
      timestamp: tick,
      period,
      agentId, agentName, agentType,
      state:     { cash, inventory, estimatedValue, observedPrice },
      decision:  { type, price, quantity },
-     reasoning: { ruleUsed, expectedProfit, triggerCondition },
+     reasoning: { ruleUsed, expectedProfit, triggerCondition,
+                  utility?, beliefMode?, receivedMsgs? },
      filled:    quantity actually executed at submission time
    }
+
+   Extended streams are empty for legacy populations — all downstream
+   consumers (Replay, UI) must handle empty arrays gracefully.
    ===================================================================== */
 
 class Logger {
   constructor() {
-    this.traces    = [];
-    this.snapshots = [];   // index by tick: snapshots[tick] = {...}
-    this.events    = [];
+    this.traces              = [];
+    this.snapshots           = [];   // index by tick: snapshots[tick] = {...}
+    this.events              = [];
+    this.messages            = [];
+    this.valuationHistory    = [];
+    this.utilityHistory      = [];
+    this.decisionEvaluations = [];
+    this.beliefChanges       = [];
+    this.trustHistory        = [];
   }
 
-  logTrace(trace) { this.traces.push(trace); }
-  logEvent(event) { this.events.push(event); }
-  snapshot(s)     { this.snapshots[s.tick] = s; }
+  logTrace(trace)         { this.traces.push(trace); }
+  logEvent(event)         { this.events.push(event); }
+  logMessage(msg)         { this.messages.push(msg); }
+  logValuation(entry)     { this.valuationHistory.push(entry); }
+  logUtility(entry)       { this.utilityHistory.push(entry); }
+  logEvaluation(entry)    { this.decisionEvaluations.push(entry); }
+  logBeliefChange(entry)  { this.beliefChanges.push(entry); }
+  logTrust(entry)         { this.trustHistory.push(entry); }
+  snapshot(s)             { this.snapshots[s.tick] = s; }
 
   clear() {
-    this.traces    = [];
-    this.snapshots = [];
-    this.events    = [];
+    this.traces              = [];
+    this.snapshots           = [];
+    this.events              = [];
+    this.messages            = [];
+    this.valuationHistory    = [];
+    this.utilityHistory      = [];
+    this.decisionEvaluations = [];
+    this.beliefChanges       = [];
+    this.trustHistory        = [];
   }
 
   /** Nearest snapshot at or before the requested tick. */

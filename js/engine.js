@@ -32,12 +32,15 @@ function makeRNG(seed) {
 }
 
 class Engine {
-  constructor(market, agents, logger, config, rng) {
+  constructor(market, agents, logger, config, rng, ctx = null) {
     this.market  = market;
     this.agents  = agents;
     this.logger  = logger;
     this.config  = config;
     this._rng    = rng || Math.random;
+    // ctx carries the message bus, trust tracker, and extended-config
+    // flags used by UtilityAgents. Legacy agents ignore it entirely.
+    this.ctx     = ctx || {};
     this.running = false;
     this._timer  = null;
     this.onTick  = null;     // callback after each step
@@ -81,7 +84,7 @@ class Engine {
 
     for (const id of ids) {
       const agent    = this.agents[id];
-      const decision = agent.decide(m, this._rng);
+      const decision = agent.decide(m, this._rng, this.ctx);
 
       // Build the trace record BEFORE submission so we capture the
       // agent's state at decision time, then fill in `filled` after
@@ -107,10 +110,44 @@ class Engine {
           ruleUsed:         decision.reasoning?.ruleUsed         ?? 'unknown',
           expectedProfit:   decision.reasoning?.expectedProfit   ?? null,
           triggerCondition: decision.reasoning?.triggerCondition ?? '',
+          utility:          decision.reasoning?.utility          ?? null,
+          beliefMode:       decision.reasoning?.beliefMode       ?? null,
+          receivedMsgs:     decision.reasoning?.receivedMsgs     ?? null,
         },
         filled: 0,
       };
       this.logger.logTrace(trace);
+
+      // Extended logging for utility agents: valuation, wealth/utility,
+      // and the full EU candidate table. Each stream is append-only;
+      // the snapshot records its current length so replay slices cleanly.
+      const u = decision.reasoning && decision.reasoning.utility;
+      if (u) {
+        this.logger.logValuation({
+          tick:      m.tick,
+          period:    m.period,
+          agentId:   agent.id,
+          agentName: agent.displayName,
+          trueV:     u.trueValuation,
+          subjV:     u.subjectiveValue,
+          reportedV: agent.reportedValuation != null ? agent.reportedValuation : null,
+        });
+        this.logger.logUtility({
+          tick:      m.tick,
+          period:    m.period,
+          agentId:   agent.id,
+          wealth:    u.wealth0,
+          utility:   u.U0,
+          riskPref:  u.riskPref,
+        });
+        this.logger.logEvaluation({
+          tick:       m.tick,
+          period:     m.period,
+          agentId:    agent.id,
+          candidates: u.candidates,
+          chosen:     u.chosen,
+        });
+      }
 
       if (decision.type === 'bid' || decision.type === 'ask') {
         const order = new Order(
@@ -135,15 +172,51 @@ class Engine {
     m.recordTick();
     this.logger.snapshot(this._captureSnapshot());
 
-    // Period boundary: dividend + period advance + book reset.
+    // Period boundary: dividend + comms round + period advance + book reset.
     if (m.tick % this.config.ticksPerPeriod === 0) {
       const d = m.payDividend(this.agents, this._rng);
       this.logger.logEvent({ tick: m.tick, type: 'dividend', period: m.period, value: d });
+      // Communication + trust update (no-op unless extended mode + comms on).
+      this._communicationRound();
       if (m.period < this.config.periods) {
         m.period++;
         m.book.clear();
         this.logger.logEvent({ tick: m.tick, type: 'period_start', period: m.period });
       }
+    }
+  }
+
+  /**
+   * End-of-period communication + trust update. Every utility agent
+   * broadcasts one message (respecting its deceptionMode). If the
+   * global deception toggle is off, every message is forced honest.
+   * Then the trust tracker re-scores each sender against that period's
+   * volume-weighted mean trade price.
+   */
+  _communicationRound() {
+    const bus   = this.ctx.messageBus;
+    const trust = this.ctx.trustTracker;
+    const ext   = this.ctx.extended;
+    if (!bus || !ext || !ext.communication) return;
+    const period = this.market.period;
+    for (const id of Object.keys(this.agents)) {
+      const a = this.agents[id];
+      if (typeof a.communicate !== 'function') continue;
+      const msg = a.communicate(this.market, this._rng);
+      if (!msg) continue;
+      if (!ext.deception) {
+        // Global deception toggle off — collapse every claim to truth.
+        msg.claimedValuation = msg.trueValuation;
+        msg.deceptionMode    = 'honest';
+        msg.deceptive        = false;
+      }
+      bus.post(msg);
+      this.logger.logMessage(msg);
+    }
+    if (trust) {
+      trust.update(bus, this.market, period);
+      trust.snapshot(this.market.tick);
+      this.logger.logTrust({ tick: this.market.tick, period, trust: trust.copy() });
     }
   }
 
@@ -167,6 +240,14 @@ class Engine {
         cash:       Math.round(a.cash * 100) / 100,
         inventory:  a.inventory,
         lastAction: a.lastAction,
+        // Extended fields (undefined for legacy agents — harmless).
+        riskPref:            a.riskPref,
+        trueValuation:       a.trueValuation,
+        subjectiveValuation: a.subjectiveValuation,
+        reportedValuation:   a.reportedValuation,
+        deceptionMode:       a.deceptionMode,
+        beliefMode:          a.beliefMode,
+        initialWealth:       a.initialWealth,
       };
     }
     return {
@@ -182,6 +263,13 @@ class Engine {
       traceLength:        this.logger.traces.length,
       eventLength:        this.logger.events.length,
       volumeByPeriod:     m.volumeByPeriod.slice(),
+      // Extended snapshot fields:
+      messageLength:      this.logger.messages.length,
+      valuationLength:    this.logger.valuationHistory.length,
+      utilityLength:      this.logger.utilityHistory.length,
+      evaluationLength:   this.logger.decisionEvaluations.length,
+      trustLength:        this.logger.trustHistory.length,
+      trust:              this.ctx.trustTracker ? this.ctx.trustTracker.copy() : null,
     };
   }
 }

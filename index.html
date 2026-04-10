@@ -18,6 +18,7 @@
         <option value="inexperienced">Inexperienced · 2T 2R 1F 1E</option>
         <option value="experienced">Experienced · 3E 2F 1T</option>
         <option value="mixed">Mixed · 2F 2E 1T 1R</option>
+        <option value="utility">Utility · 6 risk-pref agents (experiment)</option>
       </select>
     </label>
     <label>Seed
@@ -26,6 +27,10 @@
     <label>Speed
       <input id="speed" type="range" min="1" max="20" value="14">
     </label>
+    <div class="ext-controls ext-only">
+      <label class="checkbox"><input id="toggle-communication" type="checkbox" checked>Communication</label>
+      <label class="checkbox"><input id="toggle-deception" type="checkbox" checked>Deception</label>
+    </div>
     <button id="btn-start" class="primary">▶ Start</button>
     <button id="btn-pause">⏸ Pause</button>
     <button id="btn-reset">↺ Reset</button>
@@ -87,6 +92,50 @@
     </div>
   </section>
 
+  <!-- ===========================================================
+       Extended panels (utility experiment mode).
+       All marked .ext-only; CSS hides them unless body.extended.
+       =========================================================== -->
+
+  <section class="panel panel-chart chart-valuation ext-only">
+    <h2>Subjective Valuation · True vs Reported</h2>
+    <canvas id="chart-valuation"></canvas>
+  </section>
+
+  <section class="panel panel-metrics ext-only">
+    <h2>Experiment Metrics</h2>
+    <div id="metrics-body"></div>
+  </section>
+
+  <section class="panel panel-chart chart-utility ext-only">
+    <h2>Agent Utility Over Time</h2>
+    <canvas id="chart-utility"></canvas>
+    <div class="legend">
+      <span>Normalized so U(w₀) = 1 · dashed line = initial utility</span>
+    </div>
+  </section>
+
+  <section class="panel panel-chart chart-ownership ext-only">
+    <h2>Asset Ownership Over Time</h2>
+    <canvas id="chart-ownership"></canvas>
+  </section>
+
+  <section class="panel panel-chart chart-messages ext-only">
+    <h2>Message Log Timeline</h2>
+    <canvas id="chart-messages"></canvas>
+    <div class="legend">
+      <span><i class="lg bid"></i>Buy signal</span>
+      <span><i class="lg ask"></i>Sell signal</span>
+      <span><i class="lg hold"></i>Hold signal</span>
+      <span><i class="lg lie"></i>Deceptive</span>
+    </div>
+  </section>
+
+  <section class="panel panel-chart chart-trust ext-only">
+    <h2>Trust Matrix</h2>
+    <canvas id="chart-trust"></canvas>
+  </section>
+
   <section class="panel panel-agents">
     <h2>Agents</h2>
     <div id="agents-grid" class="agents-grid"></div>
@@ -113,6 +162,8 @@
   </section>
 </main>
 
+<script src="js/utility.js"></script>
+<script src="js/messaging.js"></script>
 <script src="js/market.js"></script>
 <script src="js/agents.js"></script>
 <script src="js/logger.js"></script>

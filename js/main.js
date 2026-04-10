@@ -19,14 +19,26 @@ const App = {
     tickInterval:   340,
   },
 
+  // Extended (utility experiment) configuration.
+  // These toggles are ignored when the selected population is not
+  // 'utility' — legacy populations use the heuristic path only.
+  extendedConfig: {
+    communication: true,   // agents broadcast messages at period end
+    deception:     true,   // deceptive/biased claims allowed (else forced honest)
+    deceptivePct:  0.5,    // informational — the slot table fixes the mix
+  },
+
   seed:            42,
   populationKey:   'inexperienced',
 
-  agents: {},
-  market: null,
-  logger: null,
-  engine: null,
-  _rng:   null,
+  agents:       {},
+  market:       null,
+  logger:       null,
+  engine:       null,
+  messageBus:   null,
+  trustTracker: null,
+  ctx:          null,
+  _rng:         null,
 
   replayMode: false,
   replayTick: 0,
@@ -59,6 +71,24 @@ const App = {
       this.config.tickInterval = Math.max(40, Math.round(1000 - s * 47));
     });
 
+    // Extended-mode toggles. Absent in legacy builds; guard each lookup.
+    const commBox = document.getElementById('toggle-communication');
+    if (commBox) {
+      commBox.checked = this.extendedConfig.communication;
+      commBox.addEventListener('change', e => {
+        this.extendedConfig.communication = e.target.checked;
+        this.reset();
+      });
+    }
+    const decBox = document.getElementById('toggle-deception');
+    if (decBox) {
+      decBox.checked = this.extendedConfig.deception;
+      decBox.addEventListener('change', e => {
+        this.extendedConfig.deception = e.target.checked;
+        this.reset();
+      });
+    }
+
     const slider = document.getElementById('replay-slider');
     slider.addEventListener('input', e => this.enterReplayAt(Number(e.target.value)));
 
@@ -84,11 +114,26 @@ const App = {
     this.agents = buildAgents(this.populationKey);
     this.market = new Market(this.config);
     this.logger = new Logger();
-    this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng);
+    // Message bus + trust tracker live for every run. For legacy
+    // populations they simply stay empty because no agent implements
+    // communicate() and the engine's comms round returns early.
+    this.messageBus   = new MessageBus();
+    const agentIds    = Object.keys(this.agents).map(Number);
+    this.trustTracker = new TrustTracker(agentIds);
+    this.ctx = {
+      messageBus:   this.messageBus,
+      trustTracker: this.trustTracker,
+      extended:     this.extendedConfig,
+    };
+    this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();
     this.engine.onEnd  = () => this.requestRender();
     this.replayMode = false;
     this.replayTick = 0;
+    // Toggle the extended-panel visibility class and re-measure
+    // canvases that were previously display:none.
+    document.body.classList.toggle('extended', this.populationKey === 'utility');
+    UI.resizeCanvases();
     this.requestRender();
   },
 
@@ -128,8 +173,8 @@ const App = {
 
   render() {
     const view = this.replayMode
-      ? Replay.buildViewAt(this.market, this.logger, this.replayTick)
-      : Replay.buildLiveView(this.market, this.logger, this.agents);
+      ? Replay.buildViewAt(this.market, this.logger, this.replayTick, this.ctx)
+      : Replay.buildLiveView(this.market, this.logger, this.agents, this.ctx);
 
     UI.render(view, this.config);
     UI.setReplayPosition(view.tick, this.market.tick, !this.replayMode);
