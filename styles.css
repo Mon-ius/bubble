@@ -982,7 +982,12 @@ body:not(.extended) .ext-only { display: none !important; }
   margin: 0;
 }
 
-/* ---------- Agent-panel explanatory notes ---------- */
+/* ---------- Agent-panel explanatory notes ---------- *
+ * Single "Note" block (title + dl glossary). Each <dt> carries the
+ * exact term name that appears on the agent card ("Cash", "P&L", …)
+ * in the same UI font as the card, so symbol/term typography stays
+ * consistent across card and note. <dd> holds the prose explanation.
+ * ------------------------------------------------------------------ */
 .panel-agents .agent-notes {
   margin-top: 16px;
   padding-top: 14px;
@@ -991,34 +996,44 @@ body:not(.extended) .ext-only { display: none !important; }
   line-height: 1.65;
   color: var(--fg-3);
 }
-.panel-agents .agent-notes p {
-  margin: 0 0 8px;
-  padding-left: 14px;
-  text-indent: -14px;
-}
-.panel-agents .agent-notes p:last-child { margin-bottom: 0; }
-.panel-agents .agent-notes strong {
+.panel-agents .agent-notes-title {
   color: var(--accent);
   font-weight: 600;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-right: 4px;
+  margin: 0 0 10px;
 }
-.panel-agents .agent-notes em {
+.panel-agents .agent-notes-list {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+.panel-agents .agent-notes-list dt {
+  color: var(--fg-1);
+  font-weight: 500;
+  white-space: nowrap;
+  text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.panel-agents .agent-notes-list dt .sym,
+.panel-agents .agent-notes-list dt [data-sym] {
+  color: var(--fg-3);
+}
+.panel-agents .agent-notes-list dd {
+  margin: 0;
+  color: var(--fg-3);
+}
+.panel-agents .agent-notes-list dd em {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
                "Times New Roman", serif;
   font-style: italic;
   color: var(--fg-1);
 }
-.panel-agents .agent-notes sub,
-.panel-agents .agent-notes sup {
-  font-size: 0.75em;
-  line-height: 0;
-  position: relative;
-}
-.panel-agents .agent-notes sub { top: 0.35em; }
-.panel-agents .agent-notes sup { top: -0.45em; }
 
 /* ---------- Feed ---------- */
 #trade-feed {
