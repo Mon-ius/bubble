@@ -51,26 +51,23 @@
       <details class="psec" open>
         <summary>Market</summary>
         <div class="psec-body">
-          <div class="param-row">
+          <div class="param-row" data-tip="Number of trading periods. The asset pays a dividend at the end of each period drawn from {0, 2·μ} with equal probability, so the fundamental value at period t is FV_t = μ × (remaining periods). Default 10 matches the Dufwenberg, Lindqvist &amp; Moore (2005) design. Fewer periods shorten the run and make bubbles harder to form; more periods extend the runway on which they can grow and collapse.">
             <div class="param-head">
               <label for="p-periods">Periods</label>
-              <span class="info" data-tip="Number of trading periods. The asset pays a dividend at the end of each period drawn from {0, 2·μ} with equal probability, so the fundamental value at period t is FV_t = μ × (remaining periods). Default 10 matches the Dufwenberg, Lindqvist &amp; Moore (2005) design. Fewer periods shorten the run and make bubbles harder to form; more periods extend the runway on which they can grow and collapse."></span>
               <span class="pval" id="v-periods">10</span>
             </div>
             <input type="range" id="p-periods" min="2" max="20" step="1" value="10">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Number of agent decisions (and therefore order submissions) inside each period. Higher values give the market more opportunities to price-discover within a period; lower values produce thinner trading. Default 18 gives the trend-follower slope window enough samples to form but keeps the run snappy.">
             <div class="param-head">
               <label for="p-ticks">Ticks per period</label>
-              <span class="info" data-tip="Number of agent decisions (and therefore order submissions) inside each period. Higher values give the market more opportunities to price-discover within a period; lower values produce thinner trading. Default 18 gives the trend-follower slope window enough samples to form but keeps the run snappy."></span>
               <span class="pval" id="v-ticks">18</span>
             </div>
             <input type="range" id="p-ticks" min="5" max="40" step="1" value="18">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Expected dividend per period. Each period draws uniformly from {0, 2·μ}. FV_t = μ × (remaining periods), so with μ=10 over 10 periods you get FV₁ = 100 decaying linearly to FV₁₀ = 10 and then zero. Rescales the whole price trajectory without changing the bubble dynamics.">
             <div class="param-head">
               <label for="p-divmean">Dividend mean (μ)</label>
-              <span class="info" data-tip="Expected dividend per period. Each period draws uniformly from {0, 2·μ}. FV_t = μ × (remaining periods), so with μ=10 over 10 periods you get FV₁ = 100 decaying linearly to FV₁₀ = 10 and then zero. Rescales the whole price trajectory without changing the bubble dynamics."></span>
               <span class="pval" id="v-divmean">10</span>
             </div>
             <input type="range" id="p-divmean" min="1" max="20" step="1" value="10">
@@ -81,42 +78,37 @@
       <details class="psec" open>
         <summary>Population mix <span class="muted" id="mix-total">(total 6)</span></summary>
         <div class="psec-body">
-          <div class="param-row">
+          <div class="param-row" data-tip="Trades around the theoretical fundamental value. Buys when the ask is more than 2% below FV, sells when the bid is more than 2% above FV, otherwise posts passive quotes near FV. These are the rational anchors — more F agents means stronger mean-reversion and weaker bubbles.">
             <div class="param-head">
               <label for="p-mix-F">F · Fundamentalist</label>
-              <span class="info" data-tip="Trades around the theoretical fundamental value. Buys when the ask is more than 2% below FV, sells when the bid is more than 2% above FV, otherwise posts passive quotes near FV. These are the rational anchors — more F agents means stronger mean-reversion and weaker bubbles."></span>
               <span class="pval" id="v-mix-F">0</span>
             </div>
             <input type="range" id="p-mix-F" min="0" max="10" step="1" value="0">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Detects momentum from the last 6 prices. Rising slope → aggressive bid above the recent print; falling slope → aggressive ask below it. When cash is exhausted and inventory has accumulated, it dumps. Positive-feedback loops from T agents are what inflate bubbles in the SSW design.">
             <div class="param-head">
               <label for="p-mix-T">T · Trend follower</label>
-              <span class="info" data-tip="Detects momentum from the last 6 prices. Rising slope → aggressive bid above the recent print; falling slope → aggressive ask below it. When cash is exhausted and inventory has accumulated, it dumps. Positive-feedback loops from T agents are what inflate bubbles in the SSW design."></span>
               <span class="pval" id="v-mix-T">0</span>
             </div>
             <input type="range" id="p-mix-T" min="0" max="10" step="1" value="0">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Gode–Sunder style zero-intelligence trader. Each tick flips a coin: bid drawn uniformly from [0.7·FV, 1.1·FV] or ask from [0.9·FV, 1.3·FV]. Provides noise and liquidity pinned to fundamentals — it does not reinforce bubbles the way trend followers do.">
             <div class="param-head">
               <label for="p-mix-R">R · Random (ZI)</label>
-              <span class="info" data-tip="Gode–Sunder style zero-intelligence trader. Each tick flips a coin: bid drawn uniformly from [0.7·FV, 1.1·FV] or ask from [0.9·FV, 1.3·FV]. Provides noise and liquidity pinned to fundamentals — it does not reinforce bubbles the way trend followers do."></span>
               <span class="pval" id="v-mix-R">0</span>
             </div>
             <input type="range" id="p-mix-R" min="0" max="10" step="1" value="0">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is the paper's central finding.">
             <div class="param-head">
               <label for="p-mix-E">E · Experienced</label>
-              <span class="info" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is the paper's central finding."></span>
               <span class="pval" id="v-mix-E">0</span>
             </div>
             <input type="range" id="p-mix-E" min="0" max="10" step="1" value="0">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="LLM-style agent that throws out heuristics and runs an explicit expected-utility argmax over candidate actions, with a risk preference applied to wealth. Setting U&gt;0 unlocks messaging, deception, trust, and the extended charts. The six slots cycle through a fixed strategy cube (U1–U6) so every risk × belief × deception combination is represented.">
             <div class="param-head">
               <label for="p-mix-U">U · Utility (EU maximizer)</label>
-              <span class="info" data-tip="LLM-style agent that throws out heuristics and runs an explicit expected-utility argmax over candidate actions, with a risk preference applied to wealth. Setting U&gt;0 unlocks messaging, deception, trust, and the extended charts. The six slots cycle through a fixed strategy cube (U1–U6) so every risk × belief × deception combination is represented."></span>
               <span class="pval" id="v-mix-U">6</span>
             </div>
             <input type="range" id="p-mix-U" min="0" max="10" step="1" value="6">
@@ -127,50 +119,43 @@
       <details class="psec ext-only">
         <summary>Communication &amp; deception</summary>
         <div class="psec-body">
-          <div class="param-row">
+          <div class="param-row" data-tip="If on, every utility agent emits one message at the end of each period containing its claimed valuation and a buy/sell/hold signal. Other agents read these at the start of the next period and fold them into their belief update. If off, agents run in silence: no messages, no trust updates, no deception at all.">
             <label class="checkbox"><input id="toggle-communication" type="checkbox" checked>Communication on — agents broadcast per-period messages</label>
-            <span class="info" data-tip="If on, every utility agent emits one message at the end of each period containing its claimed valuation and a buy/sell/hold signal. Other agents read these at the start of the next period and fold them into their belief update. If off, agents run in silence: no messages, no trust updates, no deception at all."></span>
-          </div>
-          <div class="param-row">
+            </div>
+          <div class="param-row" data-tip="If off, every outgoing message has its claimedValuation collapsed to the sender's true valuation before it hits the bus, regardless of the agent's deceptionMode. Lets you compare an otherwise-identical run with and without strategic lying.">
             <label class="checkbox"><input id="toggle-deception" type="checkbox" checked>Deception allowed — biased/deceptive claims can diverge from truth</label>
-            <span class="info" data-tip="If off, every outgoing message has its claimedValuation collapsed to the sender's true valuation before it hits the bus, regardless of the agent's deceptionMode. Lets you compare an otherwise-identical run with and without strategic lying."></span>
-          </div>
-          <div class="param-row">
+            </div>
+          <div class="param-row" data-tip="Symmetric uniform noise added to the claimed valuation of an honest agent: claim = true × (1 ± this). Default 0.01 = ±1%. Higher values make even honest agents noisier and harder to trust; 0 makes them perfectly truthful.">
             <div class="param-head">
               <label for="p-honest-noise">Honest noise ±</label>
-              <span class="info" data-tip="Symmetric uniform noise added to the claimed valuation of an honest agent: claim = true × (1 ± this). Default 0.01 = ±1%. Higher values make even honest agents noisier and harder to trust; 0 makes them perfectly truthful."></span>
               <span class="pval" id="v-honest-noise">0.010</span>
             </div>
             <input type="range" id="p-honest-noise" min="0" max="0.10" step="0.005" value="0.01">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Fixed tilt applied by a 'biased' agent when broadcasting. A biased-over agent claims true × (1 + tilt); biased-under claims true × (1 − tilt). Default 0.10 = ±10%. Not a strategic lie — it's a persistent mis-report that the same agent makes every period.">
             <div class="param-head">
               <label for="p-biased-tilt">Biased tilt ±</label>
-              <span class="info" data-tip="Fixed tilt applied by a 'biased' agent when broadcasting. A biased-over agent claims true × (1 + tilt); biased-under claims true × (1 − tilt). Default 0.10 = ±10%. Not a strategic lie — it's a persistent mis-report that the same agent makes every period."></span>
               <span class="pval" id="v-biased-tilt">0.100</span>
             </div>
             <input type="range" id="p-biased-tilt" min="0" max="0.30" step="0.01" value="0.10">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Factor applied by a deceptive agent when it's asset-rich and wants to sell: claim = true × factor. Default 1.18 = 18% overstate. Higher values make the lie more visible — adaptive trust-tracking agents will downweight the sender faster.">
             <div class="param-head">
               <label for="p-decep-over">Deceptive overstate factor</label>
-              <span class="info" data-tip="Factor applied by a deceptive agent when it's asset-rich and wants to sell: claim = true × factor. Default 1.18 = 18% overstate. Higher values make the lie more visible — adaptive trust-tracking agents will downweight the sender faster."></span>
               <span class="pval" id="v-decep-over">1.18</span>
             </div>
             <input type="range" id="p-decep-over" min="1.00" max="2.00" step="0.01" value="1.18">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Factor applied by a deceptive agent when it's asset-poor and wants to buy cheap: claim = true × factor. Default 0.82 = 18% understate. Symmetric counterpart to the overstate factor.">
             <div class="param-head">
               <label for="p-decep-under">Deceptive understate factor</label>
-              <span class="info" data-tip="Factor applied by a deceptive agent when it's asset-poor and wants to buy cheap: claim = true × factor. Default 0.82 = 18% understate. Symmetric counterpart to the overstate factor."></span>
               <span class="pval" id="v-decep-under">0.82</span>
             </div>
             <input type="range" id="p-decep-under" min="0.50" max="1.00" step="0.01" value="0.82">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Threshold for labeling a message's signal field. If claim > true × (1 + threshold), signal is 'buy'. Below (1 − threshold) is 'sell'. Otherwise 'hold'. Default 0.03 = 3%. Controls how easily the buy/sell/hold labels flip.">
             <div class="param-head">
               <label for="p-signal-thr">Signal threshold</label>
-              <span class="info" data-tip="Threshold for labeling a message's signal field. If claim > true × (1 + threshold), signal is 'buy'. Below (1 − threshold) is 'sell'. Otherwise 'hold'. Default 0.03 = 3%. Controls how easily the buy/sell/hold labels flip."></span>
               <span class="pval" id="v-signal-thr">0.030</span>
             </div>
             <input type="range" id="p-signal-thr" min="0" max="0.10" step="0.005" value="0.03">
@@ -181,26 +166,23 @@
       <details class="psec ext-only">
         <summary>Belief update</summary>
         <div class="psec-body">
-          <div class="param-row">
+          <div class="param-row" data-tip="Weight on the agent's own prior when blending incoming messages, for naive-belief agents. Default 0.6 = 60% prior + 40% message average. Lower values make the agent more gullible; 1.0 makes it ignore messages entirely.">
             <div class="param-head">
               <label for="p-naive-w">Naive prior weight</label>
-              <span class="info" data-tip="Weight on the agent's own prior when blending incoming messages, for naive-belief agents. Default 0.6 = 60% prior + 40% message average. Lower values make the agent more gullible; 1.0 makes it ignore messages entirely."></span>
               <span class="pval" id="v-naive-w">0.60</span>
             </div>
             <input type="range" id="p-naive-w" min="0" max="1" step="0.05" value="0.6">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Same formula as naive but much heavier on the prior. Default 0.9 = 90% prior + 10% message average — messages barely move the belief. Use this to model an agent that hears everything but trusts almost nothing.">
             <div class="param-head">
               <label for="p-skep-w">Skeptical prior weight</label>
-              <span class="info" data-tip="Same formula as naive but much heavier on the prior. Default 0.9 = 90% prior + 10% message average — messages barely move the belief. Use this to model an agent that hears everything but trusts almost nothing."></span>
               <span class="pval" id="v-skep-w">0.90</span>
             </div>
             <input type="range" id="p-skep-w" min="0" max="1" step="0.05" value="0.9">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Maximum fraction of belief an adaptive agent will shift toward the trust-weighted message mean in one period. Default 0.5 means even if every sender is fully trusted, the new belief is at most 50% message + 50% prior. Prevents runaway over-update from a single high-trust period.">
             <div class="param-head">
               <label for="p-adapt-cap">Adaptive weight cap</label>
-              <span class="info" data-tip="Maximum fraction of belief an adaptive agent will shift toward the trust-weighted message mean in one period. Default 0.5 means even if every sender is fully trusted, the new belief is at most 50% message + 50% prior. Prevents runaway over-update from a single high-trust period."></span>
               <span class="pval" id="v-adapt-cap">0.50</span>
             </div>
             <input type="range" id="p-adapt-cap" min="0" max="1" step="0.05" value="0.5">
@@ -211,34 +193,30 @@
       <details class="psec ext-only">
         <summary>Trust &amp; evaluation</summary>
         <div class="psec-body">
-          <div class="param-row">
+          <div class="param-row" data-tip="Learning rate for the exponential moving average trust update: trust[r→s] ← (1 − α) × old + α × closeness. Closeness is 1 − |claim − vwap|/vwap for that period. Default 0.3 weights the new observation at 30%. Lower = slower and more conservative; higher = reacts faster to new evidence but noisier.">
             <div class="param-head">
               <label for="p-trust-alpha">Trust α (learning rate)</label>
-              <span class="info" data-tip="Learning rate for the exponential moving average trust update: trust[r→s] ← (1 − α) × old + α × closeness. Closeness is 1 − |claim − vwap|/vwap for that period. Default 0.3 weights the new observation at 30%. Lower = slower and more conservative; higher = reacts faster to new evidence but noisier."></span>
               <span class="pval" id="v-trust-alpha">0.30</span>
             </div>
             <input type="range" id="p-trust-alpha" min="0" max="1" step="0.05" value="0.3">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Probability used when scoring passive (non-crossing) orders inside the expected-utility calculation: EU = pFill × U(filled) + (1 − pFill) × U(not filled). Default 0.3 means a passive quote is assumed to fill 30% of the time. A proper model would estimate this from order-book state; this is a deliberate constant placeholder.">
             <div class="param-head">
               <label for="p-pfill">Passive fill probability</label>
-              <span class="info" data-tip="Probability used when scoring passive (non-crossing) orders inside the expected-utility calculation: EU = pFill × U(filled) + (1 − pFill) × U(not filled). Default 0.3 means a passive quote is assumed to fill 30% of the time. A proper model would estimate this from order-book state; this is a deliberate constant placeholder."></span>
               <span class="pval" id="v-pfill">0.30</span>
             </div>
             <input type="range" id="p-pfill" min="0" max="1" step="0.05" value="0.3">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Per-tick uniform noise added to every utility agent's prior belief, before any bias or message update: prior = FV × (1 + bias + U(−noise, +noise)). Default 0.03 = ±3%. Higher values add more within-period belief churn, producing noisier trade decisions.">
             <div class="param-head">
               <label for="p-val-noise">Valuation noise ±</label>
-              <span class="info" data-tip="Per-tick uniform noise added to every utility agent's prior belief, before any bias or message update: prior = FV × (1 + bias + U(−noise, +noise)). Default 0.03 = ±3%. Higher values add more within-period belief churn, producing noisier trade decisions."></span>
               <span class="pval" id="v-val-noise">0.030</span>
             </div>
             <input type="range" id="p-val-noise" min="0" max="0.10" step="0.005" value="0.03">
           </div>
-          <div class="param-row">
+          <div class="param-row" data-tip="Overrides the per-slot biasAmount for every biased U agent (U2, U4, U5 in the default strategy cube). Default 0.15 = 15% persistent over/under-valuation vs FV. Set to 0 to neutralize all bias without removing the agents.">
             <div class="param-head">
               <label for="p-bias-amt">Default bias magnitude</label>
-              <span class="info" data-tip="Overrides the per-slot biasAmount for every biased U agent (U2, U4, U5 in the default strategy cube). Default 0.15 = 15% persistent over/under-valuation vs FV. Set to 0 to neutralize all bias without removing the agents."></span>
               <span class="pval" id="v-bias-amt">0.15</span>
             </div>
             <input type="range" id="p-bias-amt" min="0" max="0.40" step="0.01" value="0.15">

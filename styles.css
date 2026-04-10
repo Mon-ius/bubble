@@ -232,6 +232,7 @@ body:not(.extended) .ext-only { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
 }
 .param-head {
   display: flex;
@@ -270,29 +271,19 @@ body:not(.extended) .ext-only { display: none !important; }
 }
 .param-row .checkbox input { accent-color: var(--accent); }
 
-/* Info icon + hover tooltip (pure CSS) */
-.info {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--border);
-  color: var(--muted);
-  text-align: center;
-  font: 600 9px/14px ui-monospace, Menlo, monospace;
-  cursor: help;
-  position: relative;
-  flex-shrink: 0;
-}
-.info::before { content: 'i'; }
-.info::after {
+/*
+ * Per-row hover tooltip (pure CSS). The entire .param-row is the hover
+ * zone so moving the mouse onto the slider itself is enough to reveal
+ * the explanation. The tip text lives on data-tip, populated by the
+ * HTML, and is rendered above the row so the slider stays uncovered.
+ */
+.param-row[data-tip]::after {
   content: attr(data-tip);
   position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%) translateX(-4px);
+  left: 0;
+  bottom: calc(100% + 6px);
   width: 320px;
-  max-width: 60vw;
+  max-width: min(420px, 90vw);
   padding: 10px 12px;
   background: #05080d;
   border: 1px solid var(--border-hi);
@@ -304,17 +295,27 @@ body:not(.extended) .ext-only { display: none !important; }
   white-space: normal;
   opacity: 0;
   pointer-events: none;
+  transform: translateY(4px);
   transition: opacity 0.15s, transform 0.15s;
   z-index: 100;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
 }
-.info:hover::after {
+.param-row[data-tip]:hover::after {
   opacity: 1;
-  transform: translateY(-50%) translateX(0);
+  transform: translateY(0);
 }
-/* Flip tooltip to the left when the row is near the right edge */
-.param-row:nth-child(odd) .info:hover::after {
-  /* default: right-flowing */
+/*
+ * The very first row of each section has no row above it for the
+ * tooltip to float over — flip those to render below instead so the
+ * tip doesn't collide with the section summary bar.
+ */
+.psec-body > .param-row[data-tip]:first-child::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+  transform: translateY(-4px);
+}
+.psec-body > .param-row[data-tip]:first-child:hover::after {
+  transform: translateY(0);
 }
 
 /* ---------- Stats cells ---------- */
