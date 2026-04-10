@@ -194,15 +194,16 @@ class Engine {
    * volume-weighted mean trade price.
    */
   _communicationRound() {
-    const bus   = this.ctx.messageBus;
-    const trust = this.ctx.trustTracker;
-    const ext   = this.ctx.extended;
+    const bus      = this.ctx.messageBus;
+    const trust    = this.ctx.trustTracker;
+    const ext      = this.ctx.extended;
+    const tunables = this.ctx.tunables;
     if (!bus || !ext || !ext.communication) return;
     const period = this.market.period;
     for (const id of Object.keys(this.agents)) {
       const a = this.agents[id];
       if (typeof a.communicate !== 'function') continue;
-      const msg = a.communicate(this.market, this._rng);
+      const msg = a.communicate(this.market, this._rng, this.ctx);
       if (!msg) continue;
       if (!ext.deception) {
         // Global deception toggle off — collapse every claim to truth.
@@ -214,7 +215,8 @@ class Engine {
       this.logger.logMessage(msg);
     }
     if (trust) {
-      trust.update(bus, this.market, period);
+      const alpha = (tunables && tunables.trustAlpha != null) ? tunables.trustAlpha : 0.3;
+      trust.update(bus, this.market, period, alpha);
       trust.snapshot(this.market.tick);
       this.logger.logTrust({ tick: this.market.tick, period, trust: trust.copy() });
     }

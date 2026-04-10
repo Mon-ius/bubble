@@ -365,13 +365,42 @@ class ExperiencedAgent extends Agent {
  *   deceptionMode  'honest' | 'biased' | 'deceptive'
  *   beliefMode     'naive' | 'skeptical' | 'adaptive'
  */
+/*
+ * Tunable defaults — these match the constants that used to be hard-coded
+ * inside UtilityAgent. Any field present in ctx.tunables at decision time
+ * overrides the corresponding default, which is how the Parameters panel
+ * feeds live slider values into the agent loop without rebuilding the
+ * population.
+ */
+const UTILITY_DEFAULTS = {
+  naivePriorWeight:     0.6,   // naive: subj = w·prior + (1-w)·msg_avg
+  skepticalPriorWeight: 0.9,   // skeptical: same formula, heavier prior
+  adaptiveWeightCap:    0.5,   // adaptive: message influence capped at this
+  passiveFillProb:      0.3,   // pFill used to score passive orders
+  honestNoise:          0.01,  // ±fraction on honest broadcast claim
+  biasedTilt:           0.10,  // ±fraction fixed tilt for biased mode
+  deceptiveOverstate:   1.18,  // factor when asset-rich wants to sell
+  deceptiveUnderstate:  0.82,  // factor when asset-poor wants to buy
+  signalThreshold:      0.03,  // |claim/v − 1| threshold for buy/sell label
+  deceptiveThreshold:   0.05,  // |claim-true|/true > this → flagged deceptive
+  valuationNoise:       0.03,  // ±fraction per-tick random belief jitter
+  passiveBidLo:         0.96,  // passive bid drawn from v × [lo, hi]
+  passiveBidHi:         0.98,
+  passiveAskLo:         1.02,  // passive ask drawn from v × [lo, hi]
+  passiveAskHi:         1.04,
+};
+function tunable(ctx, key) {
+  const t = ctx && ctx.tunables;
+  return (t && t[key] != null) ? t[key] : UTILITY_DEFAULTS[key];
+}
+
 class UtilityAgent extends Agent {
   constructor(id, name, opts = {}) {
     super(id, 'utility', 1000, 3, name);
     this.riskPref       = opts.riskPref       || 'neutral';
     this.biasMode       = opts.biasMode       || 'none';
     this.biasAmount     = opts.biasAmount     || 0;
-    this.valuationNoise = opts.valuationNoise != null ? opts.valuationNoise : 0.03;
+    this.valuationNoise = opts.valuationNoise != null ? opts.valuationNoise : UTILITY_DEFAULTS.valuationNoise;
     this.deceptionMode  = opts.deceptionMode  || 'honest';
     this.beliefMode     = opts.beliefMode     || 'naive';
 
@@ -401,12 +430,13 @@ class UtilityAgent extends Agent {
 
   /* ---- Pipeline step 2: update belief ---- */
   updateBelief(market, ctx, rng) {
-    const fv    = market.fundamentalValue();
-    const sign  = this.biasMode === 'over'  ?  1
-                : this.biasMode === 'under' ? -1
-                : 0;
+    const fv          = market.fundamentalValue();
+    const noiseAmp    = tunable(ctx, 'valuationNoise');
+    const sign        = this.biasMode === 'over'  ?  1
+                      : this.biasMode === 'under' ? -1
+                      : 0;
     const bias  = sign * this.biasAmount;
-    const noise = (rng() - 0.5) * 2 * this.valuationNoise;
+    const noise = (rng() - 0.5) * 2 * noiseAmp;
     const prior = Math.max(0, fv * (1 + bias + noise));
     this.trueValuation = prior;
 
@@ -423,17 +453,17 @@ class UtilityAgent extends Agent {
       const foreign = msgs.filter(m => m.senderId !== this.id);
       if (foreign.length) {
         if (this.beliefMode === 'naive') {
-          // Equal-weight average of own prior and every broadcast claim.
+          const w   = tunable(ctx, 'naivePriorWeight');
           const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
-          subjective = 0.6 * prior + 0.4 * avg;
+          subjective = w * prior + (1 - w) * avg;
         } else if (this.beliefMode === 'skeptical') {
-          // Heavy discount — messages move the prior only 10%.
+          const w   = tunable(ctx, 'skepticalPriorWeight');
           const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
-          subjective = 0.9 * prior + 0.1 * avg;
+          subjective = w * prior + (1 - w) * avg;
         } else if (this.beliefMode === 'adaptive' && trust) {
-          // Weighted by per-sender trust. If the aggregate trust is
-          // high, the prior moves a lot toward the trust-weighted
-          // message mean; if low, the agent ignores the messages.
+          // Weighted by per-sender trust, capped so that even with full
+          // trust in every sender the prior still carries (1 − cap)·weight.
+          const cap = tunable(ctx, 'adaptiveWeightCap');
           let wsum = 0, acc = 0;
           for (const m of foreign) {
             const w = trust.get(this.id, m.senderId);
@@ -442,7 +472,7 @@ class UtilityAgent extends Agent {
           }
           if (wsum > 0) {
             const msgAvg = acc / wsum;
-            const weight = Math.min(0.5, wsum / Math.max(1, foreign.length * 2));
+            const weight = Math.min(cap, wsum / Math.max(1, foreign.length * 2));
             subjective   = (1 - weight) * prior + weight * msgAvg;
           }
         }
@@ -453,7 +483,7 @@ class UtilityAgent extends Agent {
   }
 
   /* ---- Pipeline step 3: evaluate candidate actions ---- */
-  evaluate(market, rng) {
+  evaluate(market, rng, ctx) {
     const v    = this.subjectiveValuation;
     const bid  = market.book.bestBid();
     const ask  = market.book.bestAsk();
@@ -462,6 +492,11 @@ class UtilityAgent extends Agent {
     const w0   = cash + inv * v;
     const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth);
     const U0   = U(w0);
+    const pFill       = tunable(ctx, 'passiveFillProb');
+    const passiveBidLo = tunable(ctx, 'passiveBidLo');
+    const passiveBidHi = tunable(ctx, 'passiveBidHi');
+    const passiveAskLo = tunable(ctx, 'passiveAskLo');
+    const passiveAskHi = tunable(ctx, 'passiveAskHi');
     const candidates = [];
 
     candidates.push({
@@ -497,13 +532,12 @@ class UtilityAgent extends Agent {
         eu:       U(w1),
       });
     }
-    // Passive bid at v × (0.96–0.98). Probabilistic fill.
+    // Passive bid at v × [passiveBidLo, passiveBidHi]. Probabilistic fill.
     {
-      const price = round2(v * (0.96 + rng() * 0.02));
+      const price = round2(v * (passiveBidLo + rng() * Math.max(0, passiveBidHi - passiveBidLo)));
       if (price > 0 && cash >= price) {
-        const pFill = 0.3;
-        const w1    = (cash - price) + (inv + 1) * v;
-        const eu    = pFill * U(w1) + (1 - pFill) * U0;
+        const w1 = (cash - price) + (inv + 1) * v;
+        const eu = pFill * U(w1) + (1 - pFill) * U0;
         candidates.push({
           label:    `passive bid ${price.toFixed(2)}`,
           type:     'bid',
@@ -516,12 +550,11 @@ class UtilityAgent extends Agent {
         });
       }
     }
-    // Passive ask at v × (1.02–1.04). Probabilistic fill.
+    // Passive ask at v × [passiveAskLo, passiveAskHi]. Probabilistic fill.
     if (inv > 0) {
-      const price = round2(v * (1.02 + rng() * 0.02));
-      const pFill = 0.3;
-      const w1    = (cash + price) + (inv - 1) * v;
-      const eu    = pFill * U(w1) + (1 - pFill) * U0;
+      const price = round2(v * (passiveAskLo + rng() * Math.max(0, passiveAskHi - passiveAskLo)));
+      const w1 = (cash + price) + (inv - 1) * v;
+      const eu = pFill * U(w1) + (1 - pFill) * U0;
       candidates.push({
         label:    `passive ask ${price.toFixed(2)}`,
         type:     'ask',
@@ -540,7 +573,7 @@ class UtilityAgent extends Agent {
   decide(market, rng, ctx = {}) {
     this.observe(market);
     this.updateBelief(market, ctx, rng);
-    const { candidates, w0, U0 } = this.evaluate(market, rng);
+    const { candidates, w0, U0 } = this.evaluate(market, rng, ctx);
 
     let chosen = candidates[0];
     for (const c of candidates) if (c.eu > chosen.eu) chosen = c;
@@ -585,35 +618,41 @@ class UtilityAgent extends Agent {
   }
 
   /* ---- Communication (called once per period by engine) ---- */
-  communicate(market, rng) {
+  communicate(market, rng, ctx) {
     const v = this.subjectiveValuation || market.fundamentalValue();
+    const honestNoise         = tunable(ctx, 'honestNoise');
+    const biasedTilt          = tunable(ctx, 'biasedTilt');
+    const deceptiveOverstate  = tunable(ctx, 'deceptiveOverstate');
+    const deceptiveUnderstate = tunable(ctx, 'deceptiveUnderstate');
+    const signalThreshold     = tunable(ctx, 'signalThreshold');
+    const deceptiveThreshold  = tunable(ctx, 'deceptiveThreshold');
     let report = v;
 
     if (this.deceptionMode === 'honest') {
-      report = v * (1 + (rng() - 0.5) * 0.02);
+      report = v * (1 + (rng() - 0.5) * 2 * honestNoise);
     } else if (this.deceptionMode === 'biased') {
       let tilt;
-      if (this.biasMode === 'over')       tilt = +0.10;
-      else if (this.biasMode === 'under') tilt = -0.10;
-      else                                tilt = (rng() - 0.5) * 0.20;
+      if (this.biasMode === 'over')       tilt = +biasedTilt;
+      else if (this.biasMode === 'under') tilt = -biasedTilt;
+      else                                tilt = (rng() - 0.5) * 2 * biasedTilt;
       report = v * (1 + tilt);
     } else if (this.deceptionMode === 'deceptive') {
       // Asset-poor agents understate (to depress price and buy cheap);
       // asset-rich agents overstate (to inflate price and sell dear).
       const wantsToSell = this.inventory > this.initialInventory;
       const wantsToBuy  = this.inventory < this.initialInventory;
-      if (wantsToSell)      report = v * 1.18;
-      else if (wantsToBuy)  report = v * 0.82;
-      else                  report = v * (1 + (rng() - 0.5) * 0.20);
+      if (wantsToSell)      report = v * deceptiveOverstate;
+      else if (wantsToBuy)  report = v * deceptiveUnderstate;
+      else                  report = v * (1 + (rng() - 0.5) * 2 * biasedTilt);
     }
     report = Math.max(0, report);
     this.reportedValuation = report;
 
-    const signal = report > v * 1.03 ? 'buy'
-                 : report < v * 0.97 ? 'sell'
+    const signal = report > v * (1 + signalThreshold) ? 'buy'
+                 : report < v * (1 - signalThreshold) ? 'sell'
                  : 'hold';
     const deceptive = this.deceptionMode !== 'honest' &&
-                      Math.abs(report - v) / Math.max(1, v) > 0.05;
+                      Math.abs(report - v) / Math.max(1, v) > deceptiveThreshold;
 
     return {
       senderId:         this.id,
@@ -696,6 +735,10 @@ function buildAgents(populationKey, overrides = {}) {
     if (s.opts) {
       const opts = Object.assign({}, s.opts);
       if (overrides.forceHonest) opts.deceptionMode = 'honest';
+      if (overrides.biasAmount != null && opts.biasMode && opts.biasMode !== 'none') {
+        opts.biasAmount = overrides.biasAmount;
+      }
+      if (overrides.valuationNoise != null) opts.valuationNoise = overrides.valuationNoise;
       out[id] = new s.cls(id, s.name, opts);
     } else {
       out[id] = new s.cls(id, s.name);
@@ -703,3 +746,54 @@ function buildAgents(populationKey, overrides = {}) {
   });
   return out;
 }
+
+/*
+ * buildAgentsFromMix — construct a population from a { F, T, R, E, U } count
+ * spec. Fundamentalist/Trend/Random/Experienced agents are instantiated
+ * with sequential names (F1, F2, T1, …). Utility slots cycle through the
+ * fixed U1–U6 strategy cube so the deliberate variety is preserved even
+ * when the user asks for fewer than six or more than six U agents.
+ *
+ * overrides:
+ *   biasAmount      override the per-slot biasAmount for all biased U slots
+ *   valuationNoise  override the per-slot valuation noise
+ *   forceHonest     collapse every U slot's deceptionMode to 'honest'
+ */
+function buildAgentsFromMix(mix, overrides = {}) {
+  const out = {};
+  let id = 1;
+  const push = (cls, name, opts) => {
+    if (opts) out[id] = new cls(id, name, opts);
+    else      out[id] = new cls(id, name);
+    id++;
+  };
+  for (let i = 0; i < (mix.F || 0); i++) push(Fundamentalist,   'F' + (i + 1));
+  for (let i = 0; i < (mix.T || 0); i++) push(TrendFollower,    'T' + (i + 1));
+  for (let i = 0; i < (mix.R || 0); i++) push(RandomAgent,      'R' + (i + 1));
+  for (let i = 0; i < (mix.E || 0); i++) push(ExperiencedAgent, 'E' + (i + 1));
+  for (let i = 0; i < (mix.U || 0); i++) {
+    const base = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
+    const cycle = Math.floor(i / UTILITY_SLOTS.length);
+    const opts = Object.assign({}, base);
+    if (overrides.forceHonest) opts.deceptionMode = 'honest';
+    if (overrides.biasAmount != null && opts.biasMode && opts.biasMode !== 'none') {
+      opts.biasAmount = overrides.biasAmount;
+    }
+    if (overrides.valuationNoise != null) opts.valuationNoise = overrides.valuationNoise;
+    const name = cycle > 0 ? `${base.name}·${cycle + 1}` : base.name;
+    push(UtilityAgent, name, opts);
+  }
+  return out;
+}
+
+/*
+ * Convenience helper: the composition (F, T, R, E, U counts) of each preset
+ * population, so the Parameters panel can snap the mix sliders to a preset
+ * with one click without duplicating the knowledge of what's inside each.
+ */
+const PRESET_MIXES = {
+  inexperienced: { F: 1, T: 2, R: 2, E: 1, U: 0 },
+  experienced:   { F: 2, T: 1, R: 0, E: 3, U: 0 },
+  mixed:         { F: 2, T: 1, R: 1, E: 2, U: 0 },
+  utility:       { F: 0, T: 0, R: 0, E: 0, U: 6 },
+};

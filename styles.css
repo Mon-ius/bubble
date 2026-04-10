@@ -134,6 +134,7 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 }
 
 /* ---------- Column spans ---------- */
+.panel-params   { grid-column: span 12; }
 .panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .chart-price    { grid-column: span 8; }
 .panel-book     { grid-column: span 4; }
@@ -155,6 +156,166 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 
 /* Hide the extended cluster unless body.extended is set by main.js */
 body:not(.extended) .ext-only { display: none !important; }
+
+/* ---------- Parameters panel ---------- */
+.panel-params .params-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.panel-params .params-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.panel-params .params-presets .muted { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.panel-params .pill {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 11px/1 inherit;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.panel-params .pill:hover  { background: #232a3d; border-color: var(--border-hi); }
+.panel-params .pill:active { transform: translateY(1px); }
+
+.panel-params .params-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 1100px) {
+  .panel-params .params-body { grid-template-columns: 1fr; }
+}
+
+.psec {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.psec summary {
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 0;
+  list-style: none;
+  user-select: none;
+}
+.psec summary::marker { display: none; }
+.psec summary::-webkit-details-marker { display: none; }
+.psec summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  color: var(--muted-2);
+  transition: transform 0.15s;
+}
+.psec[open] summary::before { transform: rotate(90deg); }
+.psec .psec-body {
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.param-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.param-head label {
+  color: var(--text);
+  font-size: 11px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.param-head .pval {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  color: var(--accent);
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.param-row input[type=range] {
+  width: 100%;
+  background: transparent;
+  accent-color: var(--accent);
+}
+.param-row .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+}
+.param-row .checkbox input { accent-color: var(--accent); }
+
+/* Info icon + hover tooltip (pure CSS) */
+.info {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--muted);
+  text-align: center;
+  font: 600 9px/14px ui-monospace, Menlo, monospace;
+  cursor: help;
+  position: relative;
+  flex-shrink: 0;
+}
+.info::before { content: 'i'; }
+.info::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  width: 320px;
+  max-width: 60vw;
+  padding: 10px 12px;
+  background: #05080d;
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  color: var(--text);
+  font: 11px/1.55 -apple-system, system-ui, sans-serif;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 100;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
+}
+.info:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+/* Flip tooltip to the left when the row is near the right edge */
+.param-row:nth-child(odd) .info:hover::after {
+  /* default: right-flowing */
+}
 
 /* ---------- Stats cells ---------- */
 .stat {
