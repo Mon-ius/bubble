@@ -212,6 +212,106 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   margin: 10px 0 6px;
 }
 
+/* =============================================================
+   Figure cards — academic-paper layout for every chart panel.
+   Each .panel.figure contains:
+     .fig-head     numbered title row
+       .fig-num    "Figure 1"  (italic, small)
+       .fig-title  sentence-case full name
+     .fig-eq       display equation block (mono, tinted)
+     canvas        the chart itself
+     .fig-caption  prose caption describing reading + interpretation
+       .fig-symbols  dl grid of symbol → definition entries
+   ============================================================= */
+.panel.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px 18px;
+}
+.panel.figure > h2 { display: none; } /* legacy h2 suppressed */
+.panel.figure .fig-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.panel.figure .fig-num {
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.panel.figure .fig-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg-0);
+  line-height: 1.35;
+  margin: 0;
+  text-transform: none;
+  display: block;
+}
+.panel.figure .fig-eq {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  padding: 8px 12px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.panel.figure .fig-eq em {
+  font-style: normal;
+  color: var(--fg-3);
+  margin-left: 10px;
+  font-size: 10px;
+}
+.panel.figure canvas { margin: 2px 0; }
+.panel.figure .fig-caption {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  margin: 2px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.panel.figure .fig-caption p { margin: 0 0 6px; }
+.panel.figure .fig-caption p:last-child { margin-bottom: 0; }
+.panel.figure .fig-caption strong {
+  color: var(--fg-1);
+  font-weight: 600;
+}
+.panel.figure .fig-symbols {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 8px 0 0;
+  padding: 8px 10px 8px 12px;
+  font-size: 10.5px;
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border-radius: 4px;
+}
+.panel.figure .fig-symbols dt {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  color: var(--fg-1);
+  white-space: nowrap;
+}
+.panel.figure .fig-symbols dd {
+  margin: 0;
+  color: var(--fg-2);
+}
+
 /* ---------- Column spans ---------- */
 .panel-params   { grid-column: span 12; }
 .panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
