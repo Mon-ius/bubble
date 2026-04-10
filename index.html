@@ -263,12 +263,15 @@
     <canvas id="chart-price"></canvas>
     <figcaption class="fig-caption">
       <p>Tick-level transaction prices <span data-sym="price"></span> (accent line, one dot per executed trade) plotted against the deterministic step function <span data-sym="fv"></span> (amber dashes). Alternating vertical bands delimit the ten trading periods. In the Dufwenberg, Lindqvist &amp; Moore (2005) design a rational market should track the step line exactly; persistent excursions above it are the bubble and the crash toward <span data-sym="fvT"></span> = <span data-sym="muD"></span> in the final period is the collapse.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="price"></span></dt><dd>observed transaction price at tick <em>t</em></dd>
-        <dt><span data-sym="fv"></span></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
-        <dt><span data-sym="muD"></span></dt><dd>expected per-period dividend (drawn uniformly from {0, 2<span data-sym="muD"></span>})</dd>
-        <dt><span data-sym="bigT"></span></dt><dd>terminal period of the finite-life asset</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="price"></span></dt><dd>observed transaction price at tick <em>t</em></dd>
+          <dt><span data-sym="fv"></span></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
+          <dt><span data-sym="muD"></span></dt><dd>expected per-period dividend (drawn uniformly from {0, 2<span data-sym="muD"></span>})</dd>
+          <dt><span data-sym="bigT"></span></dt><dd>terminal period of the finite-life asset</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -295,10 +298,13 @@
     <canvas id="chart-bubble"></canvas>
     <figcaption class="fig-caption">
       <p>Absolute departure of the observed price from the theoretical fundamental value, filled as a red area. In Lopez-Lira (2025) the same information is expressed as the price-to-fundamental ratio <span data-sym="rhoT"></span>: values above one mark an overvaluation regime, values below one mark an undervaluation regime, and <span data-sym="rhoT"></span> ≈ 1 is consistent with rational pricing. The Experiment Metrics panel reports the normalized-deviation and amplitude statistics derived from this series.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="absMispricing"></span></dt><dd>absolute mispricing at tick <em>t</em></dd>
-        <dt><span data-sym="rhoT"></span></dt><dd>price-to-fundamental ratio (Lopez-Lira 2025)</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="absMispricing"></span></dt><dd>absolute mispricing at tick <em>t</em></dd>
+          <dt><span data-sym="rhoT"></span></dt><dd>price-to-fundamental ratio (Lopez-Lira 2025)</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -311,10 +317,13 @@
     <canvas id="chart-volume"></canvas>
     <figcaption class="fig-caption">
       <p>Sum of share quantities exchanged within each trading period. High and persistent bars indicate active speculation; the classic Smith–Suchanek–Williams bubble is typically associated with a volume peak in the inflation phase followed by a cliff as the asset approaches expiry.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="volT"></span></dt><dd>total share volume traded in period <em>t</em></dd>
-        <dt>q</dt><dd>order quantity of a single executed trade</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="volT"></span></dt><dd>total share volume traded in period <em>t</em></dd>
+          <dt><span data-sym="qOrder"></span></dt><dd>order quantity of a single executed trade</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -323,13 +332,16 @@
       <span class="fig-num">Figure 4</span>
       <h2 class="fig-title">Transaction Density over Price × Period</h2>
     </header>
-    <div class="fig-eq">H(P, t) = Σ q  over discrete (P, t) bins <em>two-dimensional trade histogram</em></div>
+    <div class="fig-eq"><span data-sym="heatBinDef"></span> <em>two-dimensional trade histogram</em></div>
     <canvas id="chart-heatmap"></canvas>
     <figcaption class="fig-caption">
       <p>Two-dimensional histogram of share quantity binned by transaction price (vertical axis) and trading period (horizontal axis). Warm cells concentrate the market's liquidity. Comparing the heat cloud against the downward-sloping fundamental staircase reveals whether the market is trading near rational value or persistently above it.</p>
-      <dl class="fig-symbols">
-        <dt>H(P, t)</dt><dd>cumulative share volume in the (price, period) bin</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="heatBin"></span></dt><dd>cumulative share volume in the (price, period) bin</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -348,9 +360,12 @@
     </div>
     <figcaption class="fig-caption">
       <p>One row per agent, one mark per decision. Column colour encodes the action type and a small accent dot below the mark records whether the submitted order was filled on the same tick. Contiguous green runs identify accumulators; contiguous red runs identify distributors; holds are the market's waiting population.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="action"></span></dt><dd>action taken by agent <em>i</em> at tick <em>t</em></dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="action"></span></dt><dd>action taken by agent <em>i</em> at tick <em>t</em></dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -368,11 +383,14 @@
     <canvas id="chart-valuation"></canvas>
     <figcaption class="fig-caption">
       <p>Solid lines trace each Utility agent's private belief <span data-sym="subjV"></span> over time. Filled dots mark broadcast messages carrying a reported valuation <span data-sym="reportV"></span>; deceptive reports are ringed red and connected to the sender's true belief by a dotted segment — the vertical distance between ring and line is the lie gap. The amber step line is the fundamental value for reference.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="subjV"></span></dt><dd>agent <em>i</em>'s private (true) subjective valuation at tick <em>t</em></dd>
-        <dt><span data-sym="reportV"></span></dt><dd>valuation reported in a broadcast message</dd>
-        <dt><span data-sym="lieGap"></span></dt><dd>lie gap for deceptive messages</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="subjV"></span></dt><dd>agent <em>i</em>'s private (true) subjective valuation at tick <em>t</em></dd>
+          <dt><span data-sym="reportV"></span></dt><dd>valuation reported in a broadcast message</dd>
+          <dt><span data-sym="lieGap"></span></dt><dd>lie gap for deceptive messages</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -396,10 +414,13 @@
     <canvas id="chart-utility"></canvas>
     <figcaption class="fig-caption">
       <p>Per-agent expected utility <span data-sym="uOfW"></span> evaluated at the running wealth <span data-sym="wealth"></span> = <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="fv"></span>, divided by the agent's own initial utility <span data-sym="wealth0"></span> so every trajectory starts at 1.0. Lines above the dashed baseline indicate positive risk-adjusted PnL; lines below indicate loss. The risk preference attached to each agent (convex, linear, concave) determines how aggressively a given wealth change is penalised or rewarded.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="uOfW"></span></dt><dd>risk-typed utility: <span data-sym="uLoving"></span>, <span data-sym="uNeutral"></span>, <span data-sym="uAverse"></span></dd>
-        <dt><span data-sym="wealth"></span></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="uOfW"></span></dt><dd>risk-typed utility: <span data-sym="uLoving"></span>, <span data-sym="uNeutral"></span>, <span data-sym="uAverse"></span></dd>
+          <dt><span data-sym="wealth"></span></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -412,10 +433,13 @@
     <canvas id="chart-ownership"></canvas>
     <figcaption class="fig-caption">
       <p>Stacked area of each agent's inventory across ticks. Because the double auction conserves shares, the total height is always the aggregate endowment <span data-sym="bigQ"></span>. Widening bands identify agents who are accumulating, shrinking bands identify distributors, and any dramatic redistribution in the last few periods is typically the experienced trader liquidating before the asset expires worthless.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="shares"></span></dt><dd>shares held by agent <em>i</em> at tick <em>t</em></dd>
-        <dt><span data-sym="bigQ"></span></dt><dd>total shares outstanding (conserved across time)</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="shares"></span></dt><dd>shares held by agent <em>i</em> at tick <em>t</em></dd>
+          <dt><span data-sym="bigQ"></span></dt><dd>total shares outstanding (conserved across time)</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -434,9 +458,12 @@
     </div>
     <figcaption class="fig-caption">
       <p>One dot per broadcast message, placed on the sender's row at the tick the message was sent. Dot colour encodes the signal (buy/sell/hold) and a red ring flags messages whose reported valuation diverges sufficiently from the sender's private belief to be classified as deceptive by the logger. Reading a column shows the instantaneous rumour mill; reading a row shows each agent's rhetorical stance over time.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="msgIt"></span></dt><dd>broadcast from agent <em>i</em> to the population at tick <em>t</em></dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="msgIt"></span></dt><dd>broadcast from agent <em>i</em> to the population at tick <em>t</em></dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 
@@ -449,11 +476,14 @@
     <canvas id="chart-trust"></canvas>
     <figcaption class="fig-caption">
       <p>Heatmap of receiver-to-sender trust values in [0, 1]. The diagonal is masked. Each off-diagonal cell records how well sender <em>s</em>'s recent valuation claims aligned with the period's volume-weighted average price, as seen by receiver <em>r</em>. Warm rows identify agents who tend to trust broadly; warm columns identify agents whose claims the population finds credible.</p>
-      <dl class="fig-symbols">
-        <dt><span data-sym="trustRS"></span></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
-        <dt>α</dt><dd>trust learning rate (exponential-moving-average weight)</dd>
-        <dt>closeness</dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
-      </dl>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="trustRS"></span></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
+          <dt><span data-sym="alphaRate"></span></dt><dd>trust learning rate (exponential-moving-average weight)</dd>
+          <dt><span data-sym="closenessRS"></span></dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
+        </dl>
+      </div>
     </figcaption>
   </section>
 

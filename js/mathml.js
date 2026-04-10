@@ -180,6 +180,19 @@ const Sym = {
     _sub(_mi('closeness'), _row(_mi('r'), _mo(','), _mi('s'))),
   )),
 
+  /* Figure-specific symbols that previously lived as raw text */
+  qOrder:      _wrap(_mi('q')),                                               // q
+  alphaRate:   _wrap(_mi('α')),                                               // α
+  closenessRS: _wrap(_sub(_mi('closeness'), _row(_mi('r'), _mo(','), _mi('s')))), // closeness_{r,s}
+  heatBin:     _wrap(_row(                                                    // H(P, t)
+    _mi('H'), _mo('('), _mi('P'), _mo(','), _mi('t'), _mo(')'),
+  )),
+  heatBinDef:  _wrap(_row(                                                    // H(P, t) = Σ q over (P, t) bins
+    _mi('H'), _mo('('), _mi('P'), _mo(','), _mi('t'), _mo(')'), _mo('='),
+    _sub(_mo('Σ'), _row(_mo('('), _mi('P'), _mo(','), _mi('t'), _mo(')'))),
+    _mi('q'),
+  )),
+
   /* Metrics table compound expressions */
   normAvgDev: _wrap(_frac(                                                    // Σ|P̄_t − FV_t| / Q
     _row(_mo('Σ'), _abs(_row(_sub(_bar(_mi('P')), _mi('t')), _mo('−'), _sub(_row(_mi('F'), _mi('V')), _mi('t'))))),

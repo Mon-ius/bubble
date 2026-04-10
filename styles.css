@@ -243,10 +243,10 @@ math[display="inline"] { white-space: nowrap; }
      .fig-eq         display equation, 44px tall, left-rule block
      canvas          the chart, height driven by .chart-* rules
      .fig-caption    prose caption, grows to fill remaining space
-       .fig-symbols  dl glossary pinned to card bottom
+       .fig-note     "Note" header + dl glossary pinned to card bottom
 
-   Fonts: serif italic for math (Georgia / Times) so <sub> and <sup>
-   render as true subscripts, not as literal _{ } in a mono font.
+   Math typography is delegated to the browser's native MathML engine
+   (see js/mathml.js); the figure-level CSS only sizes the <math> glyphs.
    ============================================================= */
 .panel.figure {
   display: flex;
@@ -354,42 +354,50 @@ math[display="inline"] { white-space: nowrap; }
   color: var(--fg-1);
 }
 
-/* --- Symbol glossary pinned to bottom --- */
-.panel.figure .fig-symbols {
-  display: grid;
-  grid-template-columns: minmax(48px, auto) 1fr;
-  gap: 6px 14px;
+/* --- Note block pinned to figure bottom --- *
+ * Single "NOTE" header + dl glossary sitting inside a soft bg-2 card.
+ * Shares typographic rules with .panel-agents .agent-notes-list so a
+ * symbol reads the same on an agent card as in a figure caption.
+ * ------------------------------------------------------------------ */
+.panel.figure .fig-note {
   margin: 0;
-  padding: 10px 12px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--fg-3);
+  margin-top: auto; /* stick to the bottom of the flex figcaption */
+  padding: 10px 14px 12px;
   background: var(--bg-2);
   border-radius: 4px;
-  margin-top: auto; /* stick to bottom inside .fig-caption flex column */
+  border-left: 2px solid var(--border);
 }
-.panel.figure .fig-symbols dt {
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
-               serif;
-  font-style: italic;
-  color: var(--fg-0);
+.panel.figure .fig-note-title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panel.figure .fig-note-list {
+  display: grid;
+  grid-template-columns: minmax(56px, max-content) 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--fg-3);
+}
+.panel.figure .fig-note-list dt {
+  color: var(--fg-1);
   white-space: nowrap;
   text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
 }
-.panel.figure .fig-symbols dt sub,
-.panel.figure .fig-symbols dt sup {
-  font-size: 0.72em;
-  font-style: italic;
-  line-height: 0;
-  position: relative;
-}
-.panel.figure .fig-symbols dt sub { top: 0.35em; }
-.panel.figure .fig-symbols dt sup { top: -0.45em; }
-.panel.figure .fig-symbols dd {
+.panel.figure .fig-note-list dd {
   margin: 0;
-  color: var(--fg-2);
+  color: var(--fg-3);
 }
-.panel.figure .fig-symbols dd em {
+.panel.figure .fig-note-list dd em {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
                serif;
   font-style: italic;
