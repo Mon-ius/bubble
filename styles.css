@@ -406,6 +406,7 @@ math[display="inline"] { white-space: nowrap; }
 
 /* ---------- Column spans ---------- */
 .panel-params   { grid-column: span 12; }
+.panel-paper    { grid-column: span 12; }
 .panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .chart-price    { grid-column: span 8; }
 .panel-book     { grid-column: span 4; }
@@ -760,6 +761,101 @@ body:not(.extended) .ext-only { display: none !important; }
 .psec-body > .param-row[data-tip]:first-child:hover::after,
 .psec-body > .param-row[data-tip]:first-child:focus-within::after {
   transform: translateY(0);
+}
+
+/* ---------- Paper constants ---------- */
+/*
+ * Read-only companion card to the Parameters panel. Surfaces the
+ * three design constants from Dufwenberg, Lindqvist & Moore (2005)
+ * that are deliberately NOT adjustable in this simulator (asset
+ * life, dividend distribution, expected dividend, and the resulting
+ * FV formula) along with the verbatim source quote for each, so the
+ * replication boundary between "paper" and "extension" is legible
+ * at the top of the app rather than buried in comments.
+ */
+.panel-paper {
+  padding: 18px 20px 20px;
+}
+.panel-paper .paper-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-paper .paper-head h2 {
+  margin: 0;
+  color: var(--fg-0);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.panel-paper .paper-cite {
+  font-size: 11px;
+  color: var(--fg-3);
+  font-style: italic;
+}
+.panel-paper .paper-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.panel-paper .paper-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  min-width: 0;
+}
+.panel-paper .paper-item dt {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--fg-0);
+  font-size: 13px;
+  font-weight: 500;
+}
+.panel-paper .paper-item dt math {
+  font-size: 13px;
+}
+.panel-paper .paper-eq {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.panel-paper .paper-label {
+  margin: 0;
+  font-size: 10px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.panel-paper .paper-quote {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-1);
+  font-style: italic;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+.panel-paper .paper-src {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-style: normal;
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
 }
 
 /* ---------- Stats cells ---------- */

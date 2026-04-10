@@ -12,10 +12,18 @@
    ===================================================================== */
 
 const App = {
+  // Market config. `periods` and `dividendMean` are fixed constants
+  // from Dufwenberg, Lindqvist & Moore (2005), §I — the asset's life
+  // is ten periods and each period draws {0, 20}¢ equiprobable, so
+  // E[dividend] = 10¢ and FV_t = 10 · (T − t + 1). They are surfaced
+  // read-only in the "Paper constants" panel and deliberately kept
+  // out of the adjustable Parameters panel. `ticksPerPeriod` is this
+  // simulator's discretization of the paper's 2-minute continuous
+  // auction and remains tunable.
   config: {
     periods:        10,
     ticksPerPeriod: 18,
-    dividendMean:   10,    // FV_t = 10 × remaining periods → max FV = 100
+    dividendMean:   10,
     tickInterval:   340,
   },
 
@@ -32,9 +40,7 @@ const App = {
   // the new values. Tunables that aren't present here fall back to
   // UTILITY_DEFAULTS via the tunable() helper in agents.js.
   tunables: {
-    periods:              10,
     ticksPerPeriod:       18,
-    dividendMean:         10,
     naivePriorWeight:     0.6,
     skepticalPriorWeight: 0.9,
     adaptiveWeightCap:    0.5,
@@ -173,9 +179,7 @@ const App = {
    */
   _paramMap: {
     // Market
-    'p-periods':     { target: 'tunables.periods',              out: 'v-periods',     fmt: v => String(v | 0), int: true },
     'p-ticks':       { target: 'tunables.ticksPerPeriod',       out: 'v-ticks',       fmt: v => String(v | 0), int: true },
-    'p-divmean':     { target: 'tunables.dividendMean',         out: 'v-divmean',     fmt: v => String(v | 0), int: true },
     // Population mix
     'p-mix-F':       { target: 'mix.F',                         out: 'v-mix-F',       fmt: v => String(v | 0), int: true },
     'p-mix-T':       { target: 'mix.T',                         out: 'v-mix-T',       fmt: v => String(v | 0), int: true },
@@ -460,13 +464,12 @@ const App = {
     Order.nextId = 1;
     Trade.nextId = 1;
 
-    // Fold the market-level sliders back into App.config so the
-    // Market constructor and fundamental-value formula see the
-    // latest values. tickInterval is controlled separately by the
-    // Speed slider and is intentionally preserved here.
-    this.config.periods        = this.tunables.periods;
+    // Fold the ticks-per-period slider back into App.config so the
+    // Market constructor sees its latest value. `periods` and
+    // `dividendMean` are paper constants and live only in App.config;
+    // tickInterval is controlled separately by the Speed slider and
+    // is intentionally preserved here.
     this.config.ticksPerPeriod = this.tunables.ticksPerPeriod;
-    this.config.dividendMean   = this.tunables.dividendMean;
 
     this._rng = makeRNG(this.seed);
 
