@@ -926,16 +926,20 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
   for (const s of specs) {
     const cash = s.cash != null ? s.cash : 1000;
     const inv  = s.inventory != null ? s.inventory : 3;
+    // Prefix the slot number to the personal name so every surface
+    // that consumes displayName (charts, feeds, tables, logs) shows
+    // a consistent "#3 Milo" label for monitoring.
+    const label = `#${s.id} ${s.name}`;
     let agent;
     switch (s.type) {
       case 'fundamentalist':
-        agent = new Fundamentalist(s.id, s.name, cash, inv); break;
+        agent = new Fundamentalist(s.id, label, cash, inv); break;
       case 'trend':
-        agent = new TrendFollower(s.id, s.name, cash, inv);  break;
+        agent = new TrendFollower(s.id, label, cash, inv);  break;
       case 'random':
-        agent = new RandomAgent(s.id, s.name, cash, inv);    break;
+        agent = new RandomAgent(s.id, label, cash, inv);    break;
       case 'experienced':
-        agent = new ExperiencedAgent(s.id, s.name, cash, inv); break;
+        agent = new ExperiencedAgent(s.id, label, cash, inv); break;
       case 'utility': {
         const opts = {
           cash, inventory: inv,
@@ -950,7 +954,7 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
           opts.biasAmount = overrides.biasAmount;
         }
         if (overrides.valuationNoise != null) opts.valuationNoise = overrides.valuationNoise;
-        agent = new UtilityAgent(s.id, s.name, opts);
+        agent = new UtilityAgent(s.id, label, opts);
         break;
       }
       default:

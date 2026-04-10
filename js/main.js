@@ -81,9 +81,50 @@ const App = {
   rafPending: false,
 
   init() {
+    this._initTheme();
     UI.init();
     this._wireControls();
     this.reset();
+  },
+
+  /* -------- Theme: auto / light / dark -------- */
+
+  _initTheme() {
+    const saved = localStorage.getItem('bubble-theme') || 'auto';
+    document.documentElement.setAttribute('data-theme', saved);
+    this._syncThemeButton(saved);
+    // Re-apply canvas theme colors when the system scheme changes while
+    // the user is on 'auto', so dark-mode OS switches repaint the charts.
+    if (window.matchMedia) {
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => {
+        if (document.documentElement.getAttribute('data-theme') === 'auto') {
+          UI.refreshTheme();
+          this.requestRender();
+        }
+      };
+      if (mql.addEventListener) mql.addEventListener('change', listener);
+      else if (mql.addListener) mql.addListener(listener);
+    }
+  },
+
+  _cycleTheme() {
+    const order = ['auto', 'light', 'dark'];
+    const cur   = document.documentElement.getAttribute('data-theme') || 'auto';
+    const next  = order[(order.indexOf(cur) + 1) % order.length];
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('bubble-theme', next);
+    this._syncThemeButton(next);
+    UI.refreshTheme();
+    this.requestRender();
+  },
+
+  _syncThemeButton(mode) {
+    const btn = document.getElementById('btn-theme');
+    if (!btn) return;
+    const icons = { auto: '◑', light: '☀', dark: '☾' };
+    btn.textContent  = icons[mode] || '◑';
+    btn.title        = `Theme: ${mode} (click to cycle)`;
   },
 
   /* -------- Control wiring -------- */
@@ -92,6 +133,8 @@ const App = {
     document.getElementById('btn-start').addEventListener('click', () => this.start());
     document.getElementById('btn-pause').addEventListener('click', () => this.pause());
     document.getElementById('btn-reset').addEventListener('click', () => this.reset());
+    const themeBtn = document.getElementById('btn-theme');
+    if (themeBtn) themeBtn.addEventListener('click', () => this._cycleTheme());
 
     document.getElementById('seed').addEventListener('change', e => {
       this.seed = Number(e.target.value) || 1;

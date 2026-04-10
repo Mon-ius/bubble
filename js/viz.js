@@ -11,6 +11,15 @@
    ===================================================================== */
 
 const Viz = {
+  // Theme defaults for axis drawing. UI.refreshTheme() overwrites these
+  // with getComputedStyle values when the active theme changes.
+  theme: {
+    frame: '#c6cad1',
+    grid:  'rgba(0,0,0,0.06)',
+    label: '#9aa0ad',
+  },
+  setTheme(next) { Object.assign(this.theme, next); },
+
   setupHiDPI(canvas) {
     const dpr  = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -42,13 +51,13 @@ const Viz = {
     xTicks = 8, yTicks = 5,
     xFmt = v => v.toFixed(0),
     yFmt = v => v.toFixed(0),
-    color = '#2a3344',
-    grid  = 'rgba(255,255,255,0.04)',
-    label = '#5a6580',
+    color = this.theme.frame,
+    grid  = this.theme.grid,
+    label = this.theme.label,
     showX = true,
   } = {}) {
     ctx.save();
-    ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
 
     // outer frame

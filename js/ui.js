@@ -15,7 +15,49 @@ const UI = {
   charts:  {},
   canvases: {},
 
+  // Canvas-time theme cache. Populated by refreshTheme() which reads
+  // CSS custom properties off :root via getComputedStyle. Every chart
+  // renderer pulls colors from here so a theme switch flows through
+  // the canvas layer identically to the DOM layer.
+  theme: {
+    fg0: '#1a1d23', fg2: '#6b7080', fg3: '#9aa0ad',
+    bg1: '#ffffff', bg2: '#f4f5f7',
+    accent: '#2563eb', amber: '#d97706', red: '#dc2626',
+    green:  '#16a34a', purple: '#7c3aed', teal:   '#0d9488',
+    frame:  '#c6cad1', grid:   'rgba(0,0,0,0.06)',
+    stripe: 'rgba(0,0,0,0.025)', band: 'rgba(0,0,0,0.022)',
+    palette: [],
+  },
+
+  refreshTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const read = k => (cs.getPropertyValue(k) || '').trim();
+    const t = this.theme;
+    t.fg0    = read('--fg-0')     || t.fg0;
+    t.fg2    = read('--fg-2')     || t.fg2;
+    t.fg3    = read('--fg-3')     || t.fg3;
+    t.bg1    = read('--bg-1')     || t.bg1;
+    t.bg2    = read('--bg-2')     || t.bg2;
+    t.accent = read('--accent')   || t.accent;
+    t.amber  = read('--amber')    || t.amber;
+    t.red    = read('--red')      || t.red;
+    t.green  = read('--green')    || t.green;
+    t.purple = read('--purple')   || t.purple;
+    t.teal   = read('--teal')     || t.teal;
+    t.frame  = read('--chart-frame')  || t.frame;
+    t.grid   = read('--chart-grid')   || t.grid;
+    t.stripe = read('--chart-stripe') || t.stripe;
+    t.band   = read('--chart-band')   || t.band;
+    // Six-slot palette for multi-series charts, drawn from semantic
+    // tokens so it shifts with the theme without breaking its meaning.
+    t.palette = [t.accent, t.amber, t.green, t.red, t.purple, t.teal];
+    if (typeof Viz !== 'undefined' && typeof Viz.setTheme === 'function') {
+      Viz.setTheme({ frame: t.frame, grid: t.grid, label: t.fg3 });
+    }
+  },
+
   init() {
+    this.refreshTheme();
     // Stat cells
     this.els.period  = document.getElementById('stat-period');
     this.els.tick    = document.getElementById('stat-tick');
@@ -84,7 +126,7 @@ const UI = {
 
   /** Deterministic color per utility agent id for multi-series charts. */
   agentColor(id) {
-    const palette = ['#4fa3ff', '#ffb347', '#7ed6a5', '#ff5e78', '#c792ea', '#ffd166'];
+    const palette = this.theme.palette;
     return palette[(Number(id) - 1) % palette.length];
   },
 
@@ -294,7 +336,7 @@ const UI = {
       if (p % 2 === 0) {
         const x1 = Viz.mapX(rect, (p - 1) * config.ticksPerPeriod, xMin, xMax);
         const x2 = Viz.mapX(rect,  p      * config.ticksPerPeriod, xMin, xMax);
-        Viz.verticalBand(ctx, rect, x1, x2, 'rgba(255,255,255,0.022)');
+        Viz.verticalBand(ctx, rect, x1, x2, this.theme.band);
       }
     }
 
@@ -312,15 +354,15 @@ const UI = {
       fvPoints.push({ x: (p - 1) * config.ticksPerPeriod, y: fv });
       fvPoints.push({ x:  p      * config.ticksPerPeriod, y: fv });
     }
-    Viz.line(ctx, rect, fvPoints, { xMin, xMax, yMin, yMax, color: '#ffb347', width: 2, dashed: true });
+    Viz.line(ctx, rect, fvPoints, { xMin, xMax, yMin, yMax, color: this.theme.amber, width: 2, dashed: true });
 
     // Observed price line (null-aware breaks).
     const pricePoints = v.priceHistory.map(p => ({ x: p.tick, y: p.price }));
-    Viz.line(ctx, rect, pricePoints, { xMin, xMax, yMin, yMax, color: '#4fa3ff', width: 2 });
+    Viz.line(ctx, rect, pricePoints, { xMin, xMax, yMin, yMax, color: this.theme.accent, width: 2 });
 
     // Individual trade prints.
     ctx.save();
-    ctx.fillStyle = '#4fa3ff';
+    ctx.fillStyle = this.theme.accent;
     for (const t of v.trades) {
       const x = Viz.mapX(rect, t.timestamp, xMin, xMax);
       const y = Viz.mapY(rect, t.price,     yMin, yMax);
@@ -330,10 +372,10 @@ const UI = {
 
     // Legend
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#4fa3ff'; ctx.fillText('● Price', rect.x + 10, rect.y + 12);
-    ctx.fillStyle = '#ffb347'; ctx.fillText('▬ FV',    rect.x + 74, rect.y + 12);
+    ctx.fillStyle = this.theme.accent; ctx.fillText('● Price', rect.x + 10, rect.y + 12);
+    ctx.fillStyle = this.theme.amber;  ctx.fillText('▬ FV',    rect.x + 74, rect.y + 12);
     ctx.restore();
   },
 
@@ -359,8 +401,8 @@ const UI = {
       xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
       yFmt: y => y.toFixed(0),
     });
-    Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: 'rgba(255,94,120,0.18)' });
-    Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: '#ff5e78', width: 2 });
+    Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
+    Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
   },
 
   /* -------- Volume-per-period chart -------- */
@@ -387,7 +429,7 @@ const UI = {
     Viz.bars(ctx, rect, pts, {
       xMin: 0.5, xMax: config.periods + 0.5,
       yMin: 0,   yMax,
-      color: 'rgba(126,214,165,0.75)',
+      color: this.theme.green,
       barWidth: barW,
     });
   },
@@ -427,13 +469,13 @@ const UI = {
         }
       }
     }
-    ctx.strokeStyle = '#2a3344';
+    ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
 
     // Price axis labels (left)
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
-    ctx.fillStyle = '#5a6580';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (let r = 0; r <= nRows; r += 2) {
@@ -465,25 +507,25 @@ const UI = {
 
     // Row backgrounds + names.
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign    = 'right';
     for (let i = 0; i < nA; i++) {
       const y = rect.y + i * rowH;
       if (i % 2 === 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.025)';
+        ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
-      ctx.fillStyle = '#5a6580';
+      ctx.fillStyle = this.theme.fg3;
       ctx.fillText(v.agents[ids[i]]?.name || ('A' + ids[i]), rect.x - 6, y + rowH / 2);
     }
-    ctx.strokeStyle = '#2a3344';
+    ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
     ctx.restore();
 
     // Period separators.
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = this.theme.grid;
     for (let p = 1; p < config.periods; p++) {
       const x = Viz.mapX(rect, p * config.ticksPerPeriod, 0, totalTicks);
       ctx.beginPath();
@@ -494,7 +536,7 @@ const UI = {
     ctx.restore();
 
     // One rect per agent decision, colored by action type.
-    const colors = { bid: '#2ecc71', ask: '#ff5a5a', hold: '#3b4866' };
+    const colors = { bid: this.theme.green, ask: this.theme.red, hold: this.theme.fg3 };
     const mW     = Math.max(1.6, (rect.w / totalTicks) * 0.85);
 
     for (const tr of v.traces) {
@@ -503,10 +545,10 @@ const UI = {
       const x = Viz.mapX(rect, tr.timestamp, 0, totalTicks);
       const y = rect.y + rowIdx * rowH + rowH * 0.28;
       const h = rowH * 0.44;
-      ctx.fillStyle = colors[tr.decision.type] || '#555';
+      ctx.fillStyle = colors[tr.decision.type] || this.theme.fg3;
       ctx.fillRect(x - mW / 2, y, mW, h);
       if (tr.filled > 0) {
-        ctx.fillStyle = '#4fa3ff';
+        ctx.fillStyle = this.theme.accent;
         ctx.beginPath();
         ctx.arc(x, y + h + 3, 1.8, 0, Math.PI * 2);
         ctx.fill();
@@ -515,8 +557,8 @@ const UI = {
 
     // X labels (period markers).
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
-    ctx.fillStyle = '#5a6580';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (let p = 1; p <= config.periods; p++) {
@@ -574,7 +616,7 @@ const UI = {
       fvPoints.push({ x: (p - 1) * config.ticksPerPeriod, y: fv });
       fvPoints.push({ x:  p      * config.ticksPerPeriod, y: fv });
     }
-    Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: '#ffb347', width: 2, dashed: true });
+    Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.theme.amber, width: 2, dashed: true });
 
     // One subjective-valuation line per agent.
     const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
@@ -595,31 +637,36 @@ const UI = {
         ctx.beginPath(); ctx.arc(x, yRep, 3, 0, Math.PI * 2); ctx.fill();
         if (m.deceptive) {
           const yTrue = Viz.mapY(rect, m.trueValuation, 0, yMax);
-          ctx.strokeStyle = '#ff5e78';
+          ctx.strokeStyle = this.theme.red;
           ctx.setLineDash([2, 2]);
           ctx.beginPath(); ctx.moveTo(x, yRep); ctx.lineTo(x, yTrue); ctx.stroke();
           ctx.setLineDash([]);
-          ctx.strokeStyle = '#ff5e78';
+          ctx.strokeStyle = this.theme.red;
           ctx.beginPath(); ctx.arc(x, yRep, 5, 0, Math.PI * 2); ctx.stroke();
         }
       }
       ctx.restore();
     }
 
-    // Legend row.
+    // Legend row. Each entry's horizontal advance is measured from the
+    // rendered text so longer agent names can't overlap the next label.
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffb347'; ctx.fillText('▬ FV', rect.x + 10, rect.y + 12);
-    let legendX = rect.x + 52;
+    const gap = 12;
+    const y   = rect.y + 12;
+    let legendX = rect.x + 10;
+    const drawEntry = (label, color) => {
+      ctx.fillStyle = color;
+      ctx.fillText(label, legendX, y);
+      legendX += ctx.measureText(label).width + gap;
+    };
+    drawEntry('▬ FV', this.theme.amber);
     for (const id of ids) {
       const name = v.agents[id] ? v.agents[id].name : 'U' + id;
-      ctx.fillStyle = this.agentColor(id);
-      ctx.fillText('●' + name, legendX, rect.y + 12);
-      legendX += 36;
+      drawEntry('● ' + name, this.agentColor(id));
     }
-    ctx.fillStyle = '#ff5e78';
-    ctx.fillText('○ lie', legendX, rect.y + 12);
+    drawEntry('○ lie', this.theme.red);
     ctx.restore();
   },
 
@@ -660,7 +707,7 @@ const UI = {
     // Baseline at U = 1.0 (each agent's initial utility).
     const baseY = Viz.mapY(rect, 1, yMin, yMax);
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.strokeStyle = this.theme.fg3;
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(rect.x, baseY); ctx.lineTo(rect.x + rect.w, baseY); ctx.stroke();
     ctx.setLineDash([]);
@@ -686,26 +733,26 @@ const UI = {
     const rowH       = rect.h / nA;
 
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign    = 'right';
     for (let i = 0; i < nA; i++) {
       const y = rect.y + i * rowH;
       if (i % 2 === 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.025)';
+        ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
       ctx.fillStyle = this.agentColor(ids[i]);
       const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
       ctx.fillText(name, rect.x - 6, y + rowH / 2);
     }
-    ctx.strokeStyle = '#2a3344';
+    ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
     ctx.restore();
 
     // Period separators.
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = this.theme.grid;
     for (let p = 1; p < config.periods; p++) {
       const x = Viz.mapX(rect, p * config.ticksPerPeriod, 0, totalTicks);
       ctx.beginPath(); ctx.moveTo(x, rect.y); ctx.lineTo(x, rect.y + rect.h); ctx.stroke();
@@ -719,13 +766,13 @@ const UI = {
       if (rowIdx < 0) continue;
       const x = Viz.mapX(rect, m.tick, 0, totalTicks);
       const y = rect.y + rowIdx * rowH + rowH / 2;
-      const sigColor = m.signal === 'buy' ? '#2ecc71'
-                     : m.signal === 'sell' ? '#ff5a5a'
-                     : '#7a8599';
+      const sigColor = m.signal === 'buy' ? this.theme.green
+                     : m.signal === 'sell' ? this.theme.red
+                     : this.theme.fg2;
       ctx.fillStyle = sigColor;
       ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
       if (m.deceptive) {
-        ctx.strokeStyle = '#ff5e78';
+        ctx.strokeStyle = this.theme.red;
         ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
         ctx.lineWidth = 1;
@@ -734,8 +781,8 @@ const UI = {
 
     // X labels.
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
-    ctx.fillStyle = '#5a6580';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (let p = 1; p <= config.periods; p++) {
@@ -769,14 +816,14 @@ const UI = {
         const x = rect.x + j * cellW;
         const y = rect.y + i * cellH;
         if (r === s) {
-          ctx.fillStyle = 'rgba(255,255,255,0.06)';
+          ctx.fillStyle = this.theme.stripe;
           ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
         } else {
           ctx.fillStyle = Viz.heatColor(val);
           ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
           if (cellW > 24 && cellH > 18) {
-            ctx.fillStyle = '#0b0f16';
-            ctx.font = '10px ui-monospace, Menlo, monospace';
+            ctx.fillStyle = this.theme.fg0;
+            ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(val.toFixed(2), x + cellW / 2, y + cellH / 2);
@@ -784,13 +831,13 @@ const UI = {
         }
       }
     }
-    ctx.strokeStyle = '#2a3344';
+    ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
 
     // Axis labels.
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
-    ctx.fillStyle = '#5a6580';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (let i = 0; i < n; i++) {
@@ -803,7 +850,7 @@ const UI = {
       const name = v.agents[agentIds[j]] ? v.agents[agentIds[j]].name : 'U' + agentIds[j];
       ctx.fillText(name, rect.x + j * cellW + cellW / 2, rect.y + rect.h + 6);
     }
-    ctx.fillStyle = '#7a8599';
+    ctx.fillStyle = this.theme.fg2;
     ctx.fillText('sender →', rect.x + rect.w / 2, rect.y + rect.h + 22);
     ctx.restore();
   },
@@ -862,17 +909,20 @@ const UI = {
     }));
     Viz.stackedArea(ctx, rect, series, { xMin: 0, xMax: totalTicks, yMin: 0, yMax });
 
-    // Inline legend at the top of the plot.
+    // Inline legend at the top of the plot. Per-entry advance is
+    // measured from the rendered name so long names can't overlap.
     ctx.save();
-    ctx.font = '10px ui-monospace, Menlo, monospace';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
+    const swatch = 10;
+    const gap    = 14;
     let legendX = rect.x + 8;
     for (const s of series) {
       ctx.fillStyle = s.color;
-      ctx.fillRect(legendX, rect.y + 4, 10, 10);
-      ctx.fillStyle = '#e8ecf2';
-      ctx.fillText(s.name, legendX + 13, rect.y + 10);
-      legendX += 44;
+      ctx.fillRect(legendX, rect.y + 4, swatch, swatch);
+      ctx.fillStyle = this.theme.fg0;
+      ctx.fillText(s.name, legendX + swatch + 3, rect.y + 10);
+      legendX += swatch + 3 + ctx.measureText(s.name).width + gap;
     }
     ctx.restore();
   },
