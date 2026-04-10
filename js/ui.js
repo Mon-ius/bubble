@@ -29,6 +29,24 @@ const UI = {
     experienced:    'Experienced',
     utility:        'Utility',
   },
+  // Paper-symbol cross-reference for each utility-agent risk preference.
+  // Matches the functionals listed in note 8 of the agents panel and in
+  // the Lopez-Lira (2025) TradeDecisionSchema discussion.
+  _riskSymbol: {
+    loving:  'U(w) = w²',
+    neutral: 'U(w) = w',
+    averse:  'U(w) = √w',
+  },
+  // Paper-symbol cross-reference for classic (non-utility) strategy
+  // types. The single-letter notation is the one used throughout the
+  // Parameters panel (Fundamentalist=F, Trend=T, Random=R, Experienced=E).
+  _typeSymbol: {
+    fundamentalist: 'i ∈ F',
+    trend:          'i ∈ T',
+    random:         'i ∈ R',
+    experienced:    'i ∈ E',
+    utility:        'i ∈ U',
+  },
 
   // Canvas-time theme cache. Populated by refreshTheme() which reads
   // CSS custom properties off :root via getComputedStyle. Every chart
@@ -213,13 +231,16 @@ const UI = {
       const subtitle = isUtil
         ? (UI._riskLabel[a.riskPref] || a.riskPref)
         : (UI._typeLabel[a.type] || a.type);
+      const subtitleSym = isUtil
+        ? (UI._riskSymbol[a.riskPref] || '')
+        : (UI._typeSymbol[a.type] || '');
       const displayName = a.name || ('A' + a.id);
       // Only the live-updating numeric values. The agent's risk label
       // already sits in the subtitle, so repeating it in the metrics
       // block would look inconsistent with the single-label rule.
       const extraRows = isUtil ? `
-          <span class="metric">Subj V</span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
-          <span class="metric">Report</span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
+          <span class="metric">Subj V <em class="sym">V̂<sub>i,t</sub></em></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
+          <span class="metric">Report <em class="sym">Ṽ<sub>i,t</sub></em></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
@@ -235,17 +256,20 @@ const UI = {
       return `
         <div class="agent-card ${a.type}"${borderStyle}>
           <div class="agent-header">
-            <div>
+            <div class="agent-head-left">
               <div class="agent-name">${displayName}</div>
-              <div class="agent-type">${subtitle}</div>
+              <div class="agent-type">${subtitle}${subtitleSym ? ` <em class="sym">${subtitleSym}</em>` : ''}</div>
             </div>
-            <span class="last-action ${action}">${action}</span>
+            <div class="agent-head-right">
+              <span class="last-action ${action}">${action}</span>
+              <em class="sym action-sym">a<sub>i,t</sub></em>
+            </div>
           </div>
           <div class="metrics">
-            <span class="metric">Cash</span>   <span class="metric-val">${cashCell}</span>
-            <span class="metric">Shares</span> <span class="metric-val">${invCell}</span>
-            <span class="metric">Wealth</span> <span class="metric-val">${wealth.toFixed(0)}</span>
-            <span class="metric">P&amp;L</span>   <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
+            <span class="metric">Cash <em class="sym">c<sub>i,t</sub></em></span>    <span class="metric-val">${cashCell}</span>
+            <span class="metric">Shares <em class="sym">q<sub>i,t</sub></em></span>  <span class="metric-val">${invCell}</span>
+            <span class="metric">Wealth <em class="sym">w<sub>i,t</sub></em></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
+            <span class="metric">P&amp;L <em class="sym">Δw<sub>i,t</sub></em></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
           </div>
         </div>`;
     }).join('');

@@ -839,8 +839,25 @@ body:not(.extended) .ext-only { display: none !important; }
   align-items: flex-start;
   gap: 8px;
 }
+.agent-card .agent-head-left  { min-width: 0; }
+.agent-card .agent-head-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+}
 .agent-card .agent-name { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
-.agent-card .agent-type { font-size: 10px; color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.agent-card .agent-type {
+  font-size: 10px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
 .agent-card .metrics {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -850,8 +867,41 @@ body:not(.extended) .ext-only { display: none !important; }
   font-variant-numeric: tabular-nums;
   font-size: 11px;
 }
-.agent-card .metric { color: var(--fg-2); }
+.agent-card .metric {
+  color: var(--fg-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
 .agent-card .metric-val { color: var(--fg-0); font-weight: 600; text-align: right; }
+/* Paper-symbol cross-reference next to each metric label, next to the
+   risk/role subtitle, and under the last-action pill. Uses an italic
+   serif stack so it visually reads as math regardless of the UI font,
+   with explicit sub/sup sizing because the enclosing .metric uses a
+   sans-serif UI font that otherwise shrinks subscripts inconsistently. */
+.agent-card .sym {
+  font-style: italic;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Cambria",
+               "Georgia", "Times New Roman", serif;
+  font-size: 10px;
+  color: var(--fg-3);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.agent-card .sym sub,
+.agent-card .sym sup {
+  font-size: 0.72em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+  font-style: italic;
+}
+.agent-card .sym sub { top: 0.35em; }
+.agent-card .sym sup { top: -0.45em; }
+.agent-card .action-sym { font-size: 9px; }
 .agent-card .last-action {
   font-size: 9px;
   padding: 2px 8px;
