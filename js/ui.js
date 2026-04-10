@@ -325,7 +325,16 @@ const UI = {
     }
     items.sort((a, b) => b.tick - a.tick);
 
-    const recent = items.slice(0, 24);
+    // Slice to however many rows actually fit in the current panel
+    // height. The feed panel stretches vertically to match the Agents
+    // sibling, so the row count has to track that dynamically instead
+    // of being hard-coded. Row height is the CSS padding + font-size +
+    // border (≈ 23px); fall back to 24 rows on the first paint when
+    // clientHeight hasn't been laid out yet.
+    const rowH = 23;
+    const avail = this.els.tradeFeed.clientHeight || (rowH * 24);
+    const rows  = Math.max(8, Math.floor(avail / rowH));
+    const recent = items.slice(0, rows);
     if (!recent.length) { this.els.tradeFeed.innerHTML = '<li class="muted">no activity yet</li>'; return; }
 
     this.els.tradeFeed.innerHTML = recent.map(r => {
