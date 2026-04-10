@@ -25,22 +25,24 @@
 
 <main class="grid">
   <!-- ============================================================
-       Parameters — universal configuration panel. Every numeric
-       constant that shapes the simulation is exposed here, with a
-       hover tooltip explaining what the control does and why the
-       default is what it is. Changes trigger a reset() and rebuild
-       the population with the new values.
+       Experiment settings — every simulator-invented knob that
+       shapes a run. Paper-fixed constants (T, μ_d, dividend shape,
+       FV formula) are NOT here; they live in the read-only Paper
+       constants card below this panel. Each row has a hover tooltip
+       explaining what it does; structural edits (population mix,
+       risk shares, total-N) re-sample and reseed on release, soft
+       edits just rebuild the current draw.
        ============================================================ -->
   <section class="panel panel-params" id="panel-params">
     <div class="panel-header" id="panel-params-head">
-      <h2>Parameters</h2>
+      <h2>Experiment settings</h2>
       <span class="chevron" aria-hidden="true">▾</span>
     </div>
 
     <div class="params-body">
 
       <details class="psec" open>
-        <summary>Market</summary>
+        <summary>Runtime</summary>
         <div class="psec-body">
           <div class="param-row" data-tip="Number of agent decisions (and therefore order submissions) inside each period. Higher values give the market more opportunities to price-discover within a period; lower values produce thinner trading. Default 18 gives the trend-follower slope window enough samples to form but keeps the run snappy. Not a parameter of the original DLM 2005 design — the paper uses a continuous 2-minute real-time auction; the tick grid is this simulator's discretization of that.">
             <div class="param-head">
@@ -53,46 +55,46 @@
       </details>
 
       <details class="psec" open>
-        <summary>Population mix <span class="muted" id="mix-total">(total 6)</span></summary>
+        <summary>Population <span class="muted" id="mix-total">(total 6)</span></summary>
         <div class="psec-body">
           <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = Σ N(X) for X ∈ {F, T, R, E, U}, where N(F), N(T), N(R), N(E), N(U) are the counts of Fundamentalist, Trend follower, Random ZI, Experienced, and Utility EU-maximizer agents respectively. Moving this slider rescales each N(X) proportionally to satisfy the new N: N(X)ⁿᵉʷ = ⌊N(X) · Nⁿᵉʷ / Nᵒˡᵈ⌋, with the residual Nⁿᵉʷ − Σ ⌊·⌋ distributed via largest-remainder rounding so the integer counts sum to N exactly. From an all-zero mix, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. Editing any individual N(X) slider recomputes N automatically as the new sum.">
             <div class="param-head">
-              <label for="p-total">N · Total agents</label>
+              <label for="p-total">Total <span data-sym="agentI"></span> (N)</label>
               <span class="pval" id="v-total">6</span>
             </div>
             <input type="range" id="p-total" min="0" max="30" step="1" value="6">
           </div>
           <div class="param-row" data-tip="Trades around the theoretical fundamental value. Buys when the ask is more than 2% below FV, sells when the bid is more than 2% above FV, otherwise posts passive quotes near FV. These are the rational anchors — more F agents means stronger mean-reversion and weaker bubbles.">
             <div class="param-head">
-              <label for="p-mix-F">F · Fundamentalist</label>
+              <label for="p-mix-F">Fundamentalist <span data-sym="nF"></span></label>
               <span class="pval" id="v-mix-F">0</span>
             </div>
             <input type="range" id="p-mix-F" min="0" max="30" step="1" value="0">
           </div>
           <div class="param-row" data-tip="Detects momentum from the last 6 prices. Rising slope → aggressive bid above the recent print; falling slope → aggressive ask below it. When cash is exhausted and inventory has accumulated, it dumps. Positive-feedback loops from T agents are what inflate bubbles in the SSW design.">
             <div class="param-head">
-              <label for="p-mix-T">T · Trend follower</label>
+              <label for="p-mix-T">Trend follower <span data-sym="nT"></span></label>
               <span class="pval" id="v-mix-T">0</span>
             </div>
             <input type="range" id="p-mix-T" min="0" max="30" step="1" value="0">
           </div>
           <div class="param-row" data-tip="Gode–Sunder style zero-intelligence trader. Each tick flips a coin: bid drawn uniformly from [0.7·FV, 1.1·FV] or ask from [0.9·FV, 1.3·FV]. Provides noise and liquidity pinned to fundamentals — it does not reinforce bubbles the way trend followers do.">
             <div class="param-head">
-              <label for="p-mix-R">R · Random (ZI)</label>
+              <label for="p-mix-R">Random (ZI) <span data-sym="nR"></span></label>
               <span class="pval" id="v-mix-R">0</span>
             </div>
             <input type="range" id="p-mix-R" min="0" max="30" step="1" value="0">
           </div>
           <div class="param-row" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is the paper's central finding.">
             <div class="param-head">
-              <label for="p-mix-E">E · Experienced</label>
+              <label for="p-mix-E">Experienced <span data-sym="nE"></span></label>
               <span class="pval" id="v-mix-E">0</span>
             </div>
             <input type="range" id="p-mix-E" min="0" max="30" step="1" value="0">
           </div>
           <div class="param-row" data-tip="LLM-style agent that throws out heuristics and runs an explicit expected-utility argmax over candidate actions, with a risk preference applied to wealth. Setting U&gt;0 unlocks messaging, deception, trust, and the extended charts. The six slots cycle through a fixed strategy cube (U1–U6) so every risk × belief × deception combination is represented.">
             <div class="param-head">
-              <label for="p-mix-U">U · Utility (EU maximizer)</label>
+              <label for="p-mix-U">Utility (EU) <span data-sym="nU"></span></label>
               <span class="pval" id="v-mix-U">6</span>
             </div>
             <input type="range" id="p-mix-U" min="0" max="30" step="1" value="6">
@@ -112,21 +114,21 @@
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. U(w) = (w/w₀)² — strictly convex, so upside outcomes dominate expected-utility scoring. These agents bid aggressively and overshoot fundamental value; a high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
             <div class="param-head">
-              <label for="p-risk-loving"><span data-sym="alphaL"></span> · Risk-loving (<span data-sym="uLoving"></span>)</label>
+              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="uLoving"></span></label>
               <span class="pval" id="v-risk-loving">33%</span>
             </div>
             <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. U(w) = w/w₀ — linear. These agents price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
             <div class="param-head">
-              <label for="p-risk-neutral"><span data-sym="alphaN"></span> · Risk-neutral (<span data-sym="uNeutral"></span>)</label>
+              <label for="p-risk-neutral">Risk-neutral <span data-sym="alphaN"></span> · <span data-sym="uNeutral"></span></label>
               <span class="pval" id="v-risk-neutral">34%</span>
             </div>
             <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. U(w) = √(w/w₀) — strictly concave, so downside losses dominate expected-utility scoring. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
             <div class="param-head">
-              <label for="p-risk-averse"><span data-sym="alphaA"></span> · Risk-averse (<span data-sym="uAverse"></span>)</label>
+              <label for="p-risk-averse">Risk-averse <span data-sym="alphaA"></span> · <span data-sym="uAverse"></span></label>
               <span class="pval" id="v-risk-averse">33%</span>
             </div>
             <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
@@ -135,59 +137,55 @@
       </details>
 
       <details class="psec ext-only">
-        <summary>Belief update</summary>
+        <summary>Utility-agent calibration</summary>
         <div class="psec-body">
+          <h4 class="psec-sub">Belief update</h4>
           <div class="param-row" data-tip="Weight on the agent's own prior when blending incoming messages, for naive-belief agents. Default 0.6 = 60% prior + 40% message average. Lower values make the agent more gullible; 1.0 makes it ignore messages entirely.">
             <div class="param-head">
-              <label for="p-naive-w">Naive prior weight</label>
+              <label for="p-naive-w">Naive prior</label>
               <span class="pval" id="v-naive-w">0.60</span>
             </div>
             <input type="range" id="p-naive-w" min="0" max="1" step="0.05" value="0.6">
           </div>
           <div class="param-row" data-tip="Same formula as naive but much heavier on the prior. Default 0.9 = 90% prior + 10% message average — messages barely move the belief. Use this to model an agent that hears everything but trusts almost nothing.">
             <div class="param-head">
-              <label for="p-skep-w">Skeptical prior weight</label>
+              <label for="p-skep-w">Skeptical prior</label>
               <span class="pval" id="v-skep-w">0.90</span>
             </div>
             <input type="range" id="p-skep-w" min="0" max="1" step="0.05" value="0.9">
           </div>
           <div class="param-row" data-tip="Maximum fraction of belief an adaptive agent will shift toward the trust-weighted message mean in one period. Default 0.5 means even if every sender is fully trusted, the new belief is at most 50% message + 50% prior. Prevents runaway over-update from a single high-trust period.">
             <div class="param-head">
-              <label for="p-adapt-cap">Adaptive weight cap</label>
+              <label for="p-adapt-cap">Adaptive cap</label>
               <span class="pval" id="v-adapt-cap">0.50</span>
             </div>
             <input type="range" id="p-adapt-cap" min="0" max="1" step="0.05" value="0.5">
           </div>
-        </div>
-      </details>
-
-      <details class="psec ext-only">
-        <summary>Trust &amp; evaluation</summary>
-        <div class="psec-body">
+          <div class="param-row" data-tip="Per-tick uniform noise added to every utility agent's prior belief, before any bias or message update: prior = FV × (1 + bias + U(−noise, +noise)). Default 0.03 = ±3%. Higher values add more within-period belief churn, producing noisier trade decisions.">
+            <div class="param-head">
+              <label for="p-val-noise">Valuation noise</label>
+              <span class="pval" id="v-val-noise">0.030</span>
+            </div>
+            <input type="range" id="p-val-noise" min="0" max="0.10" step="0.005" value="0.03">
+          </div>
+          <h4 class="psec-sub">Trust &amp; decision</h4>
           <div class="param-row" data-tip="Learning rate for the exponential moving average trust update: trust[r→s] ← (1 − α) × old + α × closeness. Closeness is 1 − |claim − vwap|/vwap for that period. Default 0.3 weights the new observation at 30%. Lower = slower and more conservative; higher = reacts faster to new evidence but noisier.">
             <div class="param-head">
-              <label for="p-trust-alpha">Trust α (learning rate)</label>
+              <label for="p-trust-alpha">Trust α</label>
               <span class="pval" id="v-trust-alpha">0.30</span>
             </div>
             <input type="range" id="p-trust-alpha" min="0" max="1" step="0.05" value="0.3">
           </div>
           <div class="param-row" data-tip="Probability used when scoring passive (non-crossing) orders inside the expected-utility calculation: EU = pFill × U(filled) + (1 − pFill) × U(not filled). Default 0.3 means a passive quote is assumed to fill 30% of the time. A proper model would estimate this from order-book state; this is a deliberate constant placeholder.">
             <div class="param-head">
-              <label for="p-pfill">Passive fill probability</label>
+              <label for="p-pfill">Passive fill prob.</label>
               <span class="pval" id="v-pfill">0.30</span>
             </div>
             <input type="range" id="p-pfill" min="0" max="1" step="0.05" value="0.3">
           </div>
-          <div class="param-row" data-tip="Per-tick uniform noise added to every utility agent's prior belief, before any bias or message update: prior = FV × (1 + bias + U(−noise, +noise)). Default 0.03 = ±3%. Higher values add more within-period belief churn, producing noisier trade decisions.">
-            <div class="param-head">
-              <label for="p-val-noise">Valuation noise ±</label>
-              <span class="pval" id="v-val-noise">0.030</span>
-            </div>
-            <input type="range" id="p-val-noise" min="0" max="0.10" step="0.005" value="0.03">
-          </div>
           <div class="param-row" data-tip="Overrides the per-slot biasAmount for every biased U agent (U2, U4, U5 in the default strategy cube). Default 0.15 = 15% persistent over/under-valuation vs FV. Set to 0 to neutralize all bias without removing the agents.">
             <div class="param-head">
-              <label for="p-bias-amt">Default bias magnitude</label>
+              <label for="p-bias-amt">Bias magnitude</label>
               <span class="pval" id="v-bias-amt">0.15</span>
             </div>
             <input type="range" id="p-bias-amt" min="0" max="0.40" step="0.01" value="0.15">
@@ -201,12 +199,13 @@
   <!-- ============================================================
        Paper constants — fixed-by-design values from Dufwenberg,
        Lindqvist & Moore (2005), §I. These are not tunable in the
-       Parameters panel because the paper's experimental design pins
-       them: the asset's 10-period life, the {0, 20}¢ equiprobable
-       dividend, the μ_d = 10¢ expectation, and the backward-induction
-       FV formula. Rendered as a read-only card with the quoted
-       source for each value so the replication boundary between
-       "paper design" and "this simulator's extensions" is visible.
+       Experiment settings panel because the paper's experimental
+       design pins them: the asset's 10-period life, the {0, 20}¢
+       equiprobable dividend, the μ_d = 10¢ expectation, and the
+       backward-induction FV formula. Rendered as a read-only card
+       with the quoted source for each value so the replication
+       boundary between "paper design" and "this simulator's
+       extensions" is visible at the top of the app.
        ============================================================ -->
   <section class="panel panel-paper">
     <div class="paper-head">

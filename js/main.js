@@ -27,18 +27,20 @@ const App = {
     tickInterval:   340,
   },
 
-  // Population composition — driven by the Parameters panel sliders.
-  // The sampling stage in agents.js turns this into per-agent specs
-  // (names + endowments). Default to the Utility preset so the
-  // extended panels are visible on first load.
+  // Population composition — driven by the Population section of the
+  // Experiment settings panel. The sampling stage in agents.js turns
+  // this into per-agent specs (names + endowments). Default to the
+  // Utility preset so the extended panels are visible on first load.
   mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
 
-  // Every invented numeric constant exposed by the Parameters panel.
-  // Market-level knobs mirror App.config; the rest mirror UTILITY_DEFAULTS
-  // in agents.js. The engine and agents read from ctx.tunables when
-  // present, so changing a slider + reset re-seeds the whole run with
-  // the new values. Tunables that aren't present here fall back to
-  // UTILITY_DEFAULTS via the tunable() helper in agents.js.
+  // Every simulator-invented numeric constant exposed by the
+  // Experiment settings panel. The engine and agents read from
+  // ctx.tunables when present, so changing a slider + rebuild applies
+  // the new values on the next run. Tunables that aren't present here
+  // fall back to UTILITY_DEFAULTS via the tunable() helper in agents.js.
+  // Note: `periods` and `dividendMean` are NOT here — they are paper
+  // constants pinned by DLM 2005 and live only in App.config (see the
+  // read-only Paper constants panel).
   tunables: {
     ticksPerPeriod:       18,
     naivePriorWeight:     0.6,
@@ -169,7 +171,7 @@ const App = {
     });
   },
 
-  /* -------- Parameters panel -------- */
+  /* -------- Experiment settings panel -------- */
 
   /**
    * Map of every slider → the Tunables/mix key it drives. Each entry
