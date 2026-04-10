@@ -167,6 +167,21 @@ const App = {
       input.addEventListener('change', () => this.reset());
     }
 
+    // Total-agents slider — proportionally rescales the per-type
+    // counts when the user moves it, then triggers a population
+    // rebuild on release. Wired separately because it doesn't map
+    // to a single mix/tunables key.
+    const totalSlider = document.getElementById('p-total');
+    if (totalSlider) {
+      totalSlider.addEventListener('input', e => {
+        const newTotal = Number(e.target.value) | 0;
+        this._rescaleMixToTotal(newTotal);
+        this._pushStateToSliders();
+        this._refreshMixTotal();
+      });
+      totalSlider.addEventListener('change', () => this.reset());
+    }
+
     // Communication / deception checkboxes live inside the panel too.
     const commBox = document.getElementById('toggle-communication');
     if (commBox) {
@@ -236,11 +251,64 @@ const App = {
   },
 
   _refreshMixTotal() {
-    const el = document.getElementById('mix-total');
-    if (!el) return;
     const m = this.mix;
     const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.E | 0) + (m.U | 0);
-    el.textContent = `(total ${total})`;
+    const el = document.getElementById('mix-total');
+    if (el) el.textContent = `(total ${total})`;
+    // Keep the Total agents slider and its readout in sync with the
+    // sum of the per-type sliders so editing either side stays
+    // consistent. Clamped to the slider's max so a manual sum that
+    // exceeds the cap still leaves the slider at its rail.
+    const totalSlider  = document.getElementById('p-total');
+    const totalReadout = document.getElementById('v-total');
+    if (totalSlider) {
+      const max = Number(totalSlider.max) || total;
+      totalSlider.value = String(Math.min(total, max));
+    }
+    if (totalReadout) totalReadout.textContent = String(total);
+  },
+
+  /**
+   * Proportionally rescale the mix to a new total. Each type's share
+   * of the new total is its old share multiplied by the new size, with
+   * largest-remainder rounding so the integer counts sum exactly to
+   * newTotal. If every slot is currently zero, the new agents land in
+   * U so the extended panels become reachable from a blank slate.
+   */
+  _rescaleMixToTotal(newTotal) {
+    const keys = ['F', 'T', 'R', 'E', 'U'];
+    const m = this.mix;
+    const oldTotal = keys.reduce((s, k) => s + (m[k] | 0), 0);
+
+    if (newTotal <= 0) {
+      this.mix = { F: 0, T: 0, R: 0, E: 0, U: 0 };
+      return;
+    }
+    if (oldTotal === 0) {
+      this.mix = { F: 0, T: 0, R: 0, E: 0, U: newTotal };
+      return;
+    }
+
+    const scale = newTotal / oldTotal;
+    const next  = { F: 0, T: 0, R: 0, E: 0, U: 0 };
+    const fracs = [];
+    let assigned = 0;
+    for (const k of keys) {
+      const raw  = m[k] * scale;
+      const base = Math.floor(raw);
+      next[k]    = base;
+      assigned  += base;
+      fracs.push({ k, frac: raw - base });
+    }
+    let remainder = newTotal - assigned;
+    fracs.sort((a, b) => b.frac - a.frac);
+    let idx = 0;
+    while (remainder > 0) {
+      next[fracs[idx % fracs.length].k]++;
+      remainder--;
+      idx++;
+    }
+    this.mix = next;
   },
 
   _getByPath(path) {
