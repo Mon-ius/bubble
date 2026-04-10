@@ -37,6 +37,7 @@ const Replay = {
       agentState[id] = {
         id:         a.id,
         type:       a.type,
+        typeLabel:  a.typeLabel,
         name:       a.displayName,
         cash:       a.cash,
         inventory:  a.inventory,

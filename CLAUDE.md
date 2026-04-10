@@ -61,11 +61,38 @@ tunables that aren't exposed as sliders still have a safe default.
 The **Risk preferences** subsection uses three linked sliders
 (α<sub>L</sub>/α<sub>N</sub>/α<sub>A</sub>) that always sum to 100 and drive
 a composition bar (`#comp-bar`) above them. `App.riskMix` holds the current
-split and is passed into `buildAgentsFromMix` as an override; the U-agent
-builder calls `distributeRiskPrefs` in `agents.js` to turn those percentages
-into a per-slot `riskPref` override (loving/neutral/averse), so the sliders
-directly control how many utility agents of each risk type are instantiated
-without disturbing the bias/deception/belief variety in the strategy cube.
+split and is read by the sampling stage; `distributeRiskPrefs` in
+`agents.js` turns those percentages into a per-slot `riskPref` override
+(loving/neutral/averse), so the sliders directly control how many utility
+agents of each risk type are instantiated without disturbing the
+bias/deception/belief variety in the strategy cube.
+
+## Sampling stage (names + endowments)
+
+Before the simulation starts, `sampleAgents(mix, rng, options)` in
+`agents.js` draws a flat list of per-agent specs from the current `mix`.
+Each spec carries:
+
+- `id`, `slot`, `type`, `typeLabel` (F1, U3, …)
+- `name` — a random personal name drawn without replacement from
+  `AGENT_NAMES`
+- `cash`, `inventory` — drawn from `ENDOWMENT_DEFAULT` (uniform
+  [800, 1200] cash, uniform {2,3,4} inventory)
+- strategy fields for utility agents (`riskPref`, `biasMode`, …)
+
+`App.agentSpecs` caches the current draw. The **Agents** panel shows the
+spec list as editable cards before `tick === 0`; editing cash/inventory
+commits through `App.updateEndowment(id, field, value)` which mutates the
+spec in place and calls `reset()` without re-sampling. Structural changes
+(mix counts, risk shares, seed, preset, defaults) call `App.resample()`
+instead, which nulls the spec cache so `reset()` re-draws against a fresh
+sample RNG. The **Resample** button (agents panel header) is a manual
+shortcut to the same path.
+
+The sample RNG is derived from `seed ^ 0xA5A5A5A5` and is intentionally
+independent of the engine RNG (`makeRNG(seed)`), so endowment edits +
+reset produce the same per-tick trading sequence as a seed-matched run
+without an edit.
 
 When adding a new tunable:
 1. Add the slider row in `index.html` with a `data-tip` explanation.

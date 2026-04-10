@@ -20,8 +20,9 @@ const App = {
   },
 
   // Population composition — driven by the Parameters panel sliders.
-  // Default to the Utility preset so the extended panels are visible
-  // on first load.
+  // The sampling stage in agents.js turns this into per-agent specs
+  // (names + endowments). Default to the Utility preset so the
+  // extended panels are visible on first load.
   mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
 
   // Every invented numeric constant exposed by the Parameters panel.
@@ -45,7 +46,7 @@ const App = {
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
-  // instantiated with in buildAgentsFromMix.
+  // instantiated with in the sampling stage.
   riskMix: { loving: 33, neutral: 34, averse: 33 },
 
   // Extended-mode flags consulted by the engine's communication round
@@ -58,6 +59,13 @@ const App = {
   },
 
   seed: 42,
+
+  // Per-agent spec list produced by the sampling stage (names +
+  // endowments + strategy fields). Nulled whenever the population
+  // structure changes (mix, riskMix, seed, preset, defaults) so that
+  // the next reset() re-samples; kept intact when the user edits an
+  // individual endowment so the run replays from the same draws.
+  agentSpecs: null,
 
   agents:       {},
   market:       null,
@@ -87,7 +95,7 @@ const App = {
 
     document.getElementById('seed').addEventListener('change', e => {
       this.seed = Number(e.target.value) || 1;
-      this.reset();
+      this.resample();
     });
     document.getElementById('speed').addEventListener('input', e => {
       // speed 1 → ~953ms, speed 20 → ~60ms
@@ -153,10 +161,17 @@ const App = {
     this._pushStateToSliders();
     this._refreshMixTotal();
 
-    // Uniform wiring for every slider in the param map.
+    // Uniform wiring for every slider in the param map. Sliders that
+    // change the population *structure* (mix counts, risk shares) call
+    // resample() on release so the sampling stage re-draws names and
+    // endowments from the sample RNG; everything else just calls
+    // reset() and keeps the cached specs intact.
     for (const [inputId, spec] of Object.entries(this._paramMap)) {
       const input = document.getElementById(inputId);
       if (!input) continue;
+      const structural =
+        spec.target.startsWith('mix.') ||
+        spec.target.startsWith('riskMix.');
       input.addEventListener('input', e => {
         const raw = Number(e.target.value);
         const val = spec.int ? (raw | 0) : raw;
@@ -166,7 +181,10 @@ const App = {
         if (spec.target.startsWith('mix.'))     this._refreshMixTotal();
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
       });
-      input.addEventListener('change', () => this.reset());
+      input.addEventListener('change', () => {
+        if (structural) this.resample();
+        else            this.reset();
+      });
     }
     this._updateCompBar();
 
@@ -182,7 +200,7 @@ const App = {
         this._pushStateToSliders();
         this._refreshMixTotal();
       });
-      totalSlider.addEventListener('change', () => this.reset());
+      totalSlider.addEventListener('change', () => this.resample());
     }
 
     // Preset buttons — snap the mix sliders to a known-good
@@ -195,7 +213,7 @@ const App = {
         this.mix = Object.assign({ F: 0, T: 0, R: 0, E: 0, U: 0 }, preset);
         this._pushStateToSliders();
         this._refreshMixTotal();
-        this.reset();
+        this.resample();
       });
     });
 
@@ -214,7 +232,7 @@ const App = {
         this._pushStateToSliders();
         this._refreshMixTotal();
         this._updateCompBar();
-        this.reset();
+        this.resample();
       });
     }
   },
@@ -370,11 +388,23 @@ const App = {
     this.config.ticksPerPeriod = this.tunables.ticksPerPeriod;
     this.config.dividendMean   = this.tunables.dividendMean;
 
-    this._rng   = makeRNG(this.seed);
-    this.agents = buildAgentsFromMix(this.mix, {
+    this._rng = makeRNG(this.seed);
+
+    // Sampling RNG is intentionally independent of the engine RNG, so
+    // that editing endowments (which skips the resample path) leaves
+    // the engine's tick-level draws unchanged from a seed-matched run.
+    const totalN =
+      (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) +
+      (this.mix.E | 0) + (this.mix.U | 0);
+    if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
+      const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
+      this.agentSpecs = sampleAgents(this.mix, sampleRng, {
+        riskMix: this.riskMix,
+      });
+    }
+    this.agents = buildAgentsFromSpecs(this.agentSpecs, {
       biasAmount:     this.tunables.biasAmount,
       valuationNoise: this.tunables.valuationNoise,
-      riskMix:        this.riskMix,
     });
     this.market = new Market(this.config);
     this.logger = new Logger();
@@ -401,6 +431,33 @@ const App = {
     document.body.classList.toggle('extended', (this.mix.U | 0) > 0);
     UI.resizeCanvases();
     this.requestRender();
+  },
+
+  /**
+   * Drop the cached agentSpecs and rebuild — used whenever the
+   * population *structure* changes (mix counts, riskMix, seed,
+   * preset, defaults). Downstream reset() will notice the null
+   * cache and re-run sampleAgents against a fresh sample RNG.
+   */
+  resample() {
+    this.agentSpecs = null;
+    this.reset();
+  },
+
+  /**
+   * Apply a user edit to one agent's endowment and rebuild the
+   * market without re-sampling. Called from the per-agent editable
+   * inputs in ui.js. Field is 'cash' or 'inventory'; non-finite or
+   * negative values are ignored.
+   */
+  updateEndowment(id, field, value) {
+    if (!this.agentSpecs) return;
+    const spec = this.agentSpecs.find(s => s.id === id);
+    if (!spec) return;
+    const v = Number(value);
+    if (!Number.isFinite(v) || v < 0) return;
+    spec[field] = field === 'inventory' ? (v | 0) : Math.round(v);
+    this.reset();
   },
 
   start() {

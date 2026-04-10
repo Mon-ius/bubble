@@ -54,6 +54,19 @@ const UI = {
       this.resizeCanvases();
       if (window.App) window.App.requestRender();
     });
+
+    // Agents-panel controls: Resample button triggers a fresh name
+    // + endowment draw via App.resample(). The button is always in
+    // the DOM; clicks during a running sim are still safe because
+    // resample() calls reset() which pauses the engine first.
+    const resampleBtn = document.getElementById('btn-resample');
+    if (resampleBtn) {
+      resampleBtn.addEventListener('click', () => {
+        if (window.App && typeof window.App.resample === 'function') {
+          window.App.resample();
+        }
+      });
+    }
   },
 
   resizeCanvases() {
@@ -129,6 +142,14 @@ const UI = {
 
   renderAgents(v, config) {
     const initialFV = config.dividendMean * config.periods;
+    // Pre-run: live view, tick still at 0. Only then do we render the
+    // editable endowment inputs — once the engine has ticked past 0,
+    // the numbers reflect live trading state and must not be edited.
+    const editable = !v.isReplay && v.tick === 0;
+    const panel = document.querySelector('.panel-agents');
+    if (panel) panel.classList.toggle('preview', editable);
+    this._toggleAgentStageLabel(editable);
+
     const html = Object.values(v.agents).map(a => {
       const action = a.lastAction || 'hold';
       const isUtil = a.riskPref != null;
@@ -139,30 +160,85 @@ const UI = {
       const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
       const pnlColor = pnl >= 0 ? 'var(--volume)' : 'var(--ask)';
       const borderStyle = isUtil ? ` style="border-left-color:${this.agentColor(a.id)}"` : '';
-      const subtitle = isUtil ? `${a.riskPref} · ${a.deceptionMode}` : a.type;
+      // Subtitle shows the strategy code (U3, F1, …) first and then
+      // the role-specific tag so the random personal name stays the
+      // most prominent label on the card.
+      const strategyCode = a.typeLabel || ('A' + a.id);
+      const detail = isUtil ? `${a.riskPref} · ${a.deceptionMode}` : a.type;
+      const subtitle = `${strategyCode} · ${detail}`;
+      const displayName = a.name || ('A' + a.id);
       const extraRows = isUtil ? `
           <span class="metric">Risk</span>   <span class="metric-val">${a.riskPref}</span>
           <span class="metric">Subj V</span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report</span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>
           <span class="metric">Belief</span> <span class="metric-val">${a.beliefMode}</span>` : '';
+
+      const cashCell = editable
+        ? `<input class="endow-input" type="number" min="0" step="10"
+                  data-agent-id="${a.id}" data-field="cash"
+                  value="${a.cash.toFixed(0)}">`
+        : a.cash.toFixed(0);
+      const invCell = editable
+        ? `<input class="endow-input" type="number" min="0" step="1"
+                  data-agent-id="${a.id}" data-field="inventory"
+                  value="${a.inventory}">`
+        : a.inventory;
+
       return `
         <div class="agent-card ${a.type}"${borderStyle}>
           <div class="agent-header">
             <div>
-              <div class="agent-name">${a.name || ('A' + a.id)}</div>
+              <div class="agent-name">${displayName}</div>
               <div class="agent-type">${subtitle}</div>
             </div>
             <span class="last-action ${action}">${action}</span>
           </div>
           <div class="metrics">
-            <span class="metric">Cash</span>   <span class="metric-val">${a.cash.toFixed(0)}</span>
-            <span class="metric">Shares</span> <span class="metric-val">${a.inventory}</span>
+            <span class="metric">Cash</span>   <span class="metric-val">${cashCell}</span>
+            <span class="metric">Shares</span> <span class="metric-val">${invCell}</span>
             <span class="metric">Wealth</span> <span class="metric-val">${wealth.toFixed(0)}</span>
             <span class="metric">P&amp;L</span>   <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
           </div>
         </div>`;
     }).join('');
     this.els.agentsGrid.innerHTML = html;
+
+    if (editable) this._wireEndowmentInputs();
+  },
+
+  /**
+   * Bind change handlers to the inline endowment inputs so edits are
+   * committed through App.updateEndowment. Called every render while
+   * in the pre-run preview stage since the grid HTML is replaced.
+   */
+  _wireEndowmentInputs() {
+    const inputs = this.els.agentsGrid.querySelectorAll('.endow-input');
+    inputs.forEach(inp => {
+      inp.addEventListener('change', e => {
+        const id    = Number(e.target.dataset.agentId);
+        const field = e.target.dataset.field;
+        const val   = Number(e.target.value);
+        if (window.App && typeof window.App.updateEndowment === 'function') {
+          window.App.updateEndowment(id, field, val);
+        }
+      });
+      // Prevent Enter from bubbling up to any global keybindings;
+      // commit the change on Enter instead of waiting for blur.
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+      });
+    });
+  },
+
+  /**
+   * Toggle a small "sample preview — editable" status label on the
+   * agents panel header. Separated out so renderAgents stays readable.
+   */
+  _toggleAgentStageLabel(on) {
+    const h = document.querySelector('.panel-agents .agents-header .stage-label');
+    if (!h) return;
+    h.textContent = on ? 'sample preview — editable' : 'live';
+    h.classList.toggle('live', !on);
   },
 
   /* -------- Trade feed (trades + dividend events) -------- */

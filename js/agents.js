@@ -49,7 +49,9 @@ class Agent {
  * quotes inside a narrow band around FV. This is the rational anchor.
  */
 class Fundamentalist extends Agent {
-  constructor(id, name) { super(id, 'fundamentalist', 1000, 3, name); }
+  constructor(id, name, cash = 1000, inventory = 3) {
+    super(id, 'fundamentalist', cash, inventory, name);
+  }
 
   decide(market, rng) {
     const fv     = market.fundamentalValue();
@@ -118,7 +120,9 @@ class Fundamentalist extends Agent {
  * of collapsing.
  */
 class TrendFollower extends Agent {
-  constructor(id, name) { super(id, 'trend', 1000, 3, name); }
+  constructor(id, name, cash = 1000, inventory = 3) {
+    super(id, 'trend', cash, inventory, name);
+  }
 
   decide(market, rng) {
     const hist = market.priceHistory.filter(h => h.price !== null).slice(-6);
@@ -209,7 +213,9 @@ class TrendFollower extends Agent {
  * they provide a price-discovery floor/ceiling pinned to fundamentals.
  */
 class RandomAgent extends Agent {
-  constructor(id, name) { super(id, 'random', 1000, 3, name); }
+  constructor(id, name, cash = 1000, inventory = 3) {
+    super(id, 'random', cash, inventory, name);
+  }
 
   decide(market, rng) {
     const fv   = market.fundamentalValue();
@@ -254,7 +260,9 @@ class RandomAgent extends Agent {
  * dominate the population, the bubble never really forms.
  */
 class ExperiencedAgent extends Agent {
-  constructor(id, name) { super(id, 'experienced', 1000, 3, name); }
+  constructor(id, name, cash = 1000, inventory = 3) {
+    super(id, 'experienced', cash, inventory, name);
+  }
 
   decide(market, rng) {
     const fv                = market.fundamentalValue();
@@ -396,7 +404,9 @@ function tunable(ctx, key) {
 
 class UtilityAgent extends Agent {
   constructor(id, name, opts = {}) {
-    super(id, 'utility', 1000, 3, name);
+    const cash      = opts.cash      != null ? opts.cash      : 1000;
+    const inventory = opts.inventory != null ? opts.inventory : 3;
+    super(id, 'utility', cash, inventory, name);
     this.riskPref       = opts.riskPref       || 'neutral';
     this.biasMode       = opts.biasMode       || 'none';
     this.biasAmount     = opts.biasAmount     || 0;
@@ -788,47 +798,166 @@ function distributeRiskPrefs(total, pct) {
   return seq;
 }
 
-/*
- * buildAgentsFromMix — construct a population from a { F, T, R, E, U } count
- * spec. Fundamentalist/Trend/Random/Experienced agents are instantiated
- * with sequential names (F1, F2, T1, …). Utility slots cycle through the
- * fixed U1–U6 strategy cube so the deliberate variety (bias/deception/
- * belief modes) is preserved, but each slot's riskPref is overridden
- * from the caller-supplied riskMix composition so the Risk preferences
- * panel directly drives how many loving/neutral/averse U agents exist.
+/* =====================================================================
+   Sampling stage — names + endowments
+
+   Before the simulation starts, the population is drawn from a mix
+   (counts by type) into a flat list of per-agent "specs". Each spec
+   carries a display name (drawn from AGENT_NAMES without replacement),
+   a starting cash + inventory pair (drawn from ENDOWMENT_DEFAULT), and
+   the strategy metadata needed to instantiate the agent later. The UI
+   lets the user review this list and edit individual endowments
+   between runs; buildAgentsFromSpecs then turns the (possibly edited)
+   spec array into live agent objects.
+
+   Sampling uses a dedicated RNG derived from the main seed, so editing
+   endowments and re-running keeps the *engine* RNG state identical
+   across runs with and without a re-sample.
+   ===================================================================== */
+
+const AGENT_NAMES = [
+  'Alma','Bruno','Cass','Dina','Eli','Fiona','Gus','Hana',
+  'Igor','Juno','Kofi','Lena','Milo','Nora','Otis','Petra',
+  'Quinn','Remy','Sage','Tam','Uma','Vera','Wren','Xena',
+  'Yara','Zane','Axel','Bria','Cleo','Dov','Esme','Finn',
+  'Gia','Hugo','Ivy','Joss','Knox','Luna','Mona','Neo',
+  'Oki','Pax','Rhea','Sky','Tavi','Uli','Vic','Wim',
+  'Xio','Yui','Zev','Ash','Bay','Cora','Dax','Eno',
+];
+
+const ENDOWMENT_DEFAULT = {
+  cashMin: 800,
+  cashMax: 1200,
+  invMin:  2,
+  invMax:  4,
+};
+
+function pickNames(n, rng) {
+  const pool = AGENT_NAMES.slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(pool[i % pool.length]);
+  return out;
+}
+
+function sampleEndowment(rng, dist) {
+  const d = dist || ENDOWMENT_DEFAULT;
+  const cash = Math.round(d.cashMin + rng() * (d.cashMax - d.cashMin));
+  const span = Math.max(0, d.invMax - d.invMin);
+  const inventory = d.invMin + Math.floor(rng() * (span + 1));
+  return { cash, inventory };
+}
+
+/**
+ * sampleAgents — draw a list of per-agent specs from a population mix.
+ * Each spec has:
+ *   id, slot, type, typeLabel  — identity and strategy code
+ *   name                       — random personal name
+ *   cash, inventory            — sampled endowment (editable later)
+ *   riskPref/biasMode/...      — utility-agent strategy fields (U only)
  *
- * overrides:
- *   biasAmount      override the per-slot biasAmount for all biased U slots
- *   valuationNoise  override the per-slot valuation noise
- *   forceHonest     collapse every U slot's deceptionMode to 'honest'
- *   riskMix         {loving, neutral, averse} percentages (sum ≈ 100)
+ * options.riskMix    {loving, neutral, averse} — drives U-agent riskPref
+ * options.endowment  override ENDOWMENT_DEFAULT ({cashMin,cashMax,invMin,invMax})
  */
-function buildAgentsFromMix(mix, overrides = {}) {
-  const out = {};
+function sampleAgents(mix, rng, options = {}) {
+  const dist = options.endowment || ENDOWMENT_DEFAULT;
+  const uCount = mix.U || 0;
+  const total =
+    (mix.F || 0) + (mix.T || 0) + (mix.R || 0) + (mix.E || 0) + uCount;
+
+  const names = pickNames(total, rng);
+  const riskSeq = distributeRiskPrefs(uCount, options.riskMix);
+  const specs = [];
   let id = 1;
-  const push = (cls, name, opts) => {
-    if (opts) out[id] = new cls(id, name, opts);
-    else      out[id] = new cls(id, name);
+  let nameIdx = 0;
+
+  const pushBasic = (type, typeCode, index) => {
+    const e = sampleEndowment(rng, dist);
+    specs.push({
+      id, slot: id, type,
+      typeLabel: `${typeCode}${index}`,
+      name:      names[nameIdx++],
+      cash:      e.cash,
+      inventory: e.inventory,
+    });
     id++;
   };
-  for (let i = 0; i < (mix.F || 0); i++) push(Fundamentalist,   'F' + (i + 1));
-  for (let i = 0; i < (mix.T || 0); i++) push(TrendFollower,    'T' + (i + 1));
-  for (let i = 0; i < (mix.R || 0); i++) push(RandomAgent,      'R' + (i + 1));
-  for (let i = 0; i < (mix.E || 0); i++) push(ExperiencedAgent, 'E' + (i + 1));
-  const uCount  = mix.U || 0;
-  const riskSeq = distributeRiskPrefs(uCount, overrides.riskMix);
+
+  for (let i = 0; i < (mix.F || 0); i++) pushBasic('fundamentalist', 'F', i + 1);
+  for (let i = 0; i < (mix.T || 0); i++) pushBasic('trend',         'T', i + 1);
+  for (let i = 0; i < (mix.R || 0); i++) pushBasic('random',        'R', i + 1);
+  for (let i = 0; i < (mix.E || 0); i++) pushBasic('experienced',   'E', i + 1);
+
   for (let i = 0; i < uCount; i++) {
-    const base = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
+    const slot  = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
     const cycle = Math.floor(i / UTILITY_SLOTS.length);
-    const opts = Object.assign({}, base);
-    if (riskSeq.length) opts.riskPref = riskSeq[i];
-    if (overrides.forceHonest) opts.deceptionMode = 'honest';
-    if (overrides.biasAmount != null && opts.biasMode && opts.biasMode !== 'none') {
-      opts.biasAmount = overrides.biasAmount;
+    const e = sampleEndowment(rng, dist);
+    specs.push({
+      id, slot: id, type: 'utility',
+      typeLabel:     cycle > 0 ? `${slot.name}·${cycle + 1}` : slot.name,
+      name:          names[nameIdx++],
+      cash:          e.cash,
+      inventory:     e.inventory,
+      riskPref:      riskSeq.length ? riskSeq[i] : slot.riskPref,
+      biasMode:      slot.biasMode,
+      biasAmount:    slot.biasAmount,
+      deceptionMode: slot.deceptionMode,
+      beliefMode:    slot.beliefMode,
+    });
+    id++;
+  }
+  return specs;
+}
+
+/**
+ * buildAgentsFromSpecs — instantiate concrete Agent objects from a
+ * spec array produced (and possibly edited) via sampleAgents.
+ *
+ * overrides:
+ *   biasAmount      override per-slot biasAmount for all biased U slots
+ *   valuationNoise  override per-slot valuation noise
+ *   forceHonest     collapse every U slot's deceptionMode to 'honest'
+ */
+function buildAgentsFromSpecs(specs, overrides = {}) {
+  const out = {};
+  for (const s of specs) {
+    const cash = s.cash != null ? s.cash : 1000;
+    const inv  = s.inventory != null ? s.inventory : 3;
+    let agent;
+    switch (s.type) {
+      case 'fundamentalist':
+        agent = new Fundamentalist(s.id, s.name, cash, inv); break;
+      case 'trend':
+        agent = new TrendFollower(s.id, s.name, cash, inv);  break;
+      case 'random':
+        agent = new RandomAgent(s.id, s.name, cash, inv);    break;
+      case 'experienced':
+        agent = new ExperiencedAgent(s.id, s.name, cash, inv); break;
+      case 'utility': {
+        const opts = {
+          cash, inventory: inv,
+          riskPref:       s.riskPref,
+          biasMode:       s.biasMode,
+          biasAmount:     s.biasAmount,
+          deceptionMode:  s.deceptionMode,
+          beliefMode:     s.beliefMode,
+        };
+        if (overrides.forceHonest) opts.deceptionMode = 'honest';
+        if (overrides.biasAmount != null && opts.biasMode && opts.biasMode !== 'none') {
+          opts.biasAmount = overrides.biasAmount;
+        }
+        if (overrides.valuationNoise != null) opts.valuationNoise = overrides.valuationNoise;
+        agent = new UtilityAgent(s.id, s.name, opts);
+        break;
+      }
+      default:
+        continue;
     }
-    if (overrides.valuationNoise != null) opts.valuationNoise = overrides.valuationNoise;
-    const name = cycle > 0 ? `${base.name}·${cycle + 1}` : base.name;
-    push(UtilityAgent, name, opts);
+    agent.typeLabel = s.typeLabel;
+    out[s.id] = agent;
   }
   return out;
 }

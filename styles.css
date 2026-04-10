@@ -474,6 +474,83 @@ body:not(.extended) .ext-only { display: none !important; }
 .agent-card.random         { border-left: 2px solid var(--muted); }
 .agent-card.experienced    { border-left: 2px solid var(--volume); }
 
+/* Agents-panel header: title + Resample button inline, stage label
+   under the title. In preview mode the panel picks up an outline to
+   signal that the endowment fields are editable. */
+.panel-agents .agents-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.panel-agents .agents-header h2 {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.panel-agents .stage-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--fv);
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 179, 71, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 179, 71, 0.08);
+}
+.panel-agents .stage-label.live {
+  color: var(--volume);
+  border-color: rgba(126, 214, 165, 0.35);
+  background: rgba(126, 214, 165, 0.08);
+}
+#btn-resample {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s;
+}
+#btn-resample:hover  { background: #232a3d; border-color: var(--border-hi); }
+#btn-resample:active { transform: translateY(1px); }
+
+.panel-agents.preview {
+  outline: 1px dashed rgba(255, 179, 71, 0.30);
+  outline-offset: -1px;
+}
+
+/* Inline editable endowment fields — shown only in the pre-run
+   preview, right-aligned to match the read-only metric-val layout. */
+.agent-card .endow-input {
+  width: 64px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.agent-card .endow-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel2);
+}
+.agent-card .endow-input::-webkit-outer-spin-button,
+.agent-card .endow-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ---------- Feed ---------- */
 #trade-feed {
   list-style: none;

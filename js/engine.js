@@ -238,6 +238,7 @@ class Engine {
       agentState[id] = {
         id:         a.id,
         type:       a.type,
+        typeLabel:  a.typeLabel,
         name:       a.displayName,
         cash:       Math.round(a.cash * 100) / 100,
         inventory:  a.inventory,
