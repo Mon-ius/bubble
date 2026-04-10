@@ -29,23 +29,21 @@ const UI = {
     experienced:    'Experienced',
     utility:        'Utility',
   },
-  // Paper-symbol cross-reference for each utility-agent risk preference.
-  // Matches the functionals listed in note 8 of the agents panel and in
-  // the Lopez-Lira (2025) TradeDecisionSchema discussion.
-  _riskSymbol: {
-    loving:  'U(w) = w²',
-    neutral: 'U(w) = w',
-    averse:  'U(w) = √w',
+  // Paper-symbol cross-reference for each utility-agent risk preference
+  // and each classic strategy type. Both maps key into Sym (js/mathml.js),
+  // so every symbol rendered here goes through the same MathML source of
+  // truth as the static HTML notes and figure captions.
+  _riskSym: {
+    loving:  'uLoving',
+    neutral: 'uNeutral',
+    averse:  'uAverse',
   },
-  // Paper-symbol cross-reference for classic (non-utility) strategy
-  // types. The single-letter notation is the one used throughout the
-  // Parameters panel (Fundamentalist=F, Trend=T, Random=R, Experienced=E).
-  _typeSymbol: {
-    fundamentalist: 'i ∈ F',
-    trend:          'i ∈ T',
-    random:         'i ∈ R',
-    experienced:    'i ∈ E',
-    utility:        'i ∈ U',
+  _typeSym: {
+    fundamentalist: 'inF',
+    trend:          'inT',
+    random:         'inR',
+    experienced:    'inE',
+    utility:        'inU',
   },
 
   // Canvas-time theme cache. Populated by refreshTheme() which reads
@@ -231,16 +229,18 @@ const UI = {
       const subtitle = isUtil
         ? (UI._riskLabel[a.riskPref] || a.riskPref)
         : (UI._typeLabel[a.type] || a.type);
-      const subtitleSym = isUtil
-        ? (UI._riskSymbol[a.riskPref] || '')
-        : (UI._typeSymbol[a.type] || '');
+      const subtitleKey = isUtil
+        ? UI._riskSym[a.riskPref]
+        : UI._typeSym[a.type];
+      const subtitleSym = (subtitleKey && window.Sym) ? window.Sym[subtitleKey] : '';
+      const sym = window.Sym || {};
       const displayName = a.name || ('A' + a.id);
       // Only the live-updating numeric values. The agent's risk label
       // already sits in the subtitle, so repeating it in the metrics
       // block would look inconsistent with the single-label rule.
       const extraRows = isUtil ? `
-          <span class="metric">Subj V <em class="sym">V̂<sub>i,t</sub></em></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
-          <span class="metric">Report <em class="sym">Ṽ<sub>i,t</sub></em></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
+          <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
+          <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
@@ -258,18 +258,18 @@ const UI = {
           <div class="agent-header">
             <div class="agent-head-left">
               <div class="agent-name">${displayName}</div>
-              <div class="agent-type">${subtitle}${subtitleSym ? ` <em class="sym">${subtitleSym}</em>` : ''}</div>
+              <div class="agent-type">${subtitle}${subtitleSym ? ` <span class="sym">${subtitleSym}</span>` : ''}</div>
             </div>
             <div class="agent-head-right">
               <span class="last-action ${action}">${action}</span>
-              <em class="sym action-sym">a<sub>i,t</sub></em>
+              <span class="sym action-sym">${sym.action || ''}</span>
             </div>
           </div>
           <div class="metrics">
-            <span class="metric">Cash <em class="sym">c<sub>i,t</sub></em></span>    <span class="metric-val">${cashCell}</span>
-            <span class="metric">Shares <em class="sym">q<sub>i,t</sub></em></span>  <span class="metric-val">${invCell}</span>
-            <span class="metric">Wealth <em class="sym">w<sub>i,t</sub></em></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
-            <span class="metric">P&amp;L <em class="sym">Δw<sub>i,t</sub></em></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
+            <span class="metric">Cash <span class="sym">${sym.cash || ''}</span></span>    <span class="metric-val">${cashCell}</span>
+            <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>
+            <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
+            <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
           </div>
         </div>`;
     }).join('');
@@ -1119,21 +1119,22 @@ const UI = {
     }
 
     const fmt = (x, d = 2) => x == null ? '—' : x.toFixed(d);
+    const sym = window.Sym || {};
     el.innerHTML = `
       <div class="metric-group-label">Market quality · Dufwenberg, Lindqvist &amp; Moore (2005)</div>
       <div class="metric-row"><span>Haessel R²&nbsp;&nbsp;<em>1 − Σ(P̄−FV)² / Σ(P̄−P̄̄)²</em></span><strong>${fmt(haessel, 3)}</strong></div>
       <div class="metric-row"><span>Norm. absolute price deviation&nbsp;&nbsp;<em>Σ|P−FV|·q / Q</em></span><strong>${fmt(normAbsDev, 2)}</strong></div>
-      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>Σ|P̄<sub>t</sub>−FV<sub>t</sub>| / Q</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
+      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>${sym.normAvgDev || ''}</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
       <div class="metric-row"><span>Price amplitude&nbsp;&nbsp;<em>(max−min)(P̄−FV) / FV₁</em></span><strong>${fmt(amplitude, 3)}</strong></div>
       <div class="metric-row"><span>Turnover&nbsp;&nbsp;<em>Σ q / Q</em></span><strong>${fmt(turnover, 3)}</strong></div>
-      <div class="metric-row"><span>P / FV ratio&nbsp;&nbsp;<em>ρ (Lopez-Lira 2025)</em></span><strong>${fmt(rho, 3)}</strong></div>
+      <div class="metric-row"><span>P / FV ratio&nbsp;&nbsp;<em>${sym.rhoT || ''} &nbsp;(Lopez-Lira 2025)</em></span><strong>${fmt(rho, 3)}</strong></div>
 
       <div class="metric-group-label">Utility-agent welfare &amp; deception</div>
-      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>⟨V̂<sub>i</sub>⟩</em></span><strong>${fmt(avgV)}</strong></div>
-      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>Σ V̂<sub>i</sub>·q<sub>i</sub> / (V̂* · Q)</em></span><strong>${fmt(efficiency, 3)}</strong></div>
-      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>Σ u<sub>i</sub>(w<sub>t</sub>)</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
+      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>${sym.avgVbar || ''}</em></span><strong>${fmt(avgV)}</strong></div>
+      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>${sym.efficiencyEq || ''}</em></span><strong>${fmt(efficiency, 3)}</strong></div>
+      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>${sym.totalWelfareEq || ''}</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
       <div class="metric-row"><span>|P − ⟨V̂⟩|</span><strong>${fmt(pDev)}</strong></div>
-      <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨|Ṽ − V̂|⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
+      <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨${sym.lieGap || ''}⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
       <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
     `;
   },

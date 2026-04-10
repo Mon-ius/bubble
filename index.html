@@ -126,21 +126,21 @@
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. U(w) = (w/w₀)² — strictly convex, so upside outcomes dominate expected-utility scoring. These agents bid aggressively and overshoot fundamental value; a high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
             <div class="param-head">
-              <label for="p-risk-loving">&alpha;<sub>L</sub> · Risk-loving (U = w²)</label>
+              <label for="p-risk-loving"><span data-sym="alphaL"></span> · Risk-loving (<span data-sym="uLoving"></span>)</label>
               <span class="pval" id="v-risk-loving">33%</span>
             </div>
             <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. U(w) = w/w₀ — linear. These agents price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
             <div class="param-head">
-              <label for="p-risk-neutral">&alpha;<sub>N</sub> · Risk-neutral (U = w)</label>
+              <label for="p-risk-neutral"><span data-sym="alphaN"></span> · Risk-neutral (<span data-sym="uNeutral"></span>)</label>
               <span class="pval" id="v-risk-neutral">34%</span>
             </div>
             <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
           </div>
           <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. U(w) = √(w/w₀) — strictly concave, so downside losses dominate expected-utility scoring. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
             <div class="param-head">
-              <label for="p-risk-averse">&alpha;<sub>A</sub> · Risk-averse (U = √w)</label>
+              <label for="p-risk-averse"><span data-sym="alphaA"></span> · Risk-averse (<span data-sym="uAverse"></span>)</label>
               <span class="pval" id="v-risk-averse">33%</span>
             </div>
             <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
@@ -227,14 +227,14 @@
     </div>
     <div id="agents-grid" class="agents-grid"></div>
     <div class="agent-notes">
-      <p><strong>Note:</strong> <em>Cash</em> — initial experimental-currency endowment (<em>w<sub>0</sub><sup>c</sup></em>, in cents), used to finance bids and grown by realized sales plus end-of-period dividend receipts. In Dufwenberg, Lindqvist &amp; Moore (2005) subjects were seeded with either 200¢ or 600¢; this simulator draws each slot uniformly from [800, 1200] ¢.</p>
-      <p><strong>Note:</strong> <em>Shares</em> — initial holding of the finite-life asset (<em>q<sub>0</sub></em>). Each held share pays a random dividend drawn from {0, 2μ<sub>d</sub>} with equal probability at the end of every trading period (DLM 2005), so the theoretical risk-neutral fundamental value at the start of period <em>t</em> is <em>FV<sub>t</sub> = (T − t + 1) · μ<sub>d</sub></em>. DLM endowment classes held 6 or 2 shares; this simulator draws from {2, 3, 4}.</p>
-      <p><strong>Note:</strong> <em>Wealth</em> (<em>w<sub>t</sub></em>) — mark-to-fundamental total wealth <em>w<sub>t</sub> = cash<sub>t</sub> + q<sub>t</sub> · FV<sub>t</sub></em>, or for Utility agents <em>w<sub>t</sub> = cash<sub>t</sub> + q<sub>t</sub> · V̂<sub>i,t</sub></em> (Lopez-Lira 2025). The Normalized Agent Utility plot is <em>u<sub>i,t</sub> = U<sub>i</sub>(w<sub>t</sub>) / U<sub>i</sub>(w<sub>0</sub>)</em>.</p>
-      <p><strong>Note:</strong> <em>P&amp;L</em> — running change in total wealth <em>w<sub>t</sub> − w<sub>0</sub></em>, reported in experimental cents. Positive values render in green, losses in red. Aggregated across all agents, P&amp;L equals the cumulative dividends paid so the market is zero-sum up to the dividend stream, as in the Smith–Suchanek–Williams design replicated by DLM.</p>
-      <p><strong>Note:</strong> <em>Subj V</em> (<em>V̂<sub>i,t</sub></em>) — the Utility agent's private subjective valuation per share, updated each tick from its prior, persistent bias, per-tick noise, and trust-weighted peer messages. Corresponds to the <em>valuation</em> field in Lopez-Lira's (2025) TradeDecisionSchema.</p>
-      <p><strong>Note:</strong> <em>Report</em> (<em>Ṽ<sub>i,t</sub></em>) — the valuation the Utility agent broadcasts to peers in its messages. Under a deceptive strategy <em>Ṽ<sub>i,t</sub> ≠ V̂<sub>i,t</sub></em>; the magnitude of the gap drives the Trust Matrix EMA update and the mean-lie-magnitude statistic in the Experiment Metrics table.</p>
-      <p><strong>Note:</strong> <em>Last action</em> (<em>a<sub>i,t</sub></em> ∈ {bid, ask, hold}) — the most recent decision taken by agent <em>i</em>, displayed as a coloured tag on the card. For Utility agents this is the argmax over candidate orders scored under the agent's expected-utility functional (Lopez-Lira 2025).</p>
-      <p><strong>Note:</strong> <em>Subtitle</em> — for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced); for Utility agents, the risk preference. <em>Risk-loving</em> uses <em>U(w) = w²</em> (convex, upside-seeking), <em>Risk-neutral</em> uses <em>U(w) = w</em> (linear expected value), and <em>Risk-averse</em> uses <em>U(w) = √w</em> (concave, downside-sensitive). The risk functional scores every candidate action's expected utility.</p>
+      <p><strong>Note:</strong> <em>Cash</em> <span data-sym="cash"></span> — experimental-currency balance held by agent <em>i</em> at tick <em>t</em>, used to finance bids and grown by realized sales plus end-of-period dividend receipts. The pre-run editable value is the initial endowment <span data-sym="cash0"></span>; in Dufwenberg, Lindqvist &amp; Moore (2005) subjects were seeded with either 200¢ or 600¢, while this simulator draws each slot uniformly from [800, 1200] ¢.</p>
+      <p><strong>Note:</strong> <em>Shares</em> <span data-sym="shares"></span> — holding of the finite-life asset at tick <em>t</em> (initial endowment <span data-sym="shares0"></span>). Each held share pays a random dividend drawn from {0, 2<span data-sym="muD"></span>} at the end of every trading period (DLM 2005), so the theoretical risk-neutral fundamental value at the start of period <em>t</em> is <span data-sym="fvDef"></span>. DLM endowment classes held 6 or 2 shares; this simulator draws from {2, 3, 4}.</p>
+      <p><strong>Note:</strong> <em>Wealth</em> <span data-sym="wealth"></span> — mark-to-fundamental total wealth, defined as <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="fv"></span>, or for Utility agents as <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="subjV"></span> (Lopez-Lira 2025). The Normalized Agent Utility plot is <span data-sym="uDef"></span>.</p>
+      <p><strong>Note:</strong> <em>P&amp;L</em> <span data-sym="pnl"></span> — running change in total wealth relative to the initial endowment <span data-sym="wealth0"></span>, reported in experimental cents. Positive values render in green, losses in red. Aggregated across all agents, P&amp;L equals the cumulative dividends paid so the market is zero-sum up to the dividend stream, as in the Smith–Suchanek–Williams design replicated by DLM.</p>
+      <p><strong>Note:</strong> <em>Subj V</em> <span data-sym="subjV"></span> — the Utility agent's private subjective valuation per share, updated each tick from its prior, persistent bias, per-tick noise, and trust-weighted peer messages. Corresponds to the <em>valuation</em> field in Lopez-Lira's (2025) TradeDecisionSchema.</p>
+      <p><strong>Note:</strong> <em>Report</em> <span data-sym="reportV"></span> — the valuation the Utility agent broadcasts to peers in its messages. Under a deceptive strategy <span data-sym="reportV"></span> ≠ <span data-sym="subjV"></span>; the lie-gap magnitude <span data-sym="lieGap"></span> drives the Trust Matrix EMA update and the mean-lie-magnitude statistic in the Experiment Metrics table.</p>
+      <p><strong>Note:</strong> <em>Last action</em> <span data-sym="action"></span> — the most recent decision taken by agent <em>i</em> at tick <em>t</em>, one of {bid, ask, hold}, displayed as a coloured tag on the card. For Utility agents this is the argmax over candidate orders scored under the agent's expected-utility functional <span data-sym="uOfW"></span> (Lopez-Lira 2025).</p>
+      <p><strong>Note:</strong> <em>Subtitle</em> — for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced) together with set membership (<span data-sym="inF"></span>, <span data-sym="inT"></span>, <span data-sym="inR"></span>, <span data-sym="inE"></span>). For Utility agents, the risk preference and its functional: <em>Risk-loving</em> <span data-sym="uLoving"></span> (convex, upside-seeking), <em>Risk-neutral</em> <span data-sym="uNeutral"></span> (linear expected value), and <em>Risk-averse</em> <span data-sym="uAverse"></span> (concave, downside-sensitive).</p>
     </div>
   </section>
 
@@ -248,15 +248,15 @@
       <span class="fig-num">Figure 1</span>
       <h2 class="fig-title">Transaction Price Trajectory versus Risk-Neutral Fundamental Value</h2>
     </header>
-    <div class="fig-eq">FV<sub>t</sub> = (T − t + 1) · μ<sub>d</sub> <em>risk-neutral fundamental value at the start of period t</em></div>
+    <div class="fig-eq"><span data-sym="fvDef"></span> <em>risk-neutral fundamental value at the start of period t</em></div>
     <canvas id="chart-price"></canvas>
     <figcaption class="fig-caption">
-      <p>Tick-level transaction prices <strong>P<sub>t</sub></strong> (accent line, one dot per executed trade) plotted against the deterministic step function <strong>FV<sub>t</sub></strong> (amber dashes). Alternating vertical bands delimit the ten trading periods. In the Dufwenberg, Lindqvist &amp; Moore (2005) design a rational market should track the step line exactly; persistent excursions above it are the bubble and the crash toward <em>FV<sub>T</sub> = μ<sub>d</sub></em> in the final period is the collapse.</p>
+      <p>Tick-level transaction prices <span data-sym="price"></span> (accent line, one dot per executed trade) plotted against the deterministic step function <span data-sym="fv"></span> (amber dashes). Alternating vertical bands delimit the ten trading periods. In the Dufwenberg, Lindqvist &amp; Moore (2005) design a rational market should track the step line exactly; persistent excursions above it are the bubble and the crash toward <span data-sym="fvT"></span> = <span data-sym="muD"></span> in the final period is the collapse.</p>
       <dl class="fig-symbols">
-        <dt>P<sub>t</sub></dt><dd>observed transaction price at tick <em>t</em></dd>
-        <dt>FV<sub>t</sub></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
-        <dt>μ<sub>d</sub></dt><dd>expected per-period dividend (draws uniformly from {0, 2μ<sub>d</sub>})</dd>
-        <dt>T</dt><dd>terminal period of the finite-life asset</dd>
+        <dt><span data-sym="price"></span></dt><dd>observed transaction price at tick <em>t</em></dd>
+        <dt><span data-sym="fv"></span></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
+        <dt><span data-sym="muD"></span></dt><dd>expected per-period dividend (drawn uniformly from {0, 2<span data-sym="muD"></span>})</dd>
+        <dt><span data-sym="bigT"></span></dt><dd>terminal period of the finite-life asset</dd>
       </dl>
     </figcaption>
   </section>
@@ -280,13 +280,13 @@
       <span class="fig-num">Figure 2</span>
       <h2 class="fig-title">Mispricing Magnitude and Price-to-Fundamental Ratio</h2>
     </header>
-    <div class="fig-eq">|P<sub>t</sub> − FV<sub>t</sub>|  ·  ρ<sub>t</sub> = P<sub>t</sub> / FV<sub>t</sub> <em>absolute and relative mispricing</em></div>
+    <div class="fig-eq"><span data-sym="absMispricing"></span> · <span data-sym="rhoDef"></span> <em>absolute and relative mispricing</em></div>
     <canvas id="chart-bubble"></canvas>
     <figcaption class="fig-caption">
-      <p>Absolute departure of the observed price from the theoretical fundamental value, filled as a red area. In Lopez-Lira (2025) the same information is expressed as the price-to-fundamental ratio <strong>ρ<sub>t</sub></strong>: values above one mark an overvaluation regime, values below one mark an undervaluation regime, and ρ ≈ 1 is consistent with rational pricing. The Experiment Metrics panel reports the normalized-deviation and amplitude statistics derived from this series.</p>
+      <p>Absolute departure of the observed price from the theoretical fundamental value, filled as a red area. In Lopez-Lira (2025) the same information is expressed as the price-to-fundamental ratio <span data-sym="rhoT"></span>: values above one mark an overvaluation regime, values below one mark an undervaluation regime, and <span data-sym="rhoT"></span> ≈ 1 is consistent with rational pricing. The Experiment Metrics panel reports the normalized-deviation and amplitude statistics derived from this series.</p>
       <dl class="fig-symbols">
-        <dt>|P<sub>t</sub> − FV<sub>t</sub>|</dt><dd>absolute mispricing at tick <em>t</em></dd>
-        <dt>ρ<sub>t</sub></dt><dd>price-to-fundamental ratio (Lopez-Lira 2025)</dd>
+        <dt><span data-sym="absMispricing"></span></dt><dd>absolute mispricing at tick <em>t</em></dd>
+        <dt><span data-sym="rhoT"></span></dt><dd>price-to-fundamental ratio (Lopez-Lira 2025)</dd>
       </dl>
     </figcaption>
   </section>
@@ -296,12 +296,12 @@
       <span class="fig-num">Figure 3</span>
       <h2 class="fig-title">Trade Volume per Period</h2>
     </header>
-    <div class="fig-eq">V<sub>t</sub> = Σ<sub>trades ∈ t</sub> q <em>shares transacted in period t</em></div>
+    <div class="fig-eq"><span data-sym="volDef"></span> <em>shares transacted in period t</em></div>
     <canvas id="chart-volume"></canvas>
     <figcaption class="fig-caption">
       <p>Sum of share quantities exchanged within each trading period. High and persistent bars indicate active speculation; the classic Smith–Suchanek–Williams bubble is typically associated with a volume peak in the inflation phase followed by a cliff as the asset approaches expiry.</p>
       <dl class="fig-symbols">
-        <dt>V<sub>t</sub></dt><dd>total share volume traded in period <em>t</em></dd>
+        <dt><span data-sym="volT"></span></dt><dd>total share volume traded in period <em>t</em></dd>
         <dt>q</dt><dd>order quantity of a single executed trade</dd>
       </dl>
     </figcaption>
@@ -327,7 +327,7 @@
       <span class="fig-num">Figure 5</span>
       <h2 class="fig-title">Agent Action Timeline</h2>
     </header>
-    <div class="fig-eq">a<sub>i,t</sub> ∈ { bid, ask, hold } <em>per-tick agent decision</em></div>
+    <div class="fig-eq"><span data-sym="actionSet"></span> <em>per-tick agent decision</em></div>
     <canvas id="chart-timeline"></canvas>
     <div class="legend">
       <span><i class="lg bid"></i>Bid</span>
@@ -338,7 +338,7 @@
     <figcaption class="fig-caption">
       <p>One row per agent, one mark per decision. Column colour encodes the action type and a small accent dot below the mark records whether the submitted order was filled on the same tick. Contiguous green runs identify accumulators; contiguous red runs identify distributors; holds are the market's waiting population.</p>
       <dl class="fig-symbols">
-        <dt>a<sub>i,t</sub></dt><dd>action taken by agent <em>i</em> at tick <em>t</em></dd>
+        <dt><span data-sym="action"></span></dt><dd>action taken by agent <em>i</em> at tick <em>t</em></dd>
       </dl>
     </figcaption>
   </section>
@@ -353,14 +353,14 @@
       <span class="fig-num">Figure 6</span>
       <h2 class="fig-title">Subjective Valuation: True versus Reported</h2>
     </header>
-    <div class="fig-eq">V̂<sub>i,t</sub>  vs  Ṽ<sub>i,t</sub>  ·  lie gap = Ṽ<sub>i,t</sub> − V̂<sub>i,t</sub> <em>private belief versus broadcast claim</em></div>
+    <div class="fig-eq"><span data-sym="valCompare"></span> · lie gap = <span data-sym="lieGap"></span> <em>private belief versus broadcast claim</em></div>
     <canvas id="chart-valuation"></canvas>
     <figcaption class="fig-caption">
-      <p>Solid lines trace each Utility agent's private belief <strong>V̂<sub>i,t</sub></strong> over time. Filled dots mark broadcast messages carrying a reported valuation <strong>Ṽ<sub>i,t</sub></strong>; deceptive reports are ringed red and connected to the sender's true belief by a dotted segment — the vertical distance between ring and line is the lie gap. The amber step line is the fundamental value for reference.</p>
+      <p>Solid lines trace each Utility agent's private belief <span data-sym="subjV"></span> over time. Filled dots mark broadcast messages carrying a reported valuation <span data-sym="reportV"></span>; deceptive reports are ringed red and connected to the sender's true belief by a dotted segment — the vertical distance between ring and line is the lie gap. The amber step line is the fundamental value for reference.</p>
       <dl class="fig-symbols">
-        <dt>V̂<sub>i,t</sub></dt><dd>agent <em>i</em>'s private (true) subjective valuation at tick <em>t</em></dd>
-        <dt>Ṽ<sub>i,t</sub></dt><dd>valuation reported in a broadcast message</dd>
-        <dt>lie gap</dt><dd>| Ṽ<sub>i,t</sub> − V̂<sub>i,t</sub> | for deceptive messages</dd>
+        <dt><span data-sym="subjV"></span></dt><dd>agent <em>i</em>'s private (true) subjective valuation at tick <em>t</em></dd>
+        <dt><span data-sym="reportV"></span></dt><dd>valuation reported in a broadcast message</dd>
+        <dt><span data-sym="lieGap"></span></dt><dd>lie gap for deceptive messages</dd>
       </dl>
     </figcaption>
   </section>
@@ -381,13 +381,13 @@
       <span class="fig-num">Figure 7</span>
       <h2 class="fig-title">Normalized Agent Utility over Time</h2>
     </header>
-    <div class="fig-eq">u<sub>i,t</sub> = U<sub>i</sub>(w<sub>t</sub>) / U<sub>i</sub>(w<sub>0</sub>) <em>risk-adjusted wealth, normalized to initial endowment</em></div>
+    <div class="fig-eq"><span data-sym="uDef"></span> <em>risk-adjusted wealth, normalized to initial endowment</em></div>
     <canvas id="chart-utility"></canvas>
     <figcaption class="fig-caption">
-      <p>Per-agent expected utility <em>U<sub>i</sub></em> evaluated at the running wealth <em>w<sub>t</sub></em> = cash<sub>t</sub> + inventory<sub>t</sub> · FV<sub>t</sub>, divided by the agent's own initial utility so every trajectory starts at 1.0. Lines above the dashed baseline indicate positive risk-adjusted PnL; lines below indicate loss. The risk preference attached to each agent (convex, linear, concave) determines how aggressively a given wealth change is penalised or rewarded.</p>
+      <p>Per-agent expected utility <span data-sym="uOfW"></span> evaluated at the running wealth <span data-sym="wealth"></span> = <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="fv"></span>, divided by the agent's own initial utility <span data-sym="wealth0"></span> so every trajectory starts at 1.0. Lines above the dashed baseline indicate positive risk-adjusted PnL; lines below indicate loss. The risk preference attached to each agent (convex, linear, concave) determines how aggressively a given wealth change is penalised or rewarded.</p>
       <dl class="fig-symbols">
-        <dt>U<sub>i</sub>(w)</dt><dd>risk-typed utility: <em>w²</em> (loving), <em>w</em> (neutral), <em>√w</em> (averse)</dd>
-        <dt>w<sub>t</sub></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
+        <dt><span data-sym="uOfW"></span></dt><dd>risk-typed utility: <span data-sym="uLoving"></span>, <span data-sym="uNeutral"></span>, <span data-sym="uAverse"></span></dd>
+        <dt><span data-sym="wealth"></span></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
       </dl>
     </figcaption>
   </section>
@@ -397,13 +397,13 @@
       <span class="fig-num">Figure 8</span>
       <h2 class="fig-title">Asset Ownership over Time</h2>
     </header>
-    <div class="fig-eq">q<sub>i,t</sub>  ·  Σ<sub>i</sub> q<sub>i,t</sub> = Q <em>shares held; total supply conserved</em></div>
+    <div class="fig-eq"><span data-sym="ownershipEq"></span> <em>shares held; total supply conserved</em></div>
     <canvas id="chart-ownership"></canvas>
     <figcaption class="fig-caption">
-      <p>Stacked area of each agent's inventory across ticks. Because the double auction conserves shares, the total height is always the aggregate endowment <em>Q</em>. Widening bands identify agents who are accumulating, shrinking bands identify distributors, and any dramatic redistribution in the last few periods is typically the experienced trader liquidating before the asset expires worthless.</p>
+      <p>Stacked area of each agent's inventory across ticks. Because the double auction conserves shares, the total height is always the aggregate endowment <span data-sym="bigQ"></span>. Widening bands identify agents who are accumulating, shrinking bands identify distributors, and any dramatic redistribution in the last few periods is typically the experienced trader liquidating before the asset expires worthless.</p>
       <dl class="fig-symbols">
-        <dt>q<sub>i,t</sub></dt><dd>shares held by agent <em>i</em> at tick <em>t</em></dd>
-        <dt>Q</dt><dd>total shares outstanding (conserved across time)</dd>
+        <dt><span data-sym="shares"></span></dt><dd>shares held by agent <em>i</em> at tick <em>t</em></dd>
+        <dt><span data-sym="bigQ"></span></dt><dd>total shares outstanding (conserved across time)</dd>
       </dl>
     </figcaption>
   </section>
@@ -413,7 +413,7 @@
       <span class="fig-num">Figure 9</span>
       <h2 class="fig-title">Broadcast Message Log</h2>
     </header>
-    <div class="fig-eq">m<sub>i→*,t</sub> = ( signal, Ṽ<sub>i,t</sub> ) <em>per-tick public broadcast to all other agents</em></div>
+    <div class="fig-eq"><span data-sym="msgDef"></span> <em>per-tick public broadcast to all other agents</em></div>
     <canvas id="chart-messages"></canvas>
     <div class="legend">
       <span><i class="lg bid"></i>Buy signal</span>
@@ -424,7 +424,7 @@
     <figcaption class="fig-caption">
       <p>One dot per broadcast message, placed on the sender's row at the tick the message was sent. Dot colour encodes the signal (buy/sell/hold) and a red ring flags messages whose reported valuation diverges sufficiently from the sender's private belief to be classified as deceptive by the logger. Reading a column shows the instantaneous rumour mill; reading a row shows each agent's rhetorical stance over time.</p>
       <dl class="fig-symbols">
-        <dt>m<sub>i→*,t</sub></dt><dd>broadcast from agent <em>i</em> to the population at tick <em>t</em></dd>
+        <dt><span data-sym="msgIt"></span></dt><dd>broadcast from agent <em>i</em> to the population at tick <em>t</em></dd>
       </dl>
     </figcaption>
   </section>
@@ -434,12 +434,12 @@
       <span class="fig-num">Figure 10</span>
       <h2 class="fig-title">Pairwise Trust Matrix</h2>
     </header>
-    <div class="fig-eq">T<sub>r→s</sub>  ←  (1 − α) · T<sub>r→s</sub> + α · closeness<sub>r,s</sub> <em>exponential-moving-average update</em></div>
+    <div class="fig-eq"><span data-sym="trustEq"></span> <em>exponential-moving-average update</em></div>
     <canvas id="chart-trust"></canvas>
     <figcaption class="fig-caption">
       <p>Heatmap of receiver-to-sender trust values in [0, 1]. The diagonal is masked. Each off-diagonal cell records how well sender <em>s</em>'s recent valuation claims aligned with the period's volume-weighted average price, as seen by receiver <em>r</em>. Warm rows identify agents who tend to trust broadly; warm columns identify agents whose claims the population finds credible.</p>
       <dl class="fig-symbols">
-        <dt>T<sub>r→s</sub></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
+        <dt><span data-sym="trustRS"></span></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
         <dt>α</dt><dd>trust learning rate (exponential-moving-average weight)</dd>
         <dt>closeness</dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
       </dl>
@@ -462,6 +462,7 @@
   </section>
 </main>
 
+<script data-cfasync="false" src="js/mathml.js"></script>
 <script data-cfasync="false" src="js/utility.js"></script>
 <script data-cfasync="false" src="js/messaging.js"></script>
 <script data-cfasync="false" src="js/market.js"></script>

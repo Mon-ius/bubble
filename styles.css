@@ -94,6 +94,27 @@ body { min-height: 100vh; }
 h1, h2, h3 { margin: 0; font-weight: 600; }
 .muted { color: var(--fg-2); }
 
+/* ---------- Math (native MathML) ----------
+   Every mathematical symbol in the UI flows through js/mathml.js and
+   renders as a <math> element so the browser's native MathML engine
+   handles sub/sup layout, script sizing, and math-font glyph
+   selection. Defining a single math { ... } rule here guarantees the
+   same symbol looks identical on the agent cards, in the notes, in
+   the figure equation strips, in the table, and anywhere else a
+   Sym.* lookup is embedded. Context-specific rules elsewhere only
+   adjust the font-size; never the sub/sup geometry. */
+math {
+  font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math",
+               "TeX Gyre Termes Math", "XITS Math", "STIX",
+               "Iowan Old Style", "Palatino Linotype", Palatino,
+               "Georgia", "Times New Roman", serif;
+  font-size: 1em;
+  font-style: normal;
+  color: inherit;
+  vertical-align: baseline;
+}
+math[display="inline"] { white-space: nowrap; }
+
 /* ---------- Header ---------- */
 .app-header {
   display: flex;
@@ -284,26 +305,20 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   gap: 14px;
   overflow-x: auto;
 }
-/* Subscripts and superscripts need explicit sizing because the
-   default 0.83em + vertical-align baseline offset collapses visibly
-   in monospace and can look literal. Serif italic with larger subs
-   reads like true math display. */
-.panel.figure .fig-eq sub,
-.panel.figure .fig-eq sup {
-  font-size: 0.72em;
-  font-style: italic;
-  line-height: 0;
-  position: relative;
-  vertical-align: baseline;
-}
-.panel.figure .fig-eq sub { top: 0.35em; }
-.panel.figure .fig-eq sup { top: -0.45em; }
+/* The equation strip itself is just a flex row; all math typography
+   (including sub/sup layout and glyph selection) is delegated to the
+   browser's native MathML engine via the <math> tags generated from
+   js/mathml.js. Only the descriptive <em> caption next to the eq is
+   styled here. */
 .panel.figure .fig-eq em {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-style: normal;
   color: var(--fg-3);
   font-size: 10.5px;
   letter-spacing: 0.01em;
+}
+.panel.figure .fig-eq math {
+  font-size: 15px;
 }
 
 .panel.figure canvas { margin: 0; }
@@ -875,33 +890,20 @@ body:not(.extended) .ext-only { display: none !important; }
   gap: 5px;
 }
 .agent-card .metric-val { color: var(--fg-0); font-weight: 600; text-align: right; }
-/* Paper-symbol cross-reference next to each metric label, next to the
-   risk/role subtitle, and under the last-action pill. Uses an italic
-   serif stack so it visually reads as math regardless of the UI font,
-   with explicit sub/sup sizing because the enclosing .metric uses a
-   sans-serif UI font that otherwise shrinks subscripts inconsistently. */
+/* Paper-symbol wrapper. Real math typography (font selection,
+   sub/sup sizing, baseline shift) is delegated to the browser's
+   native MathML engine — this rule only paints the wrapper a muted
+   colour and pins the baseline so the symbol sits next to its
+   English label without stretching the row height. */
 .agent-card .sym {
-  font-style: italic;
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Cambria",
-               "Georgia", "Times New Roman", serif;
-  font-size: 10px;
   color: var(--fg-3);
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
 }
-.agent-card .sym sub,
-.agent-card .sym sup {
-  font-size: 0.72em;
-  line-height: 0;
-  position: relative;
-  vertical-align: baseline;
-  font-style: italic;
-}
-.agent-card .sym sub { top: 0.35em; }
-.agent-card .sym sup { top: -0.45em; }
-.agent-card .action-sym { font-size: 9px; }
+.agent-card .sym math { font-size: 11px; }
+.agent-card .action-sym { }
+.agent-card .action-sym math { font-size: 10px; }
 .agent-card .last-action {
   font-size: 9px;
   padding: 2px 8px;
@@ -1190,15 +1192,9 @@ body:not(.extended) .ext-only { display: none !important; }
   color: var(--fg-3);
   margin-left: 4px;
 }
-#metrics-body .metric-row span em sub,
-#metrics-body .metric-row span em sup {
-  font-size: 0.75em;
-  line-height: 0;
-  position: relative;
-  vertical-align: baseline;
+#metrics-body .metric-row span em math {
+  font-size: 12px;
 }
-#metrics-body .metric-row span em sub { top: 0.3em; }
-#metrics-body .metric-row span em sup { top: -0.45em; }
 #metrics-body .metric-row strong { color: var(--fg-0); text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 #metrics-body .metric-group-label {
   grid-column: 1 / -1;
