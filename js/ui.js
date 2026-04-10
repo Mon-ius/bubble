@@ -111,22 +111,6 @@ const UI = {
       this.resizeCanvases();
       if (window.App) window.App.requestRender();
     });
-
-    // Agents-panel controls: Resample button triggers a fresh name
-    // + endowment draw via App.resample(). The button is always in
-    // the DOM; clicks during a running sim are still safe because
-    // resample() calls reset() which pauses the engine first.
-    const resampleBtn = document.getElementById('btn-resample');
-    if (resampleBtn) {
-      resampleBtn.addEventListener('click', () => {
-        if (window.App && typeof window.App.resample === 'function') {
-          // { fresh: true } bumps the sample salt so this click produces
-          // a different draw; plain resample() from a structural slider
-          // change preserves reproducibility.
-          window.App.resample({ fresh: true });
-        }
-      });
-    }
   },
 
   resizeCanvases() {
@@ -230,11 +214,12 @@ const UI = {
         ? (UI._riskLabel[a.riskPref] || a.riskPref)
         : (UI._typeLabel[a.type] || a.type);
       const displayName = a.name || ('A' + a.id);
+      // Only the live-updating numeric values. The agent's risk label
+      // already sits in the subtitle, so repeating it in the metrics
+      // block would look inconsistent with the single-label rule.
       const extraRows = isUtil ? `
-          <span class="metric">Risk</span>   <span class="metric-val">${a.riskPref}</span>
           <span class="metric">Subj V</span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
-          <span class="metric">Report</span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>
-          <span class="metric">Belief</span> <span class="metric-val">${a.beliefMode}</span>` : '';
+          <span class="metric">Report</span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
@@ -300,7 +285,9 @@ const UI = {
   _toggleAgentStageLabel(on) {
     const h = document.querySelector('.panel-agents .agents-header .stage-label');
     if (!h) return;
-    h.textContent = on ? 'Initial configuration — editable before start' : 'Running — live state';
+    h.textContent = on
+      ? 'Pre-run draft · editable before the simulation starts'
+      : 'Running · live state';
     h.classList.toggle('live', !on);
   },
 

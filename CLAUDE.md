@@ -83,15 +83,17 @@ Each spec carries:
 `App.agentSpecs` caches the current draw. The **Agents** panel shows the
 spec list as editable cards before `tick === 0`; editing cash/inventory
 commits through `App.updateEndowment(id, field, value)` which mutates the
-spec in place and calls `reset()` without re-sampling. Structural changes
-(mix counts, risk shares, seed, preset, defaults) call `App.resample()`
-instead, which nulls the spec cache so `reset()` re-draws against a fresh
-sample RNG. The **Resample** button (agents panel header) is a manual
-shortcut to the same path.
+spec in place and calls `App.rebuild()` — no reseed, no re-sample, the
+edits survive. Structural changes (mix counts, risk shares, total-N)
+and the header's **Reset** button call `App.reset()` instead, which
+rolls a new engine seed via `Math.random()`, nulls the spec cache, and
+delegates to `rebuild()` so a fresh population is drawn against the new
+seed. There is no seed input in the UI and no separate Resample button
+— "start over with different agents" is the default behavior of Reset.
 
 The sample RNG is derived from `seed ^ 0xA5A5A5A5` and is intentionally
 independent of the engine RNG (`makeRNG(seed)`), so endowment edits +
-reset produce the same per-tick trading sequence as a seed-matched run
+rebuild produce the same per-tick trading sequence as a matched run
 without an edit.
 
 When adding a new tunable:

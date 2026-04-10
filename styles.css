@@ -224,130 +224,280 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 body:not(.extended) .ext-only { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
-/* Clickable header: the whole strip toggles .collapsed on the panel,
-   hiding the body and rotating the chevron. */
+/*
+ * Foldable container for every tunable. The header strip toggles
+ * .collapsed on the whole panel. Each .psec is a <details> card with
+ * a hover-reveal tooltip on its rows (data-tip). Range inputs are
+ * fully restyled for Chromium/Firefox parity and draw their filled
+ * portion from the --pct custom property that main.js keeps in sync
+ * with each slider's value on every input event.
+ */
+.panel-params { padding-bottom: 18px; }
+
 .panel-params .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   user-select: none;
-  padding: 2px 0;
-  margin-bottom: 10px;
+  padding: 4px 2px 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.18s var(--ease);
 }
-.panel-params .panel-header h2 { margin: 0; }
+.panel-params .panel-header:hover { border-bottom-color: var(--accent); }
+.panel-params .panel-header h2 {
+  margin: 0;
+  color: var(--fg-0);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .panel-params .panel-header .chevron {
   color: var(--fg-3);
-  font-size: 11px;
-  transition: transform 0.2s ease;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.25s var(--ease), color 0.18s var(--ease);
 }
-.panel-params.collapsed .panel-header { margin-bottom: 0; }
+.panel-params .panel-header:hover .chevron { color: var(--accent); }
+.panel-params.collapsed .panel-header {
+  margin-bottom: 0;
+  border-bottom-color: transparent;
+  padding-bottom: 4px;
+}
 .panel-params.collapsed .params-body { display: none; }
 .panel-params.collapsed .panel-header .chevron { transform: rotate(-90deg); }
 
 .panel-params .params-body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 14px;
 }
 @media (max-width: 1100px) {
   .panel-params .params-body { grid-template-columns: 1fr; }
 }
 
+/* Each section of sliders is its own card. Open sections lift via a
+   subtle shadow; focus-within adds an accent ring while the user is
+   actively dragging a slider inside. */
 .psec {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 10px;
+  padding: 10px 16px 14px;
+  transition:
+    background 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    box-shadow 0.22s var(--ease);
 }
+.psec:hover { border-color: var(--bg-3); }
+.psec[open] {
+  background: var(--bg-1);
+  border-color: var(--bg-3);
+  box-shadow: var(--shadow-sm);
+}
+.psec:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 .psec summary {
   cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--fg-2);
-  padding: 4px 0;
   list-style: none;
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+  transition: color 0.18s var(--ease);
 }
+.psec:hover summary { color: var(--fg-0); }
 .psec summary::marker { display: none; }
 .psec summary::-webkit-details-marker { display: none; }
+/* Chevron built from a rotated border-square so it renders crisply
+   on HiDPI at any font-size without depending on a glyph font. */
 .psec summary::before {
-  content: '▸';
-  display: inline-block;
-  width: 12px;
-  color: var(--fg-3);
-  transition: transform 0.15s;
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-right: 1.5px solid var(--fg-3);
+  border-bottom: 1.5px solid var(--fg-3);
+  transform: rotate(-45deg) translate(-1px, -1px);
+  transition: transform 0.22s var(--ease), border-color 0.18s var(--ease);
 }
-.psec[open] summary::before { transform: rotate(90deg); }
+.psec[open] summary::before {
+  transform: rotate(45deg) translate(-1px, -1px);
+  border-color: var(--accent);
+}
+.psec summary .muted {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
 .psec .psec-body {
-  padding-top: 8px;
+  padding-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .param-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   position: relative;
 }
 .param-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 .param-head label {
-  color: var(--fg-0);
+  color: var(--fg-1);
   font-size: 11px;
+  font-weight: 500;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 0.18s var(--ease);
 }
+.param-row:hover .param-head label,
+.param-row:focus-within .param-head label { color: var(--fg-0); }
+
 .param-head .pval {
   font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
+  font-weight: 600;
   color: var(--accent);
-  min-width: 44px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  background: var(--accent-light);
+  padding: 3px 10px;
+  border-radius: 999px;
+  min-width: 52px;
+  text-align: center;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
 }
+.param-row:focus-within .param-head .pval {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Custom range input. --pct is owned by main.js: it reads min/max/value
+   and writes a percentage string on every input event so the filled
+   portion of the track follows the thumb. Both Chromium and Firefox
+   get their own pseudo-elements. */
 .param-row input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
+  height: 22px;
   background: transparent;
-  accent-color: var(--accent);
+  outline: none;
+  cursor: pointer;
+  --pct: 50%;
 }
+.param-row input[type=range]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--pct),
+    var(--bg-3)   var(--pct),
+    var(--bg-3)   100%
+  );
+}
+.param-row input[type=range]::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.param-row input[type=range]::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.param-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  margin-top: -5.5px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.param-row input[type=range]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.param-row input[type=range]:hover::-webkit-slider-thumb,
+.param-row input[type=range]:focus::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
+}
+.param-row input[type=range]:hover::-moz-range-thumb,
+.param-row input[type=range]:focus::-moz-range-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
+}
+.param-row input[type=range]:active::-webkit-slider-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 8px var(--accent-light);
+}
+.param-row input[type=range]:active::-moz-range-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 8px var(--accent-light);
+}
+
 .param-row .checkbox {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 11px;
   color: var(--fg-0);
   cursor: pointer;
 }
 .param-row .checkbox input { accent-color: var(--accent); }
 
-/* Risk-preference composition bar — three linked sliders render into
-   this horizontal bar, each segment's flex matching its percentage. */
+/* Risk-preference composition bar — the three linked sliders push
+   their percentages into this segmented bar so the overall risk mix
+   is visible at a glance even when the sliders are below the fold. */
 .comp-bar {
   display: flex;
-  height: 18px;
-  border-radius: 4px;
+  height: 26px;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--bg-1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .comp-bar .seg {
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 0;
-  transition: flex 0.2s ease;
+  transition: flex 0.28s var(--ease);
 }
 .comp-bar .seg span {
   font-size: 10px;
@@ -356,6 +506,7 @@ body:not(.extended) .ext-only { display: none !important; }
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 .comp-bar .seg-loving  { background: var(--red); }
 .comp-bar .seg-neutral { background: var(--fg-3); }
@@ -365,47 +516,44 @@ body:not(.extended) .ext-only { display: none !important; }
 /*
  * Per-row hover tooltip (pure CSS). The entire .param-row is the hover
  * zone so moving the mouse onto the slider itself is enough to reveal
- * the explanation. The tip text lives on data-tip, populated by the
- * HTML, and is rendered above the row so the slider stays uncovered.
+ * the explanation. The tip floats above the row by default; first-
+ * child rows flip below so they don't collide with the section header.
  */
 .param-row[data-tip]::after {
   content: attr(data-tip);
   position: absolute;
   left: 0;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   width: 320px;
   max-width: min(420px, 90vw);
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: var(--bg-1);
-  border: 1px solid var(--bg-3);
-  border-radius: 6px;
-  color: var(--fg-0);
-  font: 11px/1.55 var(--font-ui);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-1);
+  font: 11px/1.6 var(--font-ui);
   letter-spacing: normal;
   text-transform: none;
   white-space: normal;
   opacity: 0;
   pointer-events: none;
   transform: translateY(4px);
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
   z-index: 100;
   box-shadow: var(--shadow-lg);
 }
-.param-row[data-tip]:hover::after {
+.param-row[data-tip]:hover::after,
+.param-row[data-tip]:focus-within::after {
   opacity: 1;
   transform: translateY(0);
 }
-/*
- * The very first row of each section has no row above it for the
- * tooltip to float over — flip those to render below instead so the
- * tip doesn't collide with the section summary bar.
- */
 .psec-body > .param-row[data-tip]:first-child::after {
   bottom: auto;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   transform: translateY(-4px);
 }
-.psec-body > .param-row[data-tip]:first-child:hover::after {
+.psec-body > .param-row[data-tip]:first-child:hover::after,
+.psec-body > .param-row[data-tip]:first-child:focus-within::after {
   transform: translateY(0);
 }
 
@@ -570,21 +718,6 @@ body:not(.extended) .ext-only { display: none !important; }
   border-color: var(--green);
   background: var(--green-bg);
 }
-#btn-resample {
-  background: var(--bg-2);
-  color: var(--fg-0);
-  border: 1px solid var(--border);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.02em;
-  transition: background 0.15s, border-color 0.15s, transform 0.08s;
-}
-#btn-resample:hover  { background: var(--bg-3); border-color: var(--bg-3); }
-#btn-resample:active { transform: translateY(1px); }
-
 .panel-agents.preview {
   outline: 1px dashed var(--amber);
   outline-offset: -1px;

@@ -58,20 +58,18 @@ const App = {
     deception:     true,
   },
 
-  seed: 42,
+  // Engine RNG seed. Rerolled from Math.random() on every reset() so
+  // Reset doubles as "redraw the population" and no manual seed input
+  // is needed in the UI. rebuild() (soft slider changes, endowment
+  // edits) preserves the current seed so the existing draw survives.
+  seed: 1,
 
   // Per-agent spec list produced by the sampling stage (names +
-  // endowments + strategy fields). Nulled whenever the population
-  // structure changes (mix, riskMix, seed, preset, defaults) so that
-  // the next reset() re-samples; kept intact when the user edits an
-  // individual endowment so the run replays from the same draws.
+  // endowments + strategy fields). Nulled by reset() so the next
+  // rebuild() re-samples against a fresh sample RNG; kept intact by
+  // rebuild() when the user edits an individual endowment so those
+  // edits survive the next market rebuild.
   agentSpecs: null,
-
-  // Monotonic counter mixed into the sample RNG seed so the Resample
-  // button can draw a fresh population without changing the engine
-  // seed. Reset to 0 on explicit seed change so "seed 42" still has
-  // a canonical starting draw.
-  sampleSalt: 0,
 
   agents:       {},
   market:       null,
@@ -142,11 +140,6 @@ const App = {
     const themeBtn = document.getElementById('btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', () => this._cycleTheme());
 
-    document.getElementById('seed').addEventListener('change', e => {
-      this.seed = Number(e.target.value) || 1;
-      this.sampleSalt = 0;
-      this.resample();
-    });
     document.getElementById('speed').addEventListener('input', e => {
       // speed 1 → ~953ms, speed 20 → ~60ms
       const s = Number(e.target.value);
@@ -213,9 +206,9 @@ const App = {
 
     // Uniform wiring for every slider in the param map. Sliders that
     // change the population *structure* (mix counts, risk shares) call
-    // resample() on release so the sampling stage re-draws names and
-    // endowments from the sample RNG; everything else just calls
-    // reset() and keeps the cached specs intact.
+    // reset() on release, which rolls a new seed and re-samples the
+    // population; everything else calls rebuild() and keeps the
+    // cached specs intact.
     for (const [inputId, spec] of Object.entries(this._paramMap)) {
       const input = document.getElementById(inputId);
       if (!input) continue;
@@ -228,12 +221,17 @@ const App = {
         this._setByPath(spec.target, val);
         const out = document.getElementById(spec.out);
         if (out) out.textContent = spec.fmt(val);
+        this._updateSliderPct(e.target);
         if (spec.target.startsWith('mix.'))     this._refreshMixTotal();
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
       });
       input.addEventListener('change', () => {
-        if (structural) this.resample();
-        else            this.reset();
+        // Structural edits (population mix counts, risk-share shares)
+        // ask for a fresh draw, so they roll a new seed via reset().
+        // Everything else is a soft change that keeps the current
+        // draw and just rebuilds the market/engine.
+        if (structural) this.reset();
+        else            this.rebuild();
       });
     }
     this._updateCompBar();
@@ -249,9 +247,14 @@ const App = {
         this._rescaleMixToTotal(newTotal);
         this._pushStateToSliders();
         this._refreshMixTotal();
+        this._updateSliderPct(e.target);
       });
-      totalSlider.addEventListener('change', () => this.resample());
+      totalSlider.addEventListener('change', () => this.reset());
     }
+
+    // Prime the custom --pct on every slider so the filled portion of
+    // the track matches the initial value before any interaction.
+    this._updateAllSliderPcts();
 
     // Foldable panel header — click anywhere on the strip to toggle
     // the body visibility. Mirrors the pattern used by the lying
@@ -293,6 +296,8 @@ const App = {
     }
     els[oi[0]].value = String(r0);
     els[oi[1]].value = String(r1);
+    this._updateSliderPct(els[oi[0]]);
+    this._updateSliderPct(els[oi[1]]);
     this.riskMix[keys[ci]]    = cv;
     this.riskMix[keys[oi[0]]] = r0;
     this.riskMix[keys[oi[1]]] = r1;
@@ -300,6 +305,25 @@ const App = {
     document.getElementById('v-risk-neutral').textContent = this.riskMix.neutral + '%';
     document.getElementById('v-risk-averse').textContent  = this.riskMix.averse  + '%';
     this._updateCompBar();
+  },
+
+  /**
+   * Write the [min..max]→[0..100] percentage into the --pct custom
+   * property on one range input. The CSS track uses this as a
+   * linear-gradient stop so the filled portion follows the thumb.
+   */
+  _updateSliderPct(el) {
+    if (!el) return;
+    const min = Number(el.min) || 0;
+    const max = Number(el.max) || 100;
+    const v   = Number(el.value) || 0;
+    const pct = max === min ? 0 : ((v - min) / (max - min)) * 100;
+    el.style.setProperty('--pct', pct.toFixed(2) + '%');
+  },
+
+  _updateAllSliderPcts() {
+    const sliders = document.querySelectorAll('.panel-params input[type=range]');
+    sliders.forEach(el => this._updateSliderPct(el));
   },
 
   _updateCompBar() {
@@ -325,6 +349,7 @@ const App = {
       input.value = String(val);
       const out = document.getElementById(spec.out);
       if (out) out.textContent = spec.fmt(val);
+      this._updateSliderPct(input);
     }
   },
 
@@ -342,6 +367,7 @@ const App = {
     if (totalSlider) {
       const max = Number(totalSlider.max) || total;
       totalSlider.value = String(Math.min(total, max));
+      this._updateSliderPct(totalSlider);
     }
     if (totalReadout) totalReadout.textContent = String(total);
   },
@@ -401,7 +427,35 @@ const App = {
 
   /* -------- Lifecycle -------- */
 
+  /**
+   * Full reset — rolls a new random engine seed, drops the cached
+   * agentSpecs, and delegates to rebuild() which will re-sample a
+   * fresh population against the new seed. This is the only path
+   * that changes the seed; rebuild() alone preserves it.
+   */
   reset() {
+    this.seed = this._rollSeed();
+    this.agentSpecs = null;
+    this.rebuild();
+  },
+
+  /**
+   * Produce a 32-bit engine seed from Math.random(). Kept as its
+   * own method so tests or future URL-parameter overrides can swap
+   * the source without touching reset().
+   */
+  _rollSeed() {
+    return (Math.floor(Math.random() * 0x100000000)) >>> 0 || 1;
+  },
+
+  /**
+   * Rebuild market + engine + agents from the current seed and the
+   * current agentSpecs cache. Called directly from soft slider
+   * changes and endowment edits (which must preserve both); called
+   * indirectly from reset() (which nulls the cache first so a fresh
+   * sample is drawn against the new seed).
+   */
+  rebuild() {
     if (this.engine) this.engine.pause();
     Order.nextId = 1;
     Trade.nextId = 1;
@@ -416,19 +470,14 @@ const App = {
 
     this._rng = makeRNG(this.seed);
 
-    // Sampling RNG is intentionally independent of the engine RNG, so
-    // that editing endowments (which skips the resample path) leaves
-    // the engine's tick-level draws unchanged from a seed-matched run.
+    // Sampling RNG is independent of the engine RNG so that editing
+    // endowments (which skips the re-sample path) leaves the engine's
+    // tick-level draws unchanged.
     const totalN =
       (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) +
       (this.mix.E | 0) + (this.mix.U | 0);
     if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
-      // Mix the salt in via the golden-ratio hash constant so each
-      // Resample click produces a well-separated draw while still
-      // being deterministic for a given (seed, sampleSalt) pair.
-      const base = (this.seed ^ 0xA5A5A5A5) >>> 0;
-      const salted = (base ^ Math.imul(this.sampleSalt | 0, 0x9E3779B1)) >>> 0;
-      const sampleRng = makeRNG(salted);
+      const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
       this.agentSpecs = sampleAgents(this.mix, sampleRng, {
         riskMix: this.riskMix,
       });
@@ -465,25 +514,10 @@ const App = {
   },
 
   /**
-   * Drop the cached agentSpecs and rebuild — used whenever the
-   * population *structure* changes (mix counts, riskMix, seed,
-   * preset, defaults). Downstream reset() will notice the null
-   * cache and re-run sampleAgents against a fresh sample RNG.
-   * Pass { fresh: true } to advance the sample salt, which is how
-   * the manual Resample button gets a different draw without
-   * touching the engine seed.
-   */
-  resample(opts = {}) {
-    if (opts.fresh) this.sampleSalt = (this.sampleSalt + 1) | 0;
-    this.agentSpecs = null;
-    this.reset();
-  },
-
-  /**
    * Apply a user edit to one agent's endowment and rebuild the
-   * market without re-sampling. Called from the per-agent editable
-   * inputs in ui.js. Field is 'cash' or 'inventory'; non-finite or
-   * negative values are ignored.
+   * market without re-sampling or reseeding. Called from the
+   * per-agent editable inputs in ui.js. Field is 'cash' or
+   * 'inventory'; non-finite or negative values are ignored.
    */
   updateEndowment(id, field, value) {
     if (!this.agentSpecs) return;
@@ -492,7 +526,7 @@ const App = {
     const v = Number(value);
     if (!Number.isFinite(v) || v < 0) return;
     spec[field] = field === 'inventory' ? (v | 0) : Math.round(v);
-    this.reset();
+    this.rebuild();
   },
 
   start() {

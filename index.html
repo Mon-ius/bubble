@@ -13,15 +13,12 @@
     <h1>Virtual Trading Platform</h1>
   </div>
   <div class="controls">
-    <label>Seed
-      <input id="seed" type="number" min="1" max="999999" value="42">
-    </label>
     <label>Speed
       <input id="speed" type="range" min="1" max="20" value="14">
     </label>
     <button id="btn-start" class="primary">▶ Start</button>
     <button id="btn-pause">⏸ Pause</button>
-    <button id="btn-reset">↺ Reset</button>
+    <button id="btn-reset" title="Roll a new random seed and redraw the population">↺ Reset</button>
     <button id="btn-theme" class="theme-btn" title="Toggle theme (auto / light / dark)" aria-label="Toggle theme">◑</button>
   </div>
 </header>
@@ -315,8 +312,7 @@
 
   <section class="panel panel-agents">
     <div class="agents-header">
-      <h2>Agents <span class="stage-label">Initial configuration — editable before start</span></h2>
-      <button id="btn-resample" class="pill" title="Redraw names + endowments from the sample RNG">↻ Resample</button>
+      <h2>Agents <span class="stage-label">Pre-run draft · editable before the simulation starts</span></h2>
     </div>
     <div id="agents-grid" class="agents-grid"></div>
   </section>
