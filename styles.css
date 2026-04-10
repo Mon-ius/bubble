@@ -1043,12 +1043,23 @@ body:not(.extended) .ext-only { display: none !important; }
   color: var(--fg-1);
 }
 
-/* ---------- Feed ---------- */
+/* ---------- Feed ---------- *
+ * The panel is a flex column so the <ul> can grow to fill the row
+ * height set by the taller sibling (.panel-agents). Without this the
+ * list capped at a fixed max-height and left a big empty gap whenever
+ * the Agents panel grew — e.g. when the Note glossary was added.
+ * ------------------------------------------------------------------ */
+.panel-feed {
+  display: flex;
+  flex-direction: column;
+}
+.panel-feed > h2 { flex: 0 0 auto; }
 #trade-feed {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
