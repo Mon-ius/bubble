@@ -328,8 +328,8 @@ const UI = {
   renderPriceChart(v, config) {
     const { ctx, width, height } = this.charts.price;
     Viz.clear(ctx, width, height);
-    // Extra padding: left for rotated y-label, bottom for x-label row.
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    // padL 44: y-tick numerics only. padB 38: tick row + "Period t" label.
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const maxFV      = config.dividendMean * config.periods;
@@ -379,15 +379,11 @@ const UI = {
     }
     ctx.restore();
 
-    // Formal axis labels.
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Price  P  (¢)', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
 
-    // Legend with formal symbols.
     Viz.legendRow(ctx, rect, [
-      { color: this.theme.accent, label: '● P_t (observed)' },
-      { color: this.theme.amber,  label: '▬ FV_t = (T−t+1)·μ_d' },
-      { color: this.theme.accent, label: '·  trade print' },
+      { color: this.theme.accent, label: '● observed price' },
+      { color: this.theme.amber,  label: '▬ fundamental value' },
     ]);
   },
 
@@ -396,7 +392,7 @@ const UI = {
   renderBubbleChart(v, config) {
     const { ctx, width, height } = this.charts.bubble;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const pts = v.priceHistory.map(p => ({
@@ -416,10 +412,9 @@ const UI = {
     Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
     Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, '| P_t  −  FV_t |', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
     Viz.legendRow(ctx, rect, [
-      { color: this.theme.red, label: '▬ mispricing  |P_t − FV_t|' },
+      { color: this.theme.red, label: '▬ absolute mispricing' },
     ]);
   },
 
@@ -428,7 +423,7 @@ const UI = {
   renderVolumeChart(v, config) {
     const { ctx, width, height } = this.charts.volume;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const pts = [];
     for (let p = 1; p <= config.periods; p++) {
@@ -452,7 +447,6 @@ const UI = {
     });
 
     Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
-    Viz.axisLabel(ctx, rect, 'V_t  =  Σ q  (shares)', 'left');
   },
 
   /* -------- Price × period trade-density heatmap -------- */
@@ -460,7 +454,7 @@ const UI = {
   renderHeatmapChart(v, config) {
     const { ctx, width, height } = this.charts.heatmap;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const maxFV    = config.dividendMean * config.periods;
     const maxPrice = Math.max(maxFV * 1.4, ...v.trades.map(t => t.price || 0));
@@ -514,7 +508,6 @@ const UI = {
     ctx.restore();
 
     Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Price  P  (¢)', 'left');
   },
 
   /* -------- Agent action timeline -------- */
@@ -522,7 +515,8 @@ const UI = {
   renderTimelineChart(v, config) {
     const { ctx, width, height } = this.charts.timeline;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 72, 14, 16, 44);
+    // padL 66: wide enough for the longest agent name (e.g. "Quinn").
+    const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -591,8 +585,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Agent  i  →  a_{i,t}', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
   },
 
   /* ============================================================
@@ -608,7 +601,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const hist       = v.valuationHistory || [];
@@ -697,8 +690,7 @@ const UI = {
     drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Subjective value  V̂ , Ṽ', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
   },
 
   /* -------- Utility-over-time chart -------- */
@@ -707,7 +699,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const hist       = v.utilityHistory || [];
@@ -749,8 +741,7 @@ const UI = {
       Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
     }
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'u_{i,t} = U_i(w_t) / U_i(w_0)', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
   },
 
   /* -------- Messages timeline -------- */
@@ -759,7 +750,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 72, 14, 16, 44);
+    const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -825,8 +816,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Sender  i  →  m_{i→*,t}', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
   },
 
   /* -------- Trust matrix heatmap -------- */
@@ -835,7 +825,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 72, 12, 14, 62);
+    const rect = Viz.plotRect(width, height, 66, 12, 14, 44);
 
     const agentIds = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
     const n = agentIds.length;
@@ -889,8 +879,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'sender  s  →   ·  T_{r→s} ∈ [0, 1]', 'bottom');
-    Viz.axisLabel(ctx, rect, '←  receiver  r', 'left');
+    Viz.axisLabel(ctx, rect, 'sender', 'bottom');
   },
 
   /* -------- Ownership over time (stacked) -------- */
@@ -899,7 +888,8 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 58, 14, 24, 44);
+    // padT 28 leaves room for the in-plot legend row above the chart.
+    const rect = Viz.plotRect(width, height, 44, 14, 28, 38);
 
     const totalTicks  = config.periods * config.ticksPerPeriod;
     const ids         = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -947,25 +937,24 @@ const UI = {
     }));
     Viz.stackedArea(ctx, rect, series, { xMin: 0, xMax: totalTicks, yMin: 0, yMax });
 
-    // Inline legend at the top of the plot. Per-entry advance is
-    // measured from the rendered name so long names can't overlap.
+    // Inline legend above the plot. Per-entry advance is measured
+    // from the rendered name so long names can't overlap.
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
     const swatch = 10;
     const gap    = 14;
-    let legendX = rect.x + 8;
+    let legendX = rect.x + 4;
     for (const s of series) {
       ctx.fillStyle = s.color;
-      ctx.fillRect(legendX, rect.y - 10, swatch, swatch);
+      ctx.fillRect(legendX, rect.y - 16, swatch, swatch);
       ctx.fillStyle = this.theme.fg0;
-      ctx.fillText(s.name, legendX + swatch + 3, rect.y - 4);
+      ctx.fillText(s.name, legendX + swatch + 3, rect.y - 10);
       legendX += swatch + 3 + ctx.measureText(s.name).width + gap;
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
-    Viz.axisLabel(ctx, rect, 'Shares held  q_{i,t}', 'left');
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
   },
 
   /* -------- Extended metrics panel -------- */
