@@ -67,6 +67,12 @@ const App = {
   // individual endowment so the run replays from the same draws.
   agentSpecs: null,
 
+  // Monotonic counter mixed into the sample RNG seed so the Resample
+  // button can draw a fresh population without changing the engine
+  // seed. Reset to 0 on explicit seed change so "seed 42" still has
+  // a canonical starting draw.
+  sampleSalt: 0,
+
   agents:       {},
   market:       null,
   logger:       null,
@@ -138,6 +144,7 @@ const App = {
 
     document.getElementById('seed').addEventListener('change', e => {
       this.seed = Number(e.target.value) || 1;
+      this.sampleSalt = 0;
       this.resample();
     });
     document.getElementById('speed').addEventListener('input', e => {
@@ -416,7 +423,12 @@ const App = {
       (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) +
       (this.mix.E | 0) + (this.mix.U | 0);
     if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
-      const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
+      // Mix the salt in via the golden-ratio hash constant so each
+      // Resample click produces a well-separated draw while still
+      // being deterministic for a given (seed, sampleSalt) pair.
+      const base = (this.seed ^ 0xA5A5A5A5) >>> 0;
+      const salted = (base ^ Math.imul(this.sampleSalt | 0, 0x9E3779B1)) >>> 0;
+      const sampleRng = makeRNG(salted);
       this.agentSpecs = sampleAgents(this.mix, sampleRng, {
         riskMix: this.riskMix,
       });
@@ -457,8 +469,12 @@ const App = {
    * population *structure* changes (mix counts, riskMix, seed,
    * preset, defaults). Downstream reset() will notice the null
    * cache and re-run sampleAgents against a fresh sample RNG.
+   * Pass { fresh: true } to advance the sample salt, which is how
+   * the manual Resample button gets a different draw without
+   * touching the engine seed.
    */
-  resample() {
+  resample(opts = {}) {
+    if (opts.fresh) this.sampleSalt = (this.sampleSalt + 1) | 0;
     this.agentSpecs = null;
     this.reset();
   },

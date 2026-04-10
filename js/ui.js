@@ -15,6 +15,21 @@ const UI = {
   charts:  {},
   canvases: {},
 
+  // Human-readable labels used by the agents panel. Kept on the UI
+  // object so renderAgents stays compact.
+  _riskLabel: {
+    loving:  'Risk-loving',
+    neutral: 'Risk-neutral',
+    averse:  'Risk-averse',
+  },
+  _typeLabel: {
+    fundamentalist: 'Fundamentalist',
+    trend:          'Trend follower',
+    random:         'Random (ZI)',
+    experienced:    'Experienced',
+    utility:        'Utility',
+  },
+
   // Canvas-time theme cache. Populated by refreshTheme() which reads
   // CSS custom properties off :root via getComputedStyle. Every chart
   // renderer pulls colors from here so a theme switch flows through
@@ -105,7 +120,10 @@ const UI = {
     if (resampleBtn) {
       resampleBtn.addEventListener('click', () => {
         if (window.App && typeof window.App.resample === 'function') {
-          window.App.resample();
+          // { fresh: true } bumps the sample salt so this click produces
+          // a different draw; plain resample() from a structural slider
+          // change preserves reproducibility.
+          window.App.resample({ fresh: true });
         }
       });
     }
@@ -202,12 +220,15 @@ const UI = {
       const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
       const pnlColor = pnl >= 0 ? 'var(--volume)' : 'var(--ask)';
       const borderStyle = isUtil ? ` style="border-left-color:${this.agentColor(a.id)}"` : '';
-      // Subtitle shows the strategy code (U3, F1, …) first and then
-      // the role-specific tag so the random personal name stays the
-      // most prominent label on the card.
-      const strategyCode = a.typeLabel || ('A' + a.id);
-      const detail = isUtil ? `${a.riskPref} · ${a.deceptionMode}` : a.type;
-      const subtitle = `${strategyCode} · ${detail}`;
+      // Subtitle is one of the three risk preferences for utility
+      // agents, or a human-readable role for classic agents. The
+      // strategy-cube code (U3, F1, …) is intentionally dropped here
+      // because the #N prefix on displayName already carries the slot
+      // number, and the full risk-mode label is easier to scan than
+      // the cube notation.
+      const subtitle = isUtil
+        ? (UI._riskLabel[a.riskPref] || a.riskPref)
+        : (UI._typeLabel[a.type] || a.type);
       const displayName = a.name || ('A' + a.id);
       const extraRows = isUtil ? `
           <span class="metric">Risk</span>   <span class="metric-val">${a.riskPref}</span>
@@ -273,13 +294,13 @@ const UI = {
   },
 
   /**
-   * Toggle a small "sample preview — editable" status label on the
-   * agents panel header. Separated out so renderAgents stays readable.
+   * Toggle a small pre-run status label on the agents panel header.
+   * Separated out so renderAgents stays readable.
    */
   _toggleAgentStageLabel(on) {
     const h = document.querySelector('.panel-agents .agents-header .stage-label');
     if (!h) return;
-    h.textContent = on ? 'sample preview — editable' : 'live';
+    h.textContent = on ? 'Initial configuration — editable before start' : 'Running — live state';
     h.classList.toggle('live', !on);
   },
 
