@@ -328,7 +328,8 @@ const UI = {
   renderPriceChart(v, config) {
     const { ctx, width, height } = this.charts.price;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    // Extra padding: left for rotated y-label, bottom for x-label row.
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const maxFV      = config.dividendMean * config.periods;
@@ -355,7 +356,7 @@ const UI = {
       yFmt: y => y.toFixed(0),
     });
 
-    // Deterministic FV step line.
+    // Deterministic FV step line — FV_t = (T − t + 1)·μ_d.
     const fvPoints = [];
     for (let p = 1; p <= config.periods; p++) {
       const fv = config.dividendMean * (config.periods - p + 1);
@@ -364,11 +365,11 @@ const UI = {
     }
     Viz.line(ctx, rect, fvPoints, { xMin, xMax, yMin, yMax, color: this.theme.amber, width: 2, dashed: true });
 
-    // Observed price line (null-aware breaks).
+    // Observed price line P_t (null-aware breaks).
     const pricePoints = v.priceHistory.map(p => ({ x: p.tick, y: p.price }));
     Viz.line(ctx, rect, pricePoints, { xMin, xMax, yMin, yMax, color: this.theme.accent, width: 2 });
 
-    // Individual trade prints.
+    // Individual trade prints — one dot per executed trade.
     ctx.save();
     ctx.fillStyle = this.theme.accent;
     for (const t of v.trades) {
@@ -378,13 +379,16 @@ const UI = {
     }
     ctx.restore();
 
-    // Legend
-    ctx.save();
-    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = this.theme.accent; ctx.fillText('● Price', rect.x + 10, rect.y + 12);
-    ctx.fillStyle = this.theme.amber;  ctx.fillText('▬ FV',    rect.x + 74, rect.y + 12);
-    ctx.restore();
+    // Formal axis labels.
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Price  P  (¢)', 'left');
+
+    // Legend with formal symbols.
+    Viz.legendRow(ctx, rect, [
+      { color: this.theme.accent, label: '● P_t (observed)' },
+      { color: this.theme.amber,  label: '▬ FV_t = (T−t+1)·μ_d' },
+      { color: this.theme.accent, label: '·  trade print' },
+    ]);
   },
 
   /* -------- Bubble magnitude chart -------- */
@@ -392,7 +396,7 @@ const UI = {
   renderBubbleChart(v, config) {
     const { ctx, width, height } = this.charts.bubble;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const pts = v.priceHistory.map(p => ({
@@ -411,6 +415,12 @@ const UI = {
     });
     Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
     Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, '| P_t  −  FV_t |', 'left');
+    Viz.legendRow(ctx, rect, [
+      { color: this.theme.red, label: '▬ mispricing  |P_t − FV_t|' },
+    ]);
   },
 
   /* -------- Volume-per-period chart -------- */
@@ -418,7 +428,7 @@ const UI = {
   renderVolumeChart(v, config) {
     const { ctx, width, height } = this.charts.volume;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const pts = [];
     for (let p = 1; p <= config.periods; p++) {
@@ -440,6 +450,9 @@ const UI = {
       color: this.theme.green,
       barWidth: barW,
     });
+
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'V_t  =  Σ q  (shares)', 'left');
   },
 
   /* -------- Price × period trade-density heatmap -------- */
@@ -447,7 +460,7 @@ const UI = {
   renderHeatmapChart(v, config) {
     const { ctx, width, height } = this.charts.heatmap;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const maxFV    = config.dividendMean * config.periods;
     const maxPrice = Math.max(maxFV * 1.4, ...v.trades.map(t => t.price || 0));
@@ -499,6 +512,9 @@ const UI = {
       ctx.fillText('P' + p, x, rect.y + rect.h + 6);
     }
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Price  P  (¢)', 'left');
   },
 
   /* -------- Agent action timeline -------- */
@@ -506,7 +522,7 @@ const UI = {
   renderTimelineChart(v, config) {
     const { ctx, width, height } = this.charts.timeline;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 56);
+    const rect = Viz.plotRect(width, height, 72, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -574,6 +590,9 @@ const UI = {
       ctx.fillText('P' + p, x, rect.y + rect.h + 6);
     }
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Agent  i  →  a_{i,t}', 'left');
   },
 
   /* ============================================================
@@ -589,7 +608,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const hist       = v.valuationHistory || [];
@@ -669,13 +688,17 @@ const UI = {
       ctx.fillText(label, legendX, y);
       legendX += ctx.measureText(label).width + gap;
     };
-    drawEntry('▬ FV', this.theme.amber);
+    drawEntry('▬ FV_t', this.theme.amber);
+    drawEntry('▬ V̂_{i,t}', this.theme.fg2);
     for (const id of ids) {
       const name = v.agents[id] ? v.agents[id].name : 'U' + id;
       drawEntry('● ' + name, this.agentColor(id));
     }
-    drawEntry('○ lie', this.theme.red);
+    drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Subjective value  V̂ , Ṽ', 'left');
   },
 
   /* -------- Utility-over-time chart -------- */
@@ -684,7 +707,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const hist       = v.utilityHistory || [];
@@ -725,6 +748,9 @@ const UI = {
     for (const id of ids) {
       Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
     }
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'u_{i,t} = U_i(w_t) / U_i(w_0)', 'left');
   },
 
   /* -------- Messages timeline -------- */
@@ -733,7 +759,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 56);
+    const rect = Viz.plotRect(width, height, 72, 14, 16, 44);
 
     const totalTicks = config.periods * config.ticksPerPeriod;
     const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -798,6 +824,9 @@ const UI = {
       ctx.fillText('P' + p, x, rect.y + rect.h + 6);
     }
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Sender  i  →  m_{i→*,t}', 'left');
   },
 
   /* -------- Trust matrix heatmap -------- */
@@ -806,7 +835,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 52, 12, 14, 48);
+    const rect = Viz.plotRect(width, height, 72, 12, 14, 62);
 
     const agentIds = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
     const n = agentIds.length;
@@ -858,9 +887,10 @@ const UI = {
       const name = v.agents[agentIds[j]] ? v.agents[agentIds[j]].name : 'U' + agentIds[j];
       ctx.fillText(name, rect.x + j * cellW + cellW / 2, rect.y + rect.h + 6);
     }
-    ctx.fillStyle = this.theme.fg2;
-    ctx.fillText('sender →', rect.x + rect.w / 2, rect.y + rect.h + 22);
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'sender  s  →   ·  T_{r→s} ∈ [0, 1]', 'bottom');
+    Viz.axisLabel(ctx, rect, '←  receiver  r', 'left');
   },
 
   /* -------- Ownership over time (stacked) -------- */
@@ -869,7 +899,7 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height);
+    const rect = Viz.plotRect(width, height, 58, 14, 24, 44);
 
     const totalTicks  = config.periods * config.ticksPerPeriod;
     const ids         = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
@@ -927,12 +957,15 @@ const UI = {
     let legendX = rect.x + 8;
     for (const s of series) {
       ctx.fillStyle = s.color;
-      ctx.fillRect(legendX, rect.y + 4, swatch, swatch);
+      ctx.fillRect(legendX, rect.y - 10, swatch, swatch);
       ctx.fillStyle = this.theme.fg0;
-      ctx.fillText(s.name, legendX + swatch + 3, rect.y + 10);
+      ctx.fillText(s.name, legendX + swatch + 3, rect.y - 4);
       legendX += swatch + 3 + ctx.measureText(s.name).width + gap;
     }
     ctx.restore();
+
+    Viz.axisLabel(ctx, rect, 'Period t  ·  tick index', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Shares held  q_{i,t}', 'left');
   },
 
   /* -------- Extended metrics panel -------- */
@@ -947,20 +980,102 @@ const UI = {
       return;
     }
 
-    // Latest per-agent subjective valuation.
+    // ---- Dufwenberg, Lindqvist & Moore (2005) market-quality statistics.
+    // All of these operate on the per-period mean trade price P̄_t and the
+    // deterministic fundamental value FV_t = (T − t + 1)·μ_d. We reconstruct
+    // P̄_t from v.trades grouped by trade.period.
+    const sumByPeriod = {}, cntByPeriod = {};
+    for (const t of v.trades) {
+      sumByPeriod[t.period] = (sumByPeriod[t.period] || 0) + t.price;
+      cntByPeriod[t.period] = (cntByPeriod[t.period] || 0) + 1;
+    }
+    const meanP = new Array(config.periods + 1).fill(null);
+    for (let p = 1; p <= config.periods; p++) {
+      if (cntByPeriod[p]) meanP[p] = sumByPeriod[p] / cntByPeriod[p];
+    }
+    const fvOf = p => config.dividendMean * (config.periods - p + 1);
+
+    // Total shares outstanding (conserved under double-auction trades).
+    let totalShares = 0;
+    for (const a of Object.values(v.agents)) totalShares += (a.inventory || 0);
+
+    // Haessel (1978) R²: 1 − Σ(P̄_t − FV_t)² / Σ(P̄_t − mean P̄)². Uses only
+    // periods that had trades. Can be negative if the fit is worse than
+    // predicting the sample mean of P̄.
+    let haessel = null;
+    {
+      const obs = [];
+      for (let p = 1; p <= config.periods; p++) {
+        if (meanP[p] != null) obs.push({ y: meanP[p], x: fvOf(p) });
+      }
+      if (obs.length >= 2) {
+        const ybar = obs.reduce((s, c) => s + c.y, 0) / obs.length;
+        let ssRes = 0, ssTot = 0;
+        for (const o of obs) {
+          ssRes += (o.y - o.x) ** 2;
+          ssTot += (o.y - ybar) ** 2;
+        }
+        if (ssTot > 0) haessel = 1 - ssRes / ssTot;
+      }
+    }
+
+    // Normalized absolute price deviation:
+    // Σ_trades |P_trade − FV_period| · q / total shares outstanding.
+    let normAbsDev = null;
+    if (totalShares > 0 && v.trades.length) {
+      let s = 0;
+      for (const t of v.trades) s += Math.abs(t.price - fvOf(t.period)) * t.quantity;
+      normAbsDev = s / totalShares;
+    }
+
+    // Normalized average price deviation:
+    // Σ_periods |P̄_t − FV_t| / total shares outstanding.
+    let normAvgDev = null;
+    if (totalShares > 0) {
+      let s = 0;
+      for (let p = 1; p <= config.periods; p++) {
+        if (meanP[p] != null) s += Math.abs(meanP[p] - fvOf(p));
+      }
+      normAvgDev = s / totalShares;
+    }
+
+    // Price amplitude: (max (P̄_t − FV_t) − min (P̄_t − FV_t)) / FV_1.
+    let amplitude = null;
+    {
+      const diffs = [];
+      for (let p = 1; p <= config.periods; p++) {
+        if (meanP[p] != null) diffs.push(meanP[p] - fvOf(p));
+      }
+      const fv1 = fvOf(1);
+      if (diffs.length && fv1 > 0) amplitude = (Math.max(...diffs) - Math.min(...diffs)) / fv1;
+    }
+
+    // Turnover: Σ q_traded / total shares outstanding. Standard SSW
+    // measure of churn — 1.0 means every share changed hands once.
+    let turnover = null;
+    if (totalShares > 0) {
+      let sharesTraded = 0;
+      for (const t of v.trades) sharesTraded += t.quantity;
+      turnover = sharesTraded / totalShares;
+    }
+
+    // Lopez-Lira (2025) price-to-fundamental ratio ρ = P / FV.
+    let rho = null;
+    if (v.lastPrice != null && v.priceHistory.length) {
+      const lastFV = v.priceHistory[v.priceHistory.length - 1].fv;
+      if (lastFV > 0) rho = v.lastPrice / lastFV;
+    }
+
+    // ---- Extended (Utility-mode) aggregates.
     const latestV = {};
     for (const row of v.valuationHistory) latestV[row.agentId] = row.subjV;
     const Vlist = Object.entries(latestV).map(([id, vv]) => ({ id: Number(id), vv }));
     const avgV  = Vlist.length ? Vlist.reduce((s, c) => s + c.vv, 0) / Vlist.length : null;
 
-    // Allocative efficiency: ratio of actual Σ V_i·q_i to the optimum
-    // where all shares go to the highest-valuation agent.
     let efficiency = null;
     if (Vlist.length) {
-      let maxVV = -Infinity, maxId = null;
-      for (const c of Vlist) if (c.vv > maxVV) { maxVV = c.vv; maxId = c.id; }
-      let totalShares = 0;
-      for (const a of Object.values(v.agents)) totalShares += (a.inventory || 0);
+      let maxVV = -Infinity;
+      for (const c of Vlist) if (c.vv > maxVV) maxVV = c.vv;
       let actual = 0;
       for (const c of Vlist) {
         const agent = v.agents[c.id];
@@ -970,17 +1085,14 @@ const UI = {
       efficiency = optimal > 0 ? actual / optimal : 0;
     }
 
-    // Total welfare: sum of current (latest) per-agent normalized utility.
     let totalWelfare = null;
     const latestU = {};
     for (const row of v.utilityHistory) latestU[row.agentId] = row.utility;
     const uvals = Object.values(latestU);
     if (uvals.length) totalWelfare = uvals.reduce((s, x) => s + x, 0);
 
-    // Price deviation from average subjective valuation.
     const pDev = (v.lastPrice != null && avgV != null) ? Math.abs(v.lastPrice - avgV) : null;
 
-    // Deception impact: mean |claim - true| magnitude + count.
     let deceptionMag = null;
     let nDeceptive = 0;
     const msgs = v.messages || [];
@@ -995,11 +1107,20 @@ const UI = {
 
     const fmt = (x, d = 2) => x == null ? '—' : x.toFixed(d);
     el.innerHTML = `
-      <div class="metric-row"><span>Avg subjective V</span><strong>${fmt(avgV)}</strong></div>
-      <div class="metric-row"><span>Allocative efficiency</span><strong>${fmt(efficiency, 3)}</strong></div>
-      <div class="metric-row"><span>Total welfare (ΣU)</span><strong>${fmt(totalWelfare, 3)}</strong></div>
-      <div class="metric-row"><span>|P − avgV|</span><strong>${fmt(pDev)}</strong></div>
-      <div class="metric-row"><span>Mean lie magnitude</span><strong>${fmt(deceptionMag)}</strong></div>
+      <div class="metric-group-label">Market quality · Dufwenberg, Lindqvist &amp; Moore (2005)</div>
+      <div class="metric-row"><span>Haessel R²&nbsp;&nbsp;<em>1 − Σ(P̄−FV)² / Σ(P̄−P̄̄)²</em></span><strong>${fmt(haessel, 3)}</strong></div>
+      <div class="metric-row"><span>Norm. absolute price deviation&nbsp;&nbsp;<em>Σ|P−FV|·q / Q</em></span><strong>${fmt(normAbsDev, 2)}</strong></div>
+      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>Σ|P̄_t−FV_t| / Q</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
+      <div class="metric-row"><span>Price amplitude&nbsp;&nbsp;<em>(max−min)(P̄−FV) / FV₁</em></span><strong>${fmt(amplitude, 3)}</strong></div>
+      <div class="metric-row"><span>Turnover&nbsp;&nbsp;<em>Σ q / Q</em></span><strong>${fmt(turnover, 3)}</strong></div>
+      <div class="metric-row"><span>P / FV ratio&nbsp;&nbsp;<em>ρ (Lopez-Lira 2025)</em></span><strong>${fmt(rho, 3)}</strong></div>
+
+      <div class="metric-group-label">Utility-agent welfare &amp; deception</div>
+      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>⟨V̂_i⟩</em></span><strong>${fmt(avgV)}</strong></div>
+      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>Σ V̂_i·q_i / (V̂* · Q)</em></span><strong>${fmt(efficiency, 3)}</strong></div>
+      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>Σ u_i(w_t)</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
+      <div class="metric-row"><span>|P − ⟨V̂⟩|</span><strong>${fmt(pDev)}</strong></div>
+      <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨|Ṽ − V̂|⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
       <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
     `;
   },

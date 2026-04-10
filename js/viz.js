@@ -37,6 +37,54 @@ const Viz = {
     return { x: padL, y: padT, w: w - padL - padR, h: h - padT - padB };
   },
 
+  /**
+   * Draw a formal axis label outside the plot frame. `side` ∈
+   * {'bottom','left','top'}; the 'left' variant draws vertically.
+   * Callers must leave room in plotRect padding (padB ≥ 42 for bottom,
+   * padL ≥ 58 for left).
+   */
+  axisLabel(ctx, rect, text, side = 'bottom', color) {
+    ctx.save();
+    ctx.font = 'italic 10px "SF Mono", ui-monospace, Menlo, Consolas, monospace';
+    ctx.fillStyle = color || this.theme.label;
+    if (side === 'bottom') {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h + 34);
+    } else if (side === 'top') {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(text, rect.x + rect.w / 2, rect.y - 4);
+    } else { // left — rotated
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.translate(rect.x - 36, rect.y + rect.h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(text, 0, 0);
+    }
+    ctx.restore();
+  },
+
+  /**
+   * Draw an in-plot legend row of {color, label} entries. Text is measured
+   * so entries can carry long formal notation without clipping.
+   */
+  legendRow(ctx, rect, entries, opts = {}) {
+    const x0 = rect.x + (opts.padX ?? 10);
+    const y  = rect.y + (opts.padY ?? 12);
+    const gap = opts.gap ?? 14;
+    ctx.save();
+    ctx.font = opts.font || '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    let x = x0;
+    for (const e of entries) {
+      ctx.fillStyle = e.color;
+      ctx.fillText(e.label, x, y);
+      x += ctx.measureText(e.label).width + gap;
+    }
+    ctx.restore();
+  },
+
   mapX(rect, v, xMin, xMax) {
     if (xMax === xMin) return rect.x;
     return rect.x + ((v - xMin) / (xMax - xMin)) * rect.w;

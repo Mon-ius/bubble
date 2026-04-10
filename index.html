@@ -234,7 +234,7 @@
   </section>
 
   <section class="panel panel-chart chart-price">
-    <h2>Price vs Fundamental Value</h2>
+    <h2>Price vs Fundamental Value <span class="math">P̄<sub>t</sub> · FV<sub>t</sub> = (T − t + 1)·μ<sub>d</sub></span></h2>
     <canvas id="chart-price"></canvas>
   </section>
 
@@ -253,22 +253,22 @@
   </section>
 
   <section class="panel panel-chart chart-bubble">
-    <h2>Bubble Magnitude |P − FV|</h2>
+    <h2>Bubble Magnitude <span class="math">|P<sub>t</sub> − FV<sub>t</sub>|  ·  ρ<sub>t</sub> = P<sub>t</sub> / FV<sub>t</sub></span></h2>
     <canvas id="chart-bubble"></canvas>
   </section>
 
   <section class="panel panel-chart chart-volume">
-    <h2>Trade Volume · Period</h2>
+    <h2>Trade Volume per Period <span class="math">V<sub>t</sub> = Σ<sub>trades in t</sub> q</span></h2>
     <canvas id="chart-volume"></canvas>
   </section>
 
   <section class="panel panel-chart chart-heatmap">
-    <h2>Price × Period Heatmap</h2>
+    <h2>Price × Period Density <span class="math">H(P, t) = Σ q over (P, t) bins</span></h2>
     <canvas id="chart-heatmap"></canvas>
   </section>
 
   <section class="panel panel-chart chart-timeline">
-    <h2>Agent Action Timeline</h2>
+    <h2>Agent Action Timeline <span class="math">a<sub>i,t</sub> ∈ {bid, ask, hold}</span></h2>
     <canvas id="chart-timeline"></canvas>
     <div class="legend">
       <span><i class="lg bid"></i>Bid</span>
@@ -284,17 +284,17 @@
        =========================================================== -->
 
   <section class="panel panel-chart chart-valuation ext-only">
-    <h2>Subjective Valuation · True vs Reported</h2>
+    <h2>Subjective Valuation · True vs Reported <span class="math">V̂<sub>i,t</sub> vs Ṽ<sub>i,t</sub>  ·  lie gap = Ṽ − V̂</span></h2>
     <canvas id="chart-valuation"></canvas>
   </section>
 
   <section class="panel panel-metrics ext-only">
-    <h2>Experiment Metrics</h2>
+    <h2>Experiment Metrics <span class="math">Dufwenberg, Lindqvist &amp; Moore (2005)</span></h2>
     <div id="metrics-body"></div>
   </section>
 
   <section class="panel panel-chart chart-utility ext-only">
-    <h2>Agent Utility Over Time</h2>
+    <h2>Agent Utility Over Time <span class="math">u<sub>i,t</sub> = U<sub>i</sub>(w<sub>t</sub>) / U<sub>i</sub>(w<sub>0</sub>)</span></h2>
     <canvas id="chart-utility"></canvas>
     <div class="legend">
       <span>Normalized so U(w₀) = 1 · dashed line = initial utility</span>
@@ -302,12 +302,12 @@
   </section>
 
   <section class="panel panel-chart chart-ownership ext-only">
-    <h2>Asset Ownership Over Time</h2>
+    <h2>Asset Ownership Over Time <span class="math">q<sub>i,t</sub>  ·  Σ<sub>i</sub> q<sub>i,t</sub> = Q (conserved)</span></h2>
     <canvas id="chart-ownership"></canvas>
   </section>
 
   <section class="panel panel-chart chart-messages ext-only">
-    <h2>Message Log Timeline</h2>
+    <h2>Message Log Timeline <span class="math">m<sub>i→*,t</sub> = (signal, Ṽ<sub>i,t</sub>)</span></h2>
     <canvas id="chart-messages"></canvas>
     <div class="legend">
       <span><i class="lg bid"></i>Buy signal</span>
@@ -318,7 +318,7 @@
   </section>
 
   <section class="panel panel-chart chart-trust ext-only">
-    <h2>Trust Matrix</h2>
+    <h2>Trust Matrix <span class="math">T<sub>r→s</sub> ∈ [0, 1]  ·  EMA update</span></h2>
     <canvas id="chart-trust"></canvas>
   </section>
 

@@ -190,7 +190,20 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   text-transform: uppercase;
   color: var(--fg-2);
   margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
 }
+.panel h2 .math {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-3);
+}
+.panel h2 .math em { font-style: italic; color: var(--fg-2); }
 .panel h3 {
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -912,8 +925,30 @@ body:not(.extended) .ext-only { display: none !important; }
   padding-top: 4px;
 }
 #metrics-body .metric-row { display: contents; }
-#metrics-body .metric-row span   { color: var(--fg-2); }
-#metrics-body .metric-row strong { color: var(--fg-0); text-align: right; font-weight: 700; }
+#metrics-body .metric-row span   { color: var(--fg-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 0; }
+#metrics-body .metric-row span em {
+  font-style: normal;
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--fg-3);
+  margin-left: 4px;
+}
+#metrics-body .metric-row strong { color: var(--fg-0); text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+#metrics-body .metric-group-label {
+  grid-column: 1 / -1;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-3);
+  padding-top: 4px;
+  border-top: 1px solid var(--bg-3);
+  margin-top: 2px;
+}
+#metrics-body .metric-group-label:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
 
 /* ---------- EU candidate table in trace cards ---------- */
 .trace-card .trace-eu {
