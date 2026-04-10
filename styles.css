@@ -857,9 +857,9 @@ body:not(.extended) .ext-only { display: none !important; }
 .agent-card .agent-head-left  { min-width: 0; }
 .agent-card .agent-head-right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   flex: none;
 }
 .agent-card .agent-name { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
