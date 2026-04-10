@@ -449,28 +449,48 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
+    // Share the totalTicks coordinate frame with the price and bubble
+    // charts so all three row-1 figures anchor periods to the same
+    // horizontal positions.
+    const totalTicks = config.periods * config.ticksPerPeriod;
+    const xMin = 0, xMax = totalTicks;
+
     const pts = [];
     for (let p = 1; p <= config.periods; p++) {
-      pts.push({ x: p, y: v.volumeByPeriod[p] || 0 });
+      pts.push({
+        x: (p - 0.5) * config.ticksPerPeriod,
+        y: v.volumeByPeriod[p] || 0,
+      });
     }
     const yMax = Math.max(4, ...pts.map(p => p.y)) * 1.1;
 
+    // Alternating period bands — same pattern used by renderPriceChart.
+    for (let p = 1; p <= config.periods; p++) {
+      if (p % 2 === 0) {
+        const x1 = Viz.mapX(rect, (p - 1) * config.ticksPerPeriod, xMin, xMax);
+        const x2 = Viz.mapX(rect,  p      * config.ticksPerPeriod, xMin, xMax);
+        Viz.verticalBand(ctx, rect, x1, x2, this.theme.band);
+      }
+    }
+
     Viz.axes(ctx, rect, {
-      xMin: 0.5, xMax: config.periods + 0.5,
-      yMin: 0,   yMax,
+      xMin, xMax, yMin: 0, yMax,
       xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x),
+      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
       yFmt: y => y.toFixed(0),
     });
-    const barW = (rect.w / config.periods) * 0.68;
+
+    const barW = (rect.w / config.periods) * 0.55;
     Viz.bars(ctx, rect, pts, {
-      xMin: 0.5, xMax: config.periods + 0.5,
-      yMin: 0,   yMax,
+      xMin, xMax, yMin: 0, yMax,
       color: this.theme.green,
       barWidth: barW,
     });
 
     Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.legendRow(ctx, rect, [
+      { color: this.theme.green, label: '▮ shares traded' },
+    ]);
   },
 
   /* -------- Price × period trade-density heatmap -------- */
