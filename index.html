@@ -33,17 +33,10 @@
        default is what it is. Changes trigger a reset() and rebuild
        the population with the new values.
        ============================================================ -->
-  <section class="panel panel-params">
-    <div class="params-head">
+  <section class="panel panel-params" id="panel-params">
+    <div class="panel-header" id="panel-params-head">
       <h2>Parameters</h2>
-      <div class="params-presets">
-        <span class="muted">Quick-apply preset:</span>
-        <button class="pill" data-preset="inexperienced">Inexperienced</button>
-        <button class="pill" data-preset="experienced">Experienced</button>
-        <button class="pill" data-preset="mixed">Mixed</button>
-        <button class="pill" data-preset="utility">Utility</button>
-        <button class="pill" id="btn-reset-params">↺ Defaults</button>
-      </div>
+      <span class="chevron" aria-hidden="true">▾</span>
     </div>
 
     <div class="params-body">

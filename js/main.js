@@ -203,37 +203,13 @@ const App = {
       totalSlider.addEventListener('change', () => this.resample());
     }
 
-    // Preset buttons — snap the mix sliders to a known-good
-    // population without touching any tunables.
-    document.querySelectorAll('.params-presets .pill[data-preset]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.getAttribute('data-preset');
-        const preset = PRESET_MIXES[key];
-        if (!preset) return;
-        this.mix = Object.assign({ F: 0, T: 0, R: 0, E: 0, U: 0 }, preset);
-        this._pushStateToSliders();
-        this._refreshMixTotal();
-        this.resample();
-      });
-    });
-
-    // Defaults button — restore the full tunables object to its
-    // initial state, reset the mix to Utility, and rebuild.
-    const defBtn = document.getElementById('btn-reset-params');
-    if (defBtn) {
-      defBtn.addEventListener('click', () => {
-        this.tunables = {
-          periods: 10, ticksPerPeriod: 18, dividendMean: 10,
-          naivePriorWeight: 0.6, skepticalPriorWeight: 0.9, adaptiveWeightCap: 0.5,
-          passiveFillProb: 0.3, trustAlpha: 0.30, valuationNoise: 0.03, biasAmount: 0.15,
-        };
-        this.riskMix = { loving: 33, neutral: 34, averse: 33 };
-        this.mix = { F: 0, T: 0, R: 0, E: 0, U: 6 };
-        this._pushStateToSliders();
-        this._refreshMixTotal();
-        this._updateCompBar();
-        this.resample();
-      });
+    // Foldable panel header — click anywhere on the strip to toggle
+    // the body visibility. Mirrors the pattern used by the lying
+    // project's side panels.
+    const head = document.getElementById('panel-params-head');
+    const panel = document.getElementById('panel-params');
+    if (head && panel) {
+      head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
   },
 

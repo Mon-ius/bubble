@@ -158,33 +158,27 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 body:not(.extended) .ext-only { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
-.panel-params .params-head {
+/* Clickable header: the whole strip toggles .collapsed on the panel,
+   hiding the body and rotating the chevron. */
+.panel-params .panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
   margin-bottom: 10px;
 }
-.panel-params .params-presets {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+.panel-params .panel-header h2 { margin: 0; }
+.panel-params .panel-header .chevron {
+  color: var(--muted-2);
+  font-size: 11px;
+  transition: transform 0.2s ease;
 }
-.panel-params .params-presets .muted { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-.panel-params .pill {
-  background: var(--panel2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font: 11px/1 inherit;
-  cursor: pointer;
-  transition: background 0.1s, border-color 0.1s;
-}
-.panel-params .pill:hover  { background: #232a3d; border-color: var(--border-hi); }
-.panel-params .pill:active { transform: translateY(1px); }
+.panel-params.collapsed .panel-header { margin-bottom: 0; }
+.panel-params.collapsed .params-body { display: none; }
+.panel-params.collapsed .panel-header .chevron { transform: rotate(-90deg); }
 
 .panel-params .params-body {
   display: grid;

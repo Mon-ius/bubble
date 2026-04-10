@@ -962,14 +962,3 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
   return out;
 }
 
-/*
- * Convenience helper: the composition (F, T, R, E, U counts) of each preset
- * population, so the Parameters panel can snap the mix sliders to a preset
- * with one click without duplicating the knowledge of what's inside each.
- */
-const PRESET_MIXES = {
-  inexperienced: { F: 1, T: 2, R: 2, E: 1, U: 0 },
-  experienced:   { F: 2, T: 1, R: 0, E: 3, U: 0 },
-  mixed:         { F: 2, T: 1, R: 1, E: 2, U: 0 },
-  utility:       { F: 0, T: 0, R: 0, E: 0, U: 6 },
-};
