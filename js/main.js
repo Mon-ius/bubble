@@ -12,14 +12,24 @@
    ===================================================================== */
 
 const App = {
-  // Market config. `periods` and `dividendMean` are fixed constants
-  // from Dufwenberg, Lindqvist & Moore (2005), §I — the asset's life
-  // is ten periods and each period draws {0, 20}¢ equiprobable, so
-  // E[dividend] = 10¢ and FV_t = 10 · (T − t + 1). They are surfaced
-  // read-only in the "Paper constants" panel and deliberately kept
-  // out of the adjustable Parameters panel. `ticksPerPeriod` is this
-  // simulator's discretization of the paper's 2-minute continuous
-  // auction and remains tunable.
+  // Market config. Three of these four values are fixed-by-design
+  // and surfaced read-only in companion cards at the top of the page:
+  //
+  //   periods, dividendMean   — paper constants from Dufwenberg,
+  //                             Lindqvist & Moore (2005) §I (asset
+  //                             life = 10 periods, E[dividend] = 10¢,
+  //                             so FV_t = 10 · (T − t + 1)). Shown in
+  //                             the "Paper constants" panel.
+  //   ticksPerPeriod          — simulator constant. DLM 2005 uses a
+  //                             continuous 2-minute z-Tree auction;
+  //                             this sim discretizes each period into
+  //                             18 decision rounds. Shown in the
+  //                             "Simulator constants" panel. Not
+  //                             tunable — see the evaluation in the
+  //                             commit history for the reasoning.
+  //   tickInterval            — wall-clock cadence only, driven by
+  //                             the header Speed slider. Zero effect
+  //                             on market dynamics.
   config: {
     periods:        10,
     ticksPerPeriod: 18,
@@ -38,11 +48,12 @@ const App = {
   // ctx.tunables when present, so changing a slider + rebuild applies
   // the new values on the next run. Tunables that aren't present here
   // fall back to UTILITY_DEFAULTS via the tunable() helper in agents.js.
-  // Note: `periods` and `dividendMean` are NOT here — they are paper
-  // constants pinned by DLM 2005 and live only in App.config (see the
-  // read-only Paper constants panel).
+  // Note: `periods`, `dividendMean`, and `ticksPerPeriod` are NOT
+  // here — the first two are paper constants pinned by DLM 2005 and
+  // the third is a simulator constant pinned by this implementation.
+  // All three live only in App.config (see the read-only Paper
+  // constants and Simulator constants panels).
   tunables: {
-    ticksPerPeriod:       18,
     naivePriorWeight:     0.6,
     skepticalPriorWeight: 0.9,
     adaptiveWeightCap:    0.5,
@@ -180,8 +191,6 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
-    // Market
-    'p-ticks':       { target: 'tunables.ticksPerPeriod',       out: 'v-ticks',       fmt: v => String(v | 0), int: true },
     // Population mix
     'p-mix-F':       { target: 'mix.F',                         out: 'v-mix-F',       fmt: v => String(v | 0), int: true },
     'p-mix-T':       { target: 'mix.T',                         out: 'v-mix-T',       fmt: v => String(v | 0), int: true },
@@ -466,12 +475,12 @@ const App = {
     Order.nextId = 1;
     Trade.nextId = 1;
 
-    // Fold the ticks-per-period slider back into App.config so the
-    // Market constructor sees its latest value. `periods` and
-    // `dividendMean` are paper constants and live only in App.config;
-    // tickInterval is controlled separately by the Speed slider and
-    // is intentionally preserved here.
-    this.config.ticksPerPeriod = this.tunables.ticksPerPeriod;
+    // Nothing is folded from tunables into config here any more:
+    // periods, dividendMean, and ticksPerPeriod are all fixed
+    // constants (two from the paper, one from the simulator) and
+    // live only in App.config. tickInterval is controlled by the
+    // header Speed slider and is intentionally preserved across
+    // rebuilds.
 
     this._rng = makeRNG(this.seed);
 

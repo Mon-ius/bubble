@@ -407,6 +407,7 @@ math[display="inline"] { white-space: nowrap; }
 /* ---------- Column spans ---------- */
 .panel-params   { grid-column: span 12; }
 .panel-paper    { grid-column: span 12; }
+.panel-sim      { grid-column: span 12; }
 .panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .chart-price    { grid-column: span 8; }
 .panel-book     { grid-column: span 4; }
@@ -784,20 +785,28 @@ body:not(.extended) .ext-only { display: none !important; }
   transform: translateY(0);
 }
 
-/* ---------- Paper constants ---------- */
+/* ---------- Constant cards (Paper + Simulator) ---------- */
 /*
- * Read-only companion card to the Parameters panel. Surfaces the
- * three design constants from Dufwenberg, Lindqvist & Moore (2005)
- * that are deliberately NOT adjustable in this simulator (asset
- * life, dividend distribution, expected dividend, and the resulting
- * FV formula) along with the verbatim source quote for each, so the
- * replication boundary between "paper" and "extension" is legible
- * at the top of the app rather than buried in comments.
+ * Two read-only companion cards to the Experiment settings panel,
+ * sharing the same card layout but distinguished by accent colour:
+ *
+ *   .panel-paper  — design constants pinned by Dufwenberg, Lindqvist
+ *                   & Moore (2005) §I (asset life, dividend shape,
+ *                   expected dividend, FV formula). Accent: blue.
+ *   .panel-sim    — discretization constants pinned by this
+ *                   simulator's implementation (ticksPerPeriod), not
+ *                   proposed in the paper. Accent: amber.
+ *
+ * The shared .const-* class set keeps the layout in one place; the
+ * two panels only override the left-border and eq colour so the
+ * "paper vs implementation" boundary is visually legible.
  */
-.panel-paper {
+.panel-paper,
+.panel-sim {
   padding: 18px 20px 20px;
 }
-.panel-paper .paper-head {
+.panel-paper .const-head,
+.panel-sim .const-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -807,7 +816,8 @@ body:not(.extended) .ext-only { display: none !important; }
   margin-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
-.panel-paper .paper-head h2 {
+.panel-paper .const-head h2,
+.panel-sim .const-head h2 {
   margin: 0;
   color: var(--fg-0);
   font-size: 12px;
@@ -815,18 +825,21 @@ body:not(.extended) .ext-only { display: none !important; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.panel-paper .paper-cite {
+.panel-paper .const-cite,
+.panel-sim .const-cite {
   font-size: 11px;
   color: var(--fg-3);
   font-style: italic;
 }
-.panel-paper .paper-list {
+.panel-paper .const-list,
+.panel-sim .const-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 12px;
   margin: 0;
 }
-.panel-paper .paper-item {
+.panel-paper .const-item,
+.panel-sim .const-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -837,7 +850,11 @@ body:not(.extended) .ext-only { display: none !important; }
   border-radius: 4px;
   min-width: 0;
 }
-.panel-paper .paper-item dt {
+.panel-sim .const-item {
+  border-left-color: var(--amber);
+}
+.panel-paper .const-item dt,
+.panel-sim .const-item dt {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -846,22 +863,30 @@ body:not(.extended) .ext-only { display: none !important; }
   font-size: 13px;
   font-weight: 500;
 }
-.panel-paper .paper-item dt math {
+.panel-paper .const-item dt math,
+.panel-sim .const-item dt math {
   font-size: 13px;
 }
-.panel-paper .paper-eq {
+.panel-paper .const-val {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.panel-paper .paper-label {
+.panel-sim .const-val {
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.panel-paper .const-label,
+.panel-sim .const-label {
   margin: 0;
   font-size: 10px;
   color: var(--fg-2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.panel-paper .paper-quote {
+.panel-paper .const-note,
+.panel-sim .const-note {
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
@@ -870,7 +895,8 @@ body:not(.extended) .ext-only { display: none !important; }
   padding-top: 4px;
   border-top: 1px dashed var(--border);
 }
-.panel-paper .paper-src {
+.panel-paper .const-src,
+.panel-sim .const-src {
   display: block;
   margin-top: 4px;
   font-size: 10px;

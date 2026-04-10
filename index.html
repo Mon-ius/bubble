@@ -42,19 +42,6 @@
     <div class="params-body">
 
       <details class="psec" open>
-        <summary>Runtime</summary>
-        <div class="psec-body">
-          <div class="param-row" data-tip="Number of agent decisions (and therefore order submissions) inside each period. Higher values give the market more opportunities to price-discover within a period; lower values produce thinner trading. Default 18 gives the trend-follower slope window enough samples to form but keeps the run snappy. Not a parameter of the original DLM 2005 design — the paper uses a continuous 2-minute real-time auction; the tick grid is this simulator's discretization of that.">
-            <div class="param-head">
-              <label for="p-ticks">Ticks per period</label>
-              <span class="pval" id="v-ticks">18</span>
-            </div>
-            <input type="range" id="p-ticks" min="5" max="40" step="1" value="18">
-          </div>
-        </div>
-      </details>
-
-      <details class="psec" open>
         <summary>Population <span class="muted" id="mix-total">(total 6)</span></summary>
         <div class="psec-body">
           <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = Σ N(X) for X ∈ {F, T, R, E, U}, where N(F), N(T), N(R), N(E), N(U) are the counts of Fundamentalist, Trend follower, Random ZI, Experienced, and Utility EU-maximizer agents respectively. Moving this slider rescales each N(X) proportionally to satisfy the new N: N(X)ⁿᵉʷ = ⌊N(X) · Nⁿᵉʷ / Nᵒˡᵈ⌋, with the residual Nⁿᵉʷ − Σ ⌊·⌋ distributed via largest-remainder rounding so the integer counts sum to N exactly. From an all-zero mix, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. Editing any individual N(X) slider recomputes N automatically as the new sum.">
@@ -208,30 +195,55 @@
        extensions" is visible at the top of the app.
        ============================================================ -->
   <section class="panel panel-paper">
-    <div class="paper-head">
+    <div class="const-head">
       <h2>Paper constants</h2>
-      <span class="paper-cite">Dufwenberg, Lindqvist &amp; Moore (2005), §I. Design</span>
+      <span class="const-cite">Dufwenberg, Lindqvist &amp; Moore (2005), §I. Design</span>
     </div>
-    <dl class="paper-list">
-      <div class="paper-item">
-        <dt><span data-sym="bigT"></span> <span class="paper-eq">= 10</span></dt>
-        <dd class="paper-label">Asset life, in periods</dd>
-        <dd class="paper-quote">&ldquo;An asset's life span is ten periods.&rdquo;<span class="paper-src">§I, p. 1732</span></dd>
+    <dl class="const-list">
+      <div class="const-item">
+        <dt><span data-sym="bigT"></span> <span class="const-val">= 10</span></dt>
+        <dd class="const-label">Asset life, in periods</dd>
+        <dd class="const-note">&ldquo;An asset's life span is ten periods.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
       </div>
-      <div class="paper-item">
-        <dt>dividend <span class="paper-eq">∈ {0, 20}¢</span></dt>
-        <dd class="paper-label">Per-period draw, equiprobable</dd>
-        <dd class="paper-quote">&ldquo;In each period, it pays a dividend of 0 or 20 U.S. cents, with equal probability.&rdquo;<span class="paper-src">§I, p. 1732</span></dd>
+      <div class="const-item">
+        <dt>dividend <span class="const-val">∈ {0, 20}¢</span></dt>
+        <dd class="const-label">Per-period draw, equiprobable</dd>
+        <dd class="const-note">&ldquo;In each period, it pays a dividend of 0 or 20 U.S. cents, with equal probability.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
       </div>
-      <div class="paper-item">
-        <dt><span data-sym="muD"></span> <span class="paper-eq">= 10¢</span></dt>
-        <dd class="paper-label">Expected dividend per period</dd>
-        <dd class="paper-quote">&ldquo;The expected dividend in each period is 10 cents (= ½ × 0 cents + ½ × 20 cents).&rdquo;<span class="paper-src">§I, footnote 5</span></dd>
+      <div class="const-item">
+        <dt><span data-sym="muD"></span> <span class="const-val">= 10¢</span></dt>
+        <dd class="const-label">Expected dividend per period</dd>
+        <dd class="const-note">&ldquo;The expected dividend in each period is 10 cents (= ½ × 0 cents + ½ × 20 cents).&rdquo;<span class="const-src">§I, footnote 5</span></dd>
       </div>
-      <div class="paper-item">
+      <div class="const-item">
         <dt><span data-sym="fvDef"></span></dt>
-        <dd class="paper-label">Fundamental value, by backward induction</dd>
-        <dd class="paper-quote">&ldquo;With k periods remaining, the fundamental value is k × 10 cents.&rdquo;<span class="paper-src">§I, p. 1732</span></dd>
+        <dd class="const-label">Fundamental value, by backward induction</dd>
+        <dd class="const-note">&ldquo;With k periods remaining, the fundamental value is k × 10 cents.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- ============================================================
+       Simulator constants — fixed-by-implementation values that are
+       NOT proposed in DLM 2005. The paper runs a continuous 2-minute
+       z-Tree auction per period; an agent-based replication needs a
+       discrete loop, so each period is sliced into a fixed number of
+       decision rounds. `ticksPerPeriod` is the only such constant
+       today. It lives in its own read-only card so it is obviously
+       distinct from both the Experiment settings (which are true
+       adjustable knobs) and the Paper constants (which reproduce the
+       original design).
+       ============================================================ -->
+  <section class="panel panel-sim">
+    <div class="const-head">
+      <h2>Simulator constants</h2>
+      <span class="const-cite">Fixed by this implementation · not proposed in DLM 2005</span>
+    </div>
+    <dl class="const-list">
+      <div class="const-item">
+        <dt>ticks / period <span class="const-val">= 18</span></dt>
+        <dd class="const-label">Agent decision rounds inside one period</dd>
+        <dd class="const-note">DLM 2005 runs a continuous 2-minute z-Tree double auction per period; this simulator discretizes that window into 18 decision rounds (≈ one agent turn every 6.7 real-time seconds) so the engine loop can step deterministically. 18 is dense enough to reproduce the bubble-crash pattern while keeping the replay buffer compact.<span class="const-src">engine.js — period-boundary trigger</span></dd>
       </div>
     </dl>
   </section>
