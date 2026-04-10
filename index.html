@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -122,49 +123,36 @@
         </div>
       </details>
 
-      <details class="psec ext-only">
-        <summary>Communication &amp; deception</summary>
+      <details class="psec ext-only" open>
+        <summary>Risk preferences</summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="If on, every utility agent emits one message at the end of each period containing its claimed valuation and a buy/sell/hold signal. Other agents read these at the start of the next period and fold them into their belief update. If off, agents run in silence: no messages, no trust updates, no deception at all.">
-            <label class="checkbox"><input id="toggle-communication" type="checkbox" checked>Communication on — agents broadcast per-period messages</label>
+          <div class="param-row">
+            <div class="comp-bar" id="comp-bar">
+              <div class="seg seg-loving"><span>33%</span></div>
+              <div class="seg seg-neutral"><span>34%</span></div>
+              <div class="seg seg-averse"><span>33%</span></div>
             </div>
-          <div class="param-row" data-tip="If off, every outgoing message has its claimedValuation collapsed to the sender's true valuation before it hits the bus, regardless of the agent's deceptionMode. Lets you compare an otherwise-identical run with and without strategic lying.">
-            <label class="checkbox"><input id="toggle-deception" type="checkbox" checked>Deception allowed — biased/deceptive claims can diverge from truth</label>
-            </div>
-          <div class="param-row" data-tip="Symmetric uniform noise added to the claimed valuation of an honest agent: claim = true × (1 ± this). Default 0.01 = ±1%. Higher values make even honest agents noisier and harder to trust; 0 makes them perfectly truthful.">
-            <div class="param-head">
-              <label for="p-honest-noise">Honest noise ±</label>
-              <span class="pval" id="v-honest-noise">0.010</span>
-            </div>
-            <input type="range" id="p-honest-noise" min="0" max="0.10" step="0.005" value="0.01">
           </div>
-          <div class="param-row" data-tip="Fixed tilt applied by a 'biased' agent when broadcasting. A biased-over agent claims true × (1 + tilt); biased-under claims true × (1 − tilt). Default 0.10 = ±10%. Not a strategic lie — it's a persistent mis-report that the same agent makes every period.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. U(w) = (w/w₀)² — strictly convex, so upside outcomes dominate expected-utility scoring. These agents bid aggressively and overshoot fundamental value; a high α_L share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
             <div class="param-head">
-              <label for="p-biased-tilt">Biased tilt ±</label>
-              <span class="pval" id="v-biased-tilt">0.100</span>
+              <label for="p-risk-loving">&alpha;<sub>L</sub> · Risk-loving (U = w²)</label>
+              <span class="pval" id="v-risk-loving">33%</span>
             </div>
-            <input type="range" id="p-biased-tilt" min="0" max="0.30" step="0.01" value="0.10">
+            <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
           </div>
-          <div class="param-row" data-tip="Factor applied by a deceptive agent when it's asset-rich and wants to sell: claim = true × factor. Default 1.18 = 18% overstate. Higher values make the lie more visible — adaptive trust-tracking agents will downweight the sender faster.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. U(w) = w/w₀ — linear. These agents price candidate trades at expected value and post tight, rational quotes around their belief. A larger α_N share pulls the market toward fundamental value.">
             <div class="param-head">
-              <label for="p-decep-over">Deceptive overstate factor</label>
-              <span class="pval" id="v-decep-over">1.18</span>
+              <label for="p-risk-neutral">&alpha;<sub>N</sub> · Risk-neutral (U = w)</label>
+              <span class="pval" id="v-risk-neutral">34%</span>
             </div>
-            <input type="range" id="p-decep-over" min="1.00" max="2.00" step="0.01" value="1.18">
+            <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
           </div>
-          <div class="param-row" data-tip="Factor applied by a deceptive agent when it's asset-poor and wants to buy cheap: claim = true × factor. Default 0.82 = 18% understate. Symmetric counterpart to the overstate factor.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. U(w) = √(w/w₀) — strictly concave, so downside losses dominate expected-utility scoring. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher α_A share suppresses bubbles.">
             <div class="param-head">
-              <label for="p-decep-under">Deceptive understate factor</label>
-              <span class="pval" id="v-decep-under">0.82</span>
+              <label for="p-risk-averse">&alpha;<sub>A</sub> · Risk-averse (U = √w)</label>
+              <span class="pval" id="v-risk-averse">33%</span>
             </div>
-            <input type="range" id="p-decep-under" min="0.50" max="1.00" step="0.01" value="0.82">
-          </div>
-          <div class="param-row" data-tip="Threshold for labeling a message's signal field. If claim > true × (1 + threshold), signal is 'buy'. Below (1 − threshold) is 'sell'. Otherwise 'hold'. Default 0.03 = 3%. Controls how easily the buy/sell/hold labels flip.">
-            <div class="param-head">
-              <label for="p-signal-thr">Signal threshold</label>
-              <span class="pval" id="v-signal-thr">0.030</span>
-            </div>
-            <input type="range" id="p-signal-thr" min="0" max="0.10" step="0.005" value="0.03">
+            <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
           </div>
         </div>
       </details>

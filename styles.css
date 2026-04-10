@@ -271,6 +271,36 @@ body:not(.extended) .ext-only { display: none !important; }
 }
 .param-row .checkbox input { accent-color: var(--accent); }
 
+/* Risk-preference composition bar — three linked sliders render into
+   this horizontal bar, each segment's flex matching its percentage. */
+.comp-bar {
+  display: flex;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.comp-bar .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  transition: flex 0.2s ease;
+}
+.comp-bar .seg span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.comp-bar .seg-loving  { background: #ff5e78; }
+.comp-bar .seg-neutral { background: #b0b8c9; }
+.comp-bar .seg-averse  { background: #4fa3ff; }
+.comp-bar .seg-neutral span { color: #0b0f16; text-shadow: none; }
+
 /*
  * Per-row hover tooltip (pure CSS). The entire .param-row is the hover
  * zone so moving the mouse onto the slider itself is enough to reveal

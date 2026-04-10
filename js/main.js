@@ -28,7 +28,8 @@ const App = {
   // Market-level knobs mirror App.config; the rest mirror UTILITY_DEFAULTS
   // in agents.js. The engine and agents read from ctx.tunables when
   // present, so changing a slider + reset re-seeds the whole run with
-  // the new values.
+  // the new values. Tunables that aren't present here fall back to
+  // UTILITY_DEFAULTS via the tunable() helper in agents.js.
   tunables: {
     periods:              10,
     ticksPerPeriod:       18,
@@ -37,18 +38,20 @@ const App = {
     skepticalPriorWeight: 0.9,
     adaptiveWeightCap:    0.5,
     passiveFillProb:      0.3,
-    honestNoise:          0.01,
-    biasedTilt:           0.10,
-    deceptiveOverstate:   1.18,
-    deceptiveUnderstate:  0.82,
-    signalThreshold:      0.03,
     trustAlpha:           0.30,
     valuationNoise:       0.03,
     biasAmount:           0.15,
   },
 
-  // Extended-mode toggles (communication bus + deception allowed).
-  // Only consulted when mix.U > 0.
+  // Risk-preference composition for utility agents — three linked
+  // shares summing to 100. Drives which risk profile each U slot is
+  // instantiated with in buildAgentsFromMix.
+  riskMix: { loving: 33, neutral: 34, averse: 33 },
+
+  // Extended-mode flags consulted by the engine's communication round
+  // and by the utility-agent message-listener. Kept as constants now
+  // that the old Communication & deception toggles are gone — the
+  // messaging + deception path stays live whenever mix.U > 0.
   extendedConfig: {
     communication: true,
     deception:     true,
@@ -128,12 +131,10 @@ const App = {
     'p-mix-R':       { target: 'mix.R',                         out: 'v-mix-R',       fmt: v => String(v | 0), int: true },
     'p-mix-E':       { target: 'mix.E',                         out: 'v-mix-E',       fmt: v => String(v | 0), int: true },
     'p-mix-U':       { target: 'mix.U',                         out: 'v-mix-U',       fmt: v => String(v | 0), int: true },
-    // Communication & deception
-    'p-honest-noise':{ target: 'tunables.honestNoise',          out: 'v-honest-noise',fmt: v => v.toFixed(3) },
-    'p-biased-tilt': { target: 'tunables.biasedTilt',           out: 'v-biased-tilt', fmt: v => v.toFixed(3) },
-    'p-decep-over':  { target: 'tunables.deceptiveOverstate',   out: 'v-decep-over',  fmt: v => v.toFixed(2) },
-    'p-decep-under': { target: 'tunables.deceptiveUnderstate',  out: 'v-decep-under', fmt: v => v.toFixed(2) },
-    'p-signal-thr':  { target: 'tunables.signalThreshold',      out: 'v-signal-thr',  fmt: v => v.toFixed(3) },
+    // Risk preferences — three linked shares summing to 100
+    'p-risk-loving': { target: 'riskMix.loving',                out: 'v-risk-loving', fmt: v => v + '%', int: true },
+    'p-risk-neutral':{ target: 'riskMix.neutral',               out: 'v-risk-neutral',fmt: v => v + '%', int: true },
+    'p-risk-averse': { target: 'riskMix.averse',                out: 'v-risk-averse', fmt: v => v + '%', int: true },
     // Belief update
     'p-naive-w':     { target: 'tunables.naivePriorWeight',     out: 'v-naive-w',     fmt: v => v.toFixed(2) },
     'p-skep-w':      { target: 'tunables.skepticalPriorWeight', out: 'v-skep-w',      fmt: v => v.toFixed(2) },
@@ -162,10 +163,12 @@ const App = {
         this._setByPath(spec.target, val);
         const out = document.getElementById(spec.out);
         if (out) out.textContent = spec.fmt(val);
-        if (spec.target.startsWith('mix.')) this._refreshMixTotal();
+        if (spec.target.startsWith('mix.'))     this._refreshMixTotal();
+        if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
       });
       input.addEventListener('change', () => this.reset());
     }
+    this._updateCompBar();
 
     // Total-agents slider — proportionally rescales the per-type
     // counts when the user moves it, then triggers a population
@@ -180,24 +183,6 @@ const App = {
         this._refreshMixTotal();
       });
       totalSlider.addEventListener('change', () => this.reset());
-    }
-
-    // Communication / deception checkboxes live inside the panel too.
-    const commBox = document.getElementById('toggle-communication');
-    if (commBox) {
-      commBox.checked = this.extendedConfig.communication;
-      commBox.addEventListener('change', e => {
-        this.extendedConfig.communication = e.target.checked;
-        this.reset();
-      });
-    }
-    const decBox = document.getElementById('toggle-deception');
-    if (decBox) {
-      decBox.checked = this.extendedConfig.deception;
-      decBox.addEventListener('change', e => {
-        this.extendedConfig.deception = e.target.checked;
-        this.reset();
-      });
     }
 
     // Preset buttons — snap the mix sliders to a known-good
@@ -222,20 +207,69 @@ const App = {
         this.tunables = {
           periods: 10, ticksPerPeriod: 18, dividendMean: 10,
           naivePriorWeight: 0.6, skepticalPriorWeight: 0.9, adaptiveWeightCap: 0.5,
-          passiveFillProb: 0.3, honestNoise: 0.01, biasedTilt: 0.10,
-          deceptiveOverstate: 1.18, deceptiveUnderstate: 0.82, signalThreshold: 0.03,
-          trustAlpha: 0.30, valuationNoise: 0.03, biasAmount: 0.15,
+          passiveFillProb: 0.3, trustAlpha: 0.30, valuationNoise: 0.03, biasAmount: 0.15,
         };
+        this.riskMix = { loving: 33, neutral: 34, averse: 33 };
         this.mix = { F: 0, T: 0, R: 0, E: 0, U: 6 };
-        this.extendedConfig.communication = true;
-        this.extendedConfig.deception     = true;
-        const c = document.getElementById('toggle-communication'); if (c) c.checked = true;
-        const d = document.getElementById('toggle-deception');     if (d) d.checked = true;
         this._pushStateToSliders();
         this._refreshMixTotal();
+        this._updateCompBar();
         this.reset();
       });
     }
+  },
+
+  /**
+   * Linked-slider constraint for the three risk-preference shares.
+   * When one slider moves to cv, the remaining (100 − cv) is split
+   * between the other two in proportion to their previous values,
+   * with the residual absorbed by the first of the two. If both
+   * others are zero, split the remainder 50/50. After rebalancing,
+   * App.riskMix, the readouts, and the comp-bar are all refreshed.
+   */
+  _constrainRiskMix(changedId) {
+    const ids  = ['p-risk-loving', 'p-risk-neutral', 'p-risk-averse'];
+    const keys = ['loving',        'neutral',        'averse'];
+    const ci = ids.indexOf(changedId);
+    if (ci < 0) return;
+    const els = ids.map(id => document.getElementById(id));
+    const cv  = Number(els[ci].value) | 0;
+    const oi  = [0, 1, 2].filter(i => i !== ci);
+    const prev0 = Number(els[oi[0]].value) | 0;
+    const prev1 = Number(els[oi[1]].value) | 0;
+    const sumOthers = prev0 + prev1;
+    const remaining = Math.max(0, 100 - cv);
+    let r0, r1;
+    if (sumOthers > 0) {
+      r0 = Math.round(prev0 / sumOthers * remaining);
+      r1 = remaining - r0;
+    } else {
+      r0 = Math.floor(remaining / 2);
+      r1 = remaining - r0;
+    }
+    els[oi[0]].value = String(r0);
+    els[oi[1]].value = String(r1);
+    this.riskMix[keys[ci]]    = cv;
+    this.riskMix[keys[oi[0]]] = r0;
+    this.riskMix[keys[oi[1]]] = r1;
+    document.getElementById('v-risk-loving').textContent  = this.riskMix.loving  + '%';
+    document.getElementById('v-risk-neutral').textContent = this.riskMix.neutral + '%';
+    document.getElementById('v-risk-averse').textContent  = this.riskMix.averse  + '%';
+    this._updateCompBar();
+  },
+
+  _updateCompBar() {
+    const bar = document.getElementById('comp-bar');
+    if (!bar) return;
+    const { loving, neutral, averse } = this.riskMix;
+    // A 0% segment still needs a nonzero flex or flexbox collapses it
+    // asymmetrically; 0.001 keeps it out of sight without side effects.
+    bar.children[0].style.flex = loving  || 0.001;
+    bar.children[1].style.flex = neutral || 0.001;
+    bar.children[2].style.flex = averse  || 0.001;
+    bar.children[0].querySelector('span').textContent = loving  + '%';
+    bar.children[1].querySelector('span').textContent = neutral + '%';
+    bar.children[2].querySelector('span').textContent = averse  + '%';
   },
 
   _pushStateToSliders() {
@@ -340,6 +374,7 @@ const App = {
     this.agents = buildAgentsFromMix(this.mix, {
       biasAmount:     this.tunables.biasAmount,
       valuationNoise: this.tunables.valuationNoise,
+      riskMix:        this.riskMix,
     });
     this.market = new Market(this.config);
     this.logger = new Logger();

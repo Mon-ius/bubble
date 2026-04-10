@@ -748,16 +748,60 @@ function buildAgents(populationKey, overrides = {}) {
 }
 
 /*
+ * distributeRiskPrefs — turn a {loving, neutral, averse} percentage spec
+ * into a length-`total` sequence of per-agent risk labels using
+ * largest-remainder rounding so the integer counts sum exactly to total.
+ * Returned order is averse → neutral → loving, chosen so a high risk-
+ * averse share settles into the earliest U slots (which happen to be the
+ * unbiased/honest slots of the strategy cube and so read as "cautious").
+ */
+function distributeRiskPrefs(total, pct) {
+  if (total <= 0) return [];
+  const p = pct || { loving: 33, neutral: 34, averse: 33 };
+  const sum = (p.loving || 0) + (p.neutral || 0) + (p.averse || 0);
+  // Degenerate input (all-zero) — fall back to an even split so the
+  // population is still valid. Anything else uses the user spec as-is.
+  const norm = sum > 0 ? p : { loving: 33, neutral: 34, averse: 33 };
+  const normSum = sum > 0 ? sum : 100;
+  const raw = {
+    loving:  total * (norm.loving  || 0) / normSum,
+    neutral: total * (norm.neutral || 0) / normSum,
+    averse:  total * (norm.averse  || 0) / normSum,
+  };
+  const base = {
+    loving:  Math.floor(raw.loving),
+    neutral: Math.floor(raw.neutral),
+    averse:  Math.floor(raw.averse),
+  };
+  let assigned = base.loving + base.neutral + base.averse;
+  const fracs = [
+    { k: 'loving',  f: raw.loving  - base.loving  },
+    { k: 'neutral', f: raw.neutral - base.neutral },
+    { k: 'averse',  f: raw.averse  - base.averse  },
+  ].sort((a, b) => b.f - a.f);
+  let i = 0;
+  while (assigned < total) { base[fracs[i % 3].k]++; assigned++; i++; }
+  const seq = [];
+  for (let j = 0; j < base.averse;  j++) seq.push('averse');
+  for (let j = 0; j < base.neutral; j++) seq.push('neutral');
+  for (let j = 0; j < base.loving;  j++) seq.push('loving');
+  return seq;
+}
+
+/*
  * buildAgentsFromMix — construct a population from a { F, T, R, E, U } count
  * spec. Fundamentalist/Trend/Random/Experienced agents are instantiated
  * with sequential names (F1, F2, T1, …). Utility slots cycle through the
- * fixed U1–U6 strategy cube so the deliberate variety is preserved even
- * when the user asks for fewer than six or more than six U agents.
+ * fixed U1–U6 strategy cube so the deliberate variety (bias/deception/
+ * belief modes) is preserved, but each slot's riskPref is overridden
+ * from the caller-supplied riskMix composition so the Risk preferences
+ * panel directly drives how many loving/neutral/averse U agents exist.
  *
  * overrides:
  *   biasAmount      override the per-slot biasAmount for all biased U slots
  *   valuationNoise  override the per-slot valuation noise
  *   forceHonest     collapse every U slot's deceptionMode to 'honest'
+ *   riskMix         {loving, neutral, averse} percentages (sum ≈ 100)
  */
 function buildAgentsFromMix(mix, overrides = {}) {
   const out = {};
@@ -771,10 +815,13 @@ function buildAgentsFromMix(mix, overrides = {}) {
   for (let i = 0; i < (mix.T || 0); i++) push(TrendFollower,    'T' + (i + 1));
   for (let i = 0; i < (mix.R || 0); i++) push(RandomAgent,      'R' + (i + 1));
   for (let i = 0; i < (mix.E || 0); i++) push(ExperiencedAgent, 'E' + (i + 1));
-  for (let i = 0; i < (mix.U || 0); i++) {
+  const uCount  = mix.U || 0;
+  const riskSeq = distributeRiskPrefs(uCount, overrides.riskMix);
+  for (let i = 0; i < uCount; i++) {
     const base = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
     const cycle = Math.floor(i / UTILITY_SLOTS.length);
     const opts = Object.assign({}, base);
+    if (riskSeq.length) opts.riskPref = riskSeq[i];
     if (overrides.forceHonest) opts.deceptionMode = 'honest';
     if (overrides.biasAmount != null && opts.biasMode && opts.biasMode !== 'none') {
       opts.biasAmount = overrides.biasAmount;
