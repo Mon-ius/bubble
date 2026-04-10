@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Market Lab — Dufwenberg et al. Replication</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="title">
+    <h1>Bubble Market Lab</h1>
+    <span class="subtitle">Continuous double auction · 6 agents · 10 periods · dividend ∈ {0, 20} · FV<sub>t</sub> = 10 × remaining periods</span>
+  </div>
+  <div class="controls">
+    <label>Population
+      <select id="mix-select">
+        <option value="inexperienced">Inexperienced · 2T 2R 1F 1E</option>
+        <option value="experienced">Experienced · 3E 2F 1T</option>
+        <option value="mixed">Mixed · 2F 2E 1T 1R</option>
+      </select>
+    </label>
+    <label>Seed
+      <input id="seed" type="number" min="1" max="999999" value="42">
+    </label>
+    <label>Speed
+      <input id="speed" type="range" min="1" max="20" value="14">
+    </label>
+    <button id="btn-start" class="primary">▶ Start</button>
+    <button id="btn-pause">⏸ Pause</button>
+    <button id="btn-reset">↺ Reset</button>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="panel panel-stats">
+    <div class="stat"><span class="label">Period</span><span class="value" id="stat-period">1 / 10</span></div>
+    <div class="stat"><span class="label">Tick</span><span class="value" id="stat-tick">0</span></div>
+    <div class="stat"><span class="label">Price</span><span class="value price" id="stat-price">—</span></div>
+    <div class="stat"><span class="label">Fundamental</span><span class="value fv" id="stat-fv">—</span></div>
+    <div class="stat"><span class="label">Mispricing</span><span class="value bubble" id="stat-bubble">—</span></div>
+    <div class="stat"><span class="label">Volume · period</span><span class="value vol" id="stat-volume">0</span></div>
+  </section>
+
+  <section class="panel panel-chart chart-price">
+    <h2>Price vs Fundamental Value</h2>
+    <canvas id="chart-price"></canvas>
+  </section>
+
+  <section class="panel panel-book">
+    <h2>Order Book</h2>
+    <div class="book-tables">
+      <div class="book-side">
+        <div class="side-label bids">BIDS</div>
+        <table><thead><tr><th>Price</th><th>Qty</th><th>Agent</th></tr></thead><tbody id="bids-body"></tbody></table>
+      </div>
+      <div class="book-side">
+        <div class="side-label asks">ASKS</div>
+        <table><thead><tr><th>Price</th><th>Qty</th><th>Agent</th></tr></thead><tbody id="asks-body"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel panel-chart chart-bubble">
+    <h2>Bubble Magnitude |P − FV|</h2>
+    <canvas id="chart-bubble"></canvas>
+  </section>
+
+  <section class="panel panel-chart chart-volume">
+    <h2>Trade Volume · Period</h2>
+    <canvas id="chart-volume"></canvas>
+  </section>
+
+  <section class="panel panel-chart chart-heatmap">
+    <h2>Price × Period Heatmap</h2>
+    <canvas id="chart-heatmap"></canvas>
+  </section>
+
+  <section class="panel panel-chart chart-timeline">
+    <h2>Agent Action Timeline</h2>
+    <canvas id="chart-timeline"></canvas>
+    <div class="legend">
+      <span><i class="lg bid"></i>Bid</span>
+      <span><i class="lg ask"></i>Ask</span>
+      <span><i class="lg hold"></i>Hold</span>
+      <span><i class="lg trade"></i>Executed</span>
+    </div>
+  </section>
+
+  <section class="panel panel-agents">
+    <h2>Agents</h2>
+    <div id="agents-grid" class="agents-grid"></div>
+  </section>
+
+  <section class="panel panel-feed">
+    <h2>Trade &amp; Dividend Feed</h2>
+    <ul id="trade-feed"></ul>
+  </section>
+
+  <section class="panel panel-replay">
+    <h2>Replay &amp; Trace Inspector</h2>
+    <div class="replay-controls">
+      <button id="btn-step-back">« Step</button>
+      <button id="btn-live" class="primary">● Live</button>
+      <button id="btn-step-fwd">Step »</button>
+      <span id="replay-position" class="replay-pos">Live — tick 0</span>
+    </div>
+    <input id="replay-slider" type="range" min="0" max="0" value="0" step="1">
+    <div class="trace-inspector">
+      <h3>Decisions recorded at this tick</h3>
+      <div id="trace-body"></div>
+    </div>
+  </section>
+</main>
+
+<script src="js/market.js"></script>
+<script src="js/agents.js"></script>
+<script src="js/logger.js"></script>
+<script src="js/viz.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/replay.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
