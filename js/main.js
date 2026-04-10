@@ -181,7 +181,12 @@ const App = {
   },
 };
 
-window.addEventListener('DOMContentLoaded', () => {
+function bootApp() {
   window.App = App;
   App.init();
-});
+}
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp();
+}
