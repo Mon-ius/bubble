@@ -97,8 +97,8 @@ const UI = {
     this.els.bubble  = document.getElementById('stat-bubble');
     this.els.volume  = document.getElementById('stat-volume');
 
-    this.els.bidsBody   = document.getElementById('bids-body');
-    this.els.asksBody   = document.getElementById('asks-body');
+    this.els.bidsList   = document.getElementById('bids-list');
+    this.els.asksList   = document.getElementById('asks-list');
     this.els.tradeFeed  = document.getElementById('trade-feed');
     this.els.agentsGrid = document.getElementById('agents-grid');
 
@@ -185,17 +185,33 @@ const UI = {
 
   /* -------- Order book -------- */
 
+  /**
+   * Order book renders as two side-by-side <ul> lists rather than
+   * tables so the panel can stretch vertically to match the sibling
+   * .chart-price figure. Each list's row count is derived from its
+   * own measured clientHeight divided by the row height (22px grid
+   * cell + border), with a 6-row floor and a 14-row fallback on the
+   * very first paint before layout has happened. This mirrors the
+   * dynamic-slice approach used in renderFeed.
+   */
   renderBook(v) {
-    const row = o => {
-      const name = v.agents[o.agentId]?.name || ('A' + o.agentId);
-      return `<tr><td>${o.price.toFixed(2)}</td><td>${o.remaining}</td><td>${name}</td></tr>`;
+    const rowH = 22;
+    const drawSide = (list, orders) => {
+      const avail = list.clientHeight || (rowH * 14);
+      const rows  = Math.max(6, Math.floor(avail / rowH));
+      const slice = orders.slice(0, rows);
+      if (!slice.length) { list.innerHTML = '<li class="empty">empty</li>'; return; }
+      list.innerHTML = slice.map(o => {
+        const name = v.agents[o.agentId]?.name || ('A' + o.agentId);
+        return `<li>`
+          + `<span class="price">${o.price.toFixed(2)}</span>`
+          + `<span class="qty">${o.remaining}</span>`
+          + `<span class="agent">${name}</span>`
+          + `</li>`;
+      }).join('');
     };
-    this.els.bidsBody.innerHTML =
-      v.bids.slice(0, 12).map(row).join('') ||
-      '<tr><td colspan="3" class="muted">empty</td></tr>';
-    this.els.asksBody.innerHTML =
-      v.asks.slice(0, 12).map(row).join('') ||
-      '<tr><td colspan="3" class="muted">empty</td></tr>';
+    drawSide(this.els.bidsList, v.bids);
+    drawSide(this.els.asksList, v.asks);
   },
 
   /* -------- Agent cards -------- */
