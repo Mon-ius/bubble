@@ -1,45 +1,45 @@
 %% sections/anchor.tex
-\section{ChatGPT-Anchored Priors}
+\section{AI-Agent Prior Elicitation}
 \label{sec:anchor}
 
 \subsection{Overview}
 
-The Wang~2026 paradigm adds exactly one new moving part to the
-replicated model of Section~\ref{sec:agents}: a private subjective
-valuation~$\hat{V}_i$, drawn from a ChatGPT call, that replaces the
-utility agent's deterministic prior on the very first decision
-tick. Everything downstream of the first tick---belief blending,
-trust updates, utility maximisation, order matching, dividend
-payments, and all of the market-quality instruments---is identical
-to the pure Lopez-Lira run. The anchor is therefore a \emph{minimal}
-perturbation of the decision model: the smallest change in
-behaviour that still lets the population's psychology influence
-its opening bids.
+\emph{AI-Agent Prior Elicitation} (AIPE) adds exactly one new
+moving part to the replicated model of Section~\ref{sec:agents}: a
+private subjective valuation~$\hat{V}_i$, elicited from an AI
+agent, that replaces the utility trader's deterministic prior on
+the very first decision tick. Everything downstream of the first
+tick---belief blending, trust updates, utility maximisation, order
+matching, dividend payments, and all of the market-quality
+instruments---is identical to the pure Lopez-Lira run. The anchor
+is therefore a \emph{minimal} perturbation of the decision model:
+the smallest change in behaviour that still lets the population's
+psychology influence its opening bids.
 
 Two design choices make this minimal. First, the call is placed
 once, in parallel across all utility agents, at run start, and the
 result is consumed on the first decision tick and then cleared.
-Second, the call never asks the language model for an \emph{order};
+Second, the call never asks the AI agent for an \emph{order};
 it asks only for a \emph{number}---a valuation per share in
 experimental cents---which is routed through the same prior slot
-used by equation~\eqref{eq:util_prior}. The agent's action is still
-chosen by~\eqref{eq:eu}, using a wealth argument that the language
-model never~sees. This construction isolates the psychological
+used by equation~\eqref{eq:util_prior}. The trader's action is still
+chosen by~\eqref{eq:eu}, using a wealth argument that the AI
+agent never~sees. This construction isolates the psychological
 channel from the trading channel; it also keeps the downstream
-replay deterministic, because after the first tick no agent in
-Wang~2026 depends on external~randomness of any kind.
+replay deterministic, because after the first tick no trader under
+AIPE depends on external~randomness of any kind.
 
-\subsection{The anchor call}
+\subsection{The elicitation call}
 
 Let $A_U$ be the set of utility agents in the current population.
 For each $i\in A_U$ the simulator constructs a short prompt
 $\pi_i$ that encodes three facts: the paper constants $(T,\E[d])$,
-the agent's risk preference $U_i\in\{\Uloving,\Uneutral,\Uaverse\}$
+the trader's risk preference $U_i\in\{\Uloving,\Uneutral,\Uaverse\}$
 and bias mode $b_i\in\{\text{over},\text{none},\text{under}\}$, and
 the fact that the market is shared with DLM~2005 experienced
-counterparties. The system prompt is fixed and instructs the model
-to return a single number with no explanation, currency symbol, or
-prose. Concretely, the user prompt template reads
+counterparties. The system prompt is fixed and instructs the AI
+agent to return a single number with no explanation, currency
+symbol, or prose. Concretely, the user prompt template reads
 \begin{quote}\small
 Market: $T$ periods. Each share pays 0 or 20 cents with equal
 probability per period, expected dividend $\E[d]$. Risk-neutral
@@ -65,10 +65,10 @@ float, and clamped to
 \end{equation}
 so that any out-of-range reply is bounded and cannot destabilise
 the downstream engine. A missing reply, a parse failure, or an HTTP
-error silently drops the anchor for that agent; its prior then
+error silently drops the anchor for that trader; its prior then
 defaults to equation~\eqref{eq:util_prior} on the first tick, and
 the run is otherwise unaffected. This deterministic fallback
-preserves the invariant that Wang~2026 produces a simulation with
+preserves the invariant that AIPE produces a simulation with
 or without network connectivity---a requirement for the design to be
 reproducible and shareable.
 
@@ -86,7 +86,7 @@ V_i^{\text{prior}} \;=\; \begin{cases}
 \label{eq:consume}
 \end{equation}
 The first branch overrides the deterministic prior with the
-language-model anchor and keeps the Lopez-Lira noise
+AI-agent anchor and keeps the Lopez-Lira noise
 $\varepsilon_i\sim\text{Uniform}[-0.03,0.03]$ so that two utility
 agents assigned identical anchors still draw slightly different
 first quotes. The second branch is the pure Lopez-Lira prior, used
@@ -94,9 +94,9 @@ on every tick after the first and on every tick when no anchor is
 available. The ``clear'' step ensures that a second call to
 \texttt{updateBelief} on the same tick, or the next decision tick
 in the same run, goes through the standard path, so that the
-language model's effect is felt at run~start and then decays
-through the belief-blend equation~\eqref{eq:blend} as normal
-messaging proceeds.
+AI agent's effect is felt at run~start and then decays through
+the belief-blend equation~\eqref{eq:blend} as normal messaging
+proceeds.
 
 \subsection{Research question and instrumentation}
 
@@ -144,7 +144,7 @@ to the psychological~optimum.
 
 \subsection{Determinism, cost, and caching}
 
-A single Wang~2026 run consumes $|A_U|$ chat completions as one
+A single AIPE run consumes $|A_U|$ chat completions as one
 parallel batch and runs closed-form thereafter. With $|A_U|\le 6$
 in the default preset, network cost is a handful of round trips on
 the first frame and zero afterwards; no caching or retry layer is

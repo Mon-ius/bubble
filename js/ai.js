@@ -1,12 +1,13 @@
 'use strict';
 
 /* ======================================================================
-   ai.js — Wang (2026) ChatGPT endpoint.
+   ai.js — AIPE (AI-Agent Prior Elicitation) endpoint.
 
    Thin, dependency-free wrapper around the OpenAI /v1/chat/completions
-   API, used only by the Wang 2026 paradigm. Reuses the `{endpoint,
-   apiKey, model}` shape from the lying project's agent roster and its
-   plain-text response contract (no structured JSON, no function calls).
+   API, used only by the AIPE paradigm (data-paradigm="wang" retained as
+   the internal code key for stability). Reuses the `{endpoint, apiKey,
+   model}` shape from the lying project's agent roster and its plain-text
+   response contract (no structured JSON, no function calls).
 
    Flow:
 
@@ -29,11 +30,11 @@
 
      4. Errors, missing keys, or invalid responses fall back to the
         deterministic Lopez-Lira belief model without disturbing the run.
-        Wang 2026 must still produce a simulation when the network is
+        AIPE must still produce a simulation when the network is
         unavailable, because the paper's research question ("does the
         asset end up with the highest-V̂ agent") is answerable from the
-        deterministic path alone — ChatGPT only adds a stronger, more
-        heterogeneous psychological signal.
+        deterministic path alone — the AI agent only adds a stronger,
+        more heterogeneous psychological signal.
    ====================================================================== */
 
 const AI = {
@@ -125,7 +126,7 @@ const AI = {
   },
 
   /**
-   * Parse a psychological valuation out of a free-form LLM response.
+   * Parse a psychological valuation out of a free-form AI-agent response.
    * The prompt asks for a single number; in practice models sometimes
    * prefix it with "My valuation is". The regex grabs the first
    * signed decimal and clamps it into [lo, hi] so an out-of-range
@@ -148,7 +149,7 @@ const AI = {
    * to the deterministic prior".
    *
    * The prompt describes the DLM 2005 asset (10 periods, {0,20}¢
-   * dividend, FV declining by 10 per period), the Wang 2026 merged
+   * dividend, FV declining by 10 per period), the AIPE merged
    * market (E agents present alongside U agents), and the single
    * Lopez-Lira risk-preference axis that distinguishes this agent
    * from its peers. The model is asked for a single number, no text

@@ -16,9 +16,9 @@ have played the game before, the bubble~disappears. Experience, rather
 than cognition or incentives, is what eventually kills the bubble.
 
 A parallel and much more recent literature replaces the human
-subjects with large language models. \citet{lopezlira2025llm}
-proposes an expected-utility framework in which each LLM-flavoured
-agent carries a persistent valuation bias $b_i$, a risk preference
+subjects with AI agents. \citet{lopezlira2025llm}
+proposes an expected-utility framework in which each AI-agent
+trader carries a persistent valuation bias $b_i$, a risk preference
 over wealth $U\in\{\Uloving,\Uneutral,\Uaverse\}$, and a belief-blending
 channel that lets agents exchange private valuations and update a
 trust score for each sender by exponential moving average. Lopez-Lira's
@@ -27,30 +27,30 @@ cross the bid, cross the ask, post passively---and the resulting
 population can be dialled between skeptical and naive, truthful and
 deceptive, risk-averse and risk-loving by simple categorical knobs.
 The Lopez-Lira design is a natural vehicle for studying~how a
-heterogeneous LLM population prices a DLM asset, but it leaves open a
-psychological question the original DLM protocol never asked: if one
-replaces the deterministic prior~$\FV_t\cdot(1+b_i+\varepsilon)$ with
-a private subjective valuation drawn from a language model that is
-told who the agent is and what the market looks like, does the asset
+heterogeneous AI-agent population prices a DLM asset, but it leaves
+open a psychological question the original DLM protocol never asked:
+if one replaces the deterministic prior~$\FV_t\cdot(1+b_i+\varepsilon)$
+with a private subjective valuation elicited from an AI agent that is
+told who the trader is and what the market looks like, does the asset
 then migrate, over the course of the run, into the hands of the
 agent with the highest such valuation?
 
 This paper contributes a computational testbed in which the two
 designs share one continuous double-auction market, and a new
-paradigm---which we label \emph{Wang~2026}---that seeds each utility
-agent's prior with exactly one ChatGPT call at run~start. Concretely,
-when the user selects Wang~2026 and supplies an API key, the
-simulator fires one chat completion per utility agent in parallel,
-using a prompt that encodes the agent's risk preference, bias mode,
-and the presence of DLM experienced counterparties in the same
-market. The returned number, clamped to
+protocol---\emph{AI-Agent Prior Elicitation} (AIPE)---that seeds
+each utility agent's prior with exactly one AI-agent call at
+run~start. Concretely, when AIPE is enabled and the user supplies
+an API key, the simulator fires one chat completion per utility
+agent in parallel, using a prompt that encodes the agent's risk
+preference, bias mode, and the presence of DLM experienced
+counterparties in the same market. The returned number, clamped to
 $[0.25\,\FV_0,\,1.75\,\FV_0]$, is written to the agent's
 \texttt{psychAnchor} slot and consumed on the first decision tick in
 place of the deterministic prior; subsequent ticks revert to the
 Lopez-Lira prior plus belief~blending. In the notation of the
 replicated model,
 \begin{equation}
-\hat{V}_i \;\leftarrow\; \mathrm{ChatGPT}(\text{agent}_i),
+\hat{V}_i \;\leftarrow\; \mathrm{AIPE}(\text{agent}_i),
 \qquad
 \mathrm{prior}_{t=0}^{(i)} \;=\; \hat{V}_i\cdot(1+\varepsilon_i),
 \qquad \hat{V}_i\in[0.25\,\FV_0,\,1.75\,\FV_0].
@@ -73,25 +73,25 @@ $g(t)=(\hat V_{i^\star}-\hat V_{j^\star(t)})/\hat V_{i^\star}$.
 Both quantities are reported every tick alongside Haessel~$R^2$,
 normalised deviation, amplitude, turnover, and allocative
 efficiency, so classical bubble statistics stay visible beside the
-new Wang metric block.
+new allocation metrics.
 
-Two features distinguish the Wang~2026 paradigm from a na\"ive
-``LLM-as-trader'' pipeline. First, the language model is consulted
-exactly once at run~start; after the anchor is absorbed, the agent is
-again a pure expected-utility maximiser and the mulberry32 RNG alone
+Two features distinguish AIPE from a na\"ive ``AI-as-trader''
+pipeline. First, the AI agent is consulted exactly once at
+run~start; after the anchor is absorbed, the trader is again a
+pure expected-utility maximiser and the mulberry32 RNG alone
 controls the downstream dynamics. Second, the anchor is a
-\emph{valuation} and not an order: the agent's quoting rule, fill
+\emph{valuation} and not an order: the trader's quoting rule, fill
 probability, and utility function are unchanged, and only its starting
 prior is moved. These two choices isolate the specific question
 ``does psychology predict ownership'' from the adjacent question
-``does an LLM trade~well.''
+``does an AI agent trade~well.''
 
 Section~\ref{sec:related} places the simulator in the literature on
-experimental asset markets and LLM-based agents.
+experimental asset markets and AI-agent traders.
 Section~\ref{sec:design} documents the market structure and the
 sampling stage. Section~\ref{sec:agents} gives the precise decision
-rule for each agent type. Section~\ref{sec:anchor} presents the
-Wang~2026 extension: the anchor call, the clamp, the consumption
-path, and the research-question instrumentation.
-Section~\ref{sec:results} reports preliminary findings, and
-Section~\ref{sec:conclusion} concludes.
+rule for each agent type. Section~\ref{sec:anchor} presents AIPE:
+the elicitation call, the clamp, the consumption path, and the
+research-question instrumentation. Section~\ref{sec:results}
+reports preliminary findings, and Section~\ref{sec:conclusion}
+concludes.

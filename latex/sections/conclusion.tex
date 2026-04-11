@@ -5,10 +5,11 @@
 This paper documents a browser-based replication of the
 experimental asset market of~\citet{dufwenberg2005bubbles},
 extended with the expected-utility messaging population
-of~\citet{lopezlira2025llm}, and introduces a new paradigm in
-which a single ChatGPT call seeds each utility agent's private
-subjective valuation at run~start. The extension is deliberately
-minimal: one number per agent, clamped to
+of~\citet{lopezlira2025llm}, and introduces \emph{AI-Agent Prior
+Elicitation} (AIPE), a protocol in which a single AI-agent call
+seeds each utility trader's private subjective valuation at
+run~start. The extension is deliberately minimal: one number per
+agent, clamped to
 $[0.25\,\FV_0,\,1.75\,\FV_0]$, written to the
 \texttt{psychAnchor} slot and consumed on the first decision tick
 of the standard Lopez-Lira prior. Everything downstream of the
@@ -23,21 +24,21 @@ The contribution is threefold. First, the testbed constitutes a
 clean vanilla-JavaScript implementation of two otherwise unrelated
 experimental designs, specified in enough detail
 (Sections~\ref{sec:design}--\ref{sec:agents}) that a reader can
-reconstruct the model from the paper alone. Second, the Wang~2026
-extension introduces a narrowly-scoped use of a language model as
-a \emph{psychological prior elicitor} rather than as a trader: the
-model is never asked to choose an action, and its output is routed
-through the same prior slot used by the deterministic fallback,
-so that any behavioural effect is attributable to the starting
-valuation rather than to an expansion of the action space. Third,
-the research question---does the asset end up in the hands of the
-agent with the highest anchored valuation---is instrumented with
-a per-tick match indicator and a normalised gap, and reported
-alongside the classical bubble statistics
+reconstruct the model from the paper alone. Second, AIPE
+introduces a narrowly-scoped use of an AI agent as a
+\emph{psychological prior elicitor} rather than as a trader: the
+AI agent is never asked to choose an action, and its output is
+routed through the same prior slot used by the deterministic
+fallback, so that any behavioural effect is attributable to the
+starting valuation rather than to an expansion of the action
+space. Third, the research question---does the asset end up in
+the hands of the agent with the highest anchored valuation---is
+instrumented with a per-tick match indicator and a normalised
+gap, and reported alongside the classical bubble statistics
 (Haessel~$R^2$, normalised deviation, amplitude, turnover,
 allocative efficiency). The instrumentation is designed so that
-any replication of the Wang~2026 paradigm can report the same
-panel without additional~code.
+any replication of AIPE can report the same panel without
+additional~code.
 
 Three caveats shape the preliminary findings. First, the ranges in
 Table~\ref{tab:mktq} are illustrative, not calibrated: a full
@@ -60,11 +61,11 @@ numerical constant that shapes a run---the population mix, the
 risk-preference share, the passive fill probability, the trust
 learning rate, the bias amplitude, and the valuation noise---and
 the seeded PRNG makes every edit to a constant observable as a
-difference against a matched baseline. The Wang~2026 paradigm is
-the first extension of this infrastructure that asks a question
-about language models, and it opens several follow-ups: whether
-the anchor's effect on allocative efficiency scales with the
-cross-agent variance of~$\hat V$; whether multiple language models
-produce systematically different anchor vectors for the same
-prompt; and whether adding deceptive messaging amplifies or dampens
-the first-tick stratification that the anchor produces.
+difference against a matched baseline. AIPE is the first extension
+of this infrastructure that asks a question about AI agents, and
+it opens several follow-ups: whether the anchor's effect on
+allocative efficiency scales with the cross-agent variance
+of~$\hat V$; whether different AI agents produce systematically
+different anchor vectors for the same prompt; and whether adding
+deceptive messaging amplifies or dampens the first-tick
+stratification that the anchor produces.

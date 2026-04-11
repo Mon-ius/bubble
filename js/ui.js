@@ -1153,7 +1153,7 @@ const UI = {
 
     const pDev = (v.lastPrice != null && avgV != null) ? Math.abs(v.lastPrice - avgV) : null;
 
-    // ---- Wang (2026) psychological allocation outcome.
+    // ---- AIPE psychological allocation outcome.
     // Research question: does the asset ultimately end up in the hands
     // of the agent with the highest psychological valuation? Identifies
     // the top-holder (agent with the most shares) and the agent with
@@ -1218,7 +1218,7 @@ const UI = {
       <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨${sym.lieGap || ''}⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
       <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
 
-      <div class="metric-group-label">Psychological allocation · Wang (2026)</div>
+      <div class="metric-group-label">Psychological allocation · AIPE</div>
       <div class="metric-row"><span>Top holder vs highest V̂</span><strong class="${psychMatch === true ? 'ok' : psychMatch === false ? 'bad' : ''}">${psychMatch == null ? '—' : psychMatch ? 'match' : 'miss'}</strong></div>
       <div class="metric-row"><span>Top-holder id · V̂</span><strong>${psychTopHolderId == null ? '—' : 'A' + psychTopHolderId + ' · ' + fmt(psychTopHolderV)}</strong></div>
       <div class="metric-row"><span>Max-V̂ id · V̂*</span><strong>${psychMaxVid == null ? '—' : 'A' + psychMaxVid + ' · ' + fmt(psychMaxV)}</strong></div>

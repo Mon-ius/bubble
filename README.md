@@ -2,9 +2,10 @@
 
 A fully self-contained, browser-based replication of the continuous double
 auction experimental market from **Dufwenberg, Lindqvist & Moore, "Bubbles and
-Experience: An Experiment" (AER 2005)**, extended with an LLM-style **Utility
-(EU-maximizer)** agent that supports inter-agent messaging, trust, and optional
-deception — inspired by Lopez-Lira (2025), *"Can Large Language Models Trade?"*.
+Experience: An Experiment" (AER 2005)**, extended with an AI-agent-style
+**Utility (EU-maximizer)** agent that supports inter-agent messaging, trust,
+and optional deception — inspired by Lopez-Lira (2025), *"Can Large Language
+Models Trade?"*.
 
 Pure HTML, CSS, and vanilla JavaScript. No frameworks, no build step, no
 external libraries. Open `index.html` in any modern browser to run.

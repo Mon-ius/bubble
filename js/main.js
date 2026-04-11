@@ -77,17 +77,20 @@ const App = {
 
   // Research paradigm tag — surfaced in the navbar as a segmented
   // switch between 'dlm' (Dufwenberg, Lindqvist & Moore 2005, human
-  // subjects, E-heavy population), 'lll' (Lopez-Lira 2025, LLM
+  // subjects, E-heavy population), 'lll' (Lopez-Lira 2025, AI-agent
   // EU-maximizer with messaging/trust, U-heavy population) and
-  // 'wang' (Wang 2026, merged E + U population with an optional
-  // ChatGPT-anchor step at run start). Purely a preset applier:
-  // clicking a paradigm button fills the user-controlled slots
-  // with the matching agent type, but individual sliders remain
-  // fully editable afterwards. Default 'lll' matches the default
-  // mix above (E=0, U=6) so extended panels light up on first load.
+  // 'wang' (AI-Agent Prior Elicitation — AIPE, merged E + U
+  // population with an optional AI-agent prior-elicitation step at
+  // run start; the code key 'wang' is retained as the internal
+  // paradigm id for stability even though the user-facing label
+  // is now AIPE). Purely a preset applier: clicking a paradigm
+  // button fills the user-controlled slots with the matching agent
+  // type, but individual sliders remain fully editable afterwards.
+  // Default 'lll' matches the default mix above (E=0, U=6) so
+  // extended panels light up on first load.
   paradigm: 'lll',
 
-  // Wang 2026 AI endpoint state. Populated from the #ai-key /
+  // AIPE AI endpoint state. Populated from the #ai-key /
   // #ai-endpoint / #ai-model inputs on every change event and
   // consumed by start() when paradigm === 'wang'. Nothing is
   // persisted to localStorage, matching the lying project's
@@ -331,7 +334,7 @@ const App = {
     });
     this._syncParadigmButtons();
 
-    // Wang 2026 — AI endpoint inputs. Kept in App.aiConfig live so
+    // AIPE — AI endpoint inputs. Kept in App.aiConfig live so
     // start() can read it synchronously without another DOM lookup.
     // Nothing is persisted; a page reload clears the key deliberately.
     // The #ai-model element is a <select> populated from AI.MODELS
@@ -595,7 +598,7 @@ const App = {
    *   E > 0, U > 0  → wang (merged)
    *
    * The App.paradigm field is only overwritten if the slider-inferred
-   * paradigm is unambiguous; an all-zero mix or the Wang 2026 button
+   * paradigm is unambiguous; an all-zero mix or the AIPE button
    * explicitly setting 'wang' keeps the current flag.
    */
   _syncParadigmButtons() {
@@ -924,20 +927,21 @@ const App = {
   },
 
   /**
-   * Kick off the simulation loop. Wang 2026 hooks in here: if the
-   * paradigm is 'wang' AND an API key is present AND the population
-   * has at least one Utility agent, await one OpenAI chat completion
-   * per Utility agent before launching the engine. Each returned
-   * anchor is written onto `agent.psychAnchor` so the first decide()
-   * tick seeds `subjectiveValuation` from the model's answer instead
-   * of the deterministic Lopez-Lira prior. Errors, missing keys, and
-   * non-Wang paradigms skip the await entirely — Wang 2026 must still
+   * Kick off the simulation loop. AIPE (AI-Agent Prior Elicitation)
+   * hooks in here: if the paradigm is 'wang' AND an API key is
+   * present AND the population has at least one Utility agent, await
+   * one AI-agent chat completion per Utility agent before launching
+   * the engine. Each returned anchor is written onto
+   * `agent.psychAnchor` so the first decide() tick seeds
+   * `subjectiveValuation` from the elicited answer instead of the
+   * deterministic Lopez-Lira prior. Errors, missing keys, and
+   * non-AIPE paradigms skip the await entirely — AIPE must still
    * produce a run when the network is unavailable.
    */
   async start() {
     if (this.replayMode) this.exitReplay();
     if (this.paradigm === 'wang' && this.aiConfig && this.aiConfig.apiKey) {
-      this._setAiStatus('consulting ChatGPT…');
+      this._setAiStatus('eliciting AI-agent priors…');
       try {
         const anchors = await AI.getPsychAnchors(this.agents, this.config, this.aiConfig);
         let applied = 0;
@@ -949,8 +953,8 @@ const App = {
         }
         this._setAiStatus(applied > 0 ? `Anchored ${applied} agent${applied === 1 ? '' : 's'}` : 'No anchors returned — deterministic fallback');
       } catch (err) {
-        console.warn('[App.start] Wang 2026 anchor call failed:', err);
-        this._setAiStatus('ChatGPT call failed — deterministic fallback');
+        console.warn('[App.start] AIPE elicitation failed:', err);
+        this._setAiStatus('AI-agent call failed — deterministic fallback');
       }
     }
     this.engine.start();

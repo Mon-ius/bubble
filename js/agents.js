@@ -378,7 +378,7 @@ class ExperiencedAgent extends Agent {
   }
 }
 
-/* ---------- Utility-maximizing LLM-style agent ------------------------ */
+/* ---------- Utility-maximizing AI-agent-style trader ----------------- */
 /*
  * UtilityAgent replaces heuristic trading with an explicit expected-
  * utility maximization pipeline. Each decision runs through five
@@ -469,12 +469,13 @@ class UtilityAgent extends Agent {
     this.reportedValuation   = null;
     this.receivedMsgs        = [];
 
-    // Wang 2026 psychological anchor. Populated by App.start() from
-    // AI.getPsychAnchors when paradigm === 'wang' and an API key is
-    // present; null means "fall back to the deterministic Lopez-Lira
-    // prior". Consumed exactly once on the first updateBelief() tick,
-    // then cleared so subsequent ticks return to the normal prior +
-    // message-update flow.
+    // AIPE (AI-Agent Prior Elicitation) psychological anchor.
+    // Populated by App.start() from AI.getPsychAnchors when
+    // paradigm === 'wang' (the internal code key is retained for
+    // stability) and an API key is present; null means "fall back
+    // to the deterministic Lopez-Lira prior". Consumed exactly once
+    // on the first updateBelief() tick, then cleared so subsequent
+    // ticks return to the normal prior + message-update flow.
     this.psychAnchor = null;
 
     // Frozen baseline — used to normalize utility so U(w0) = 1.
@@ -504,8 +505,8 @@ class UtilityAgent extends Agent {
                       : 0;
     const bias  = sign * this.biasAmount;
     const noise = (rng() - 0.5) * 2 * noiseAmp;
-    // Wang 2026: on the first tick where a psychological anchor is
-    // set, use it as the prior instead of the deterministic FV-based
+    // AIPE: on the first tick where a psychological anchor is set,
+    // use it as the prior instead of the deterministic FV-based
     // formula. The noise jitter is still applied so agents with the
     // same anchor do not lock-step. The anchor is cleared after use
     // so the belief model decays back to the normal Lopez-Lira path

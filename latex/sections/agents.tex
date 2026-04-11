@@ -184,6 +184,6 @@ price--time-priority order book, mutates cash and inventory on
 every trade, credits dividends per \eqref{eq:dividend} at period
 end, and records every state in append-only history arrays so the
 replay system can reconstruct past ticks without re-running the
-agents. No agent in this model consults a language model. The
-next section adds the first such consultation as the Wang~2026
-extension.
+agents. No trader in this model consults an AI agent at decision
+time. The next section adds the first such consultation as the
+\emph{AI-Agent Prior Elicitation} (AIPE) protocol.

@@ -51,11 +51,11 @@
           <mxGeometry x="900" y="270" width="200" height="70" as="geometry"/>
         </mxCell>
 
-        <!-- Group: Wang 2026 overlay -->
-        <mxCell id="g-wang" value="Wang 2026 &#x2014; ChatGPT anchor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;strokeDasharray=5 5;fontColor=#831843;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;dashed=1;" vertex="1" parent="1">
+        <!-- Group: AIPE overlay -->
+        <mxCell id="g-wang" value="AIPE &#x2014; AI-agent anchor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;strokeDasharray=5 5;fontColor=#831843;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="40" y="300" width="360" height="180" as="geometry"/>
         </mxCell>
-        <mxCell id="n-anchor" value="V&#x0302;&#x1d62; &#x2190; ChatGPT(agent i)&#xa;V&#x0302;&#x1d62; &#x2208; [0.25&#xb7;FV&#x2080;, 1.75&#xb7;FV&#x2080;]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="n-anchor" value="V&#x0302;&#x1d62; &#x2190; AIPE(agent i)&#xa;V&#x0302;&#x1d62; &#x2208; [0.25&#xb7;FV&#x2080;, 1.75&#xb7;FV&#x2080;]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="60" y="340" width="320" height="60" as="geometry"/>
         </mxCell>
         <mxCell id="n-question" value="Does the asset end up with the highest-V&#x0302; agent?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;fontStyle=2;" vertex="1" parent="1">

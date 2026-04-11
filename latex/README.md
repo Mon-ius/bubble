@@ -1,8 +1,8 @@
-# Wang (2026) — LaTeX source
+# Bubbles and Priors — LaTeX source
 
-Ten-page AER-style paper on the Wang 2026 ChatGPT-anchored extension
-of the Dufwenberg, Lindqvist and Moore (2005) experimental asset
-market and the Lopez-Lira (2025) utility-agent population.
+Ten-page AER-style paper on **AI-Agent Prior Elicitation (AIPE)**, an
+extension of the Dufwenberg, Lindqvist and Moore (2005) experimental
+asset market and the Lopez-Lira (2025) utility-agent population.
 
 ## Layout
 
@@ -18,7 +18,7 @@ latex/
 │   ├── related_work.tex
 │   ├── design.tex
 │   ├── agents.tex
-│   ├── anchor.tex       # ChatGPT-anchored prior mechanism
+│   ├── anchor.tex       # AI-Agent Prior Elicitation (AIPE) mechanism
 │   ├── results.tex
 │   └── conclusion.tex
 └── figures/          # placeholder for figure PDFs

@@ -9,7 +9,7 @@ calibrated empirical test. Each paradigm holds the market
 structure of Section~\ref{sec:design} fixed and varies only the
 population composition. Unless otherwise noted, $N=10$ agents
 share one market for $T=10$ periods, the seeded PRNG is rolled
-fresh at the start of every run, and the Wang~2026 anchor is
+fresh at the start of every run, and the AIPE anchor is
 drawn from the default model \texttt{gpt-5.4} with the paper's
 system and user prompts verbatim.
 
@@ -46,11 +46,11 @@ mean-lie-magnitude statistic is tightly correlated with $\ND$,
 consistent with the closed-loop mechanism in
 \citet{lopezlira2025llm}.
 
-\subsection{Wang 2026: does the asset migrate to the highest anchor?}
+\subsection{AIPE: does the asset migrate to the highest anchor?}
 
-The novel regime is the Wang~2026 merged market. With
+The novel regime is the AIPE merged market. With
 $\lceil(N-4)/2\rceil=3$ experienced and $3$ utility agents and a
-live ChatGPT anchor vector~$(\hat V_i)_{i\in A_U}$, three
+live AI-agent anchor vector~$(\hat V_i)_{i\in A_U}$, three
 preliminary observations are clear from a handful of runs.
 
 \paragraph{Anchor dispersion.} The returned anchors are
@@ -65,7 +65,7 @@ model's psychology maps into~$\hat V$ in the direction the prompt
 implies.
 
 \paragraph{First-tick quoting.} Because the anchor is consumed on
-the first decision tick, the earliest orders in a Wang~2026 run
+the first decision tick, the earliest orders in an AIPE run
 are visibly stratified by anchor. Risk-loving agents with
 $\hat V\approx175$ post aggressive bids near~$\FV_1=100$ and
 cross the ask when possible; risk-averse agents with
@@ -105,7 +105,7 @@ under the three paradigms in qualitative---not yet calibrated---form.
 \label{tab:mktq}
 \begin{tabular}{l c c c}
 \toprule
-& DLM~2005 & Lopez-Lira~2025 & Wang~2026 \\
+& DLM~2005 & Lopez-Lira~2025 & AIPE \\
 \midrule
 Haessel~$R^2$       & $>0.90$      & $0.30$--$0.80$ & $0.40$--$0.85$ \\
 Normalised dev.~$\ND$& $<0.10$     & $0.10$--$0.30$ & $0.10$--$0.25$ \\
@@ -117,7 +117,7 @@ Match $\mathbb{1}\{j^\star(T)=i^\star\}$ & n/a & n/a & 50--70\% runs \\
 \end{tabular}
 \end{table}
 
-Wang~2026 sits between its two parents: the experienced block
+AIPE sits between its two parents: the experienced block
 suppresses amplitude and improves~$R^2$, while the utility block
 introduces enough psychology to produce nontrivial variation in the
 match indicator. Whether the match indicator exceeds a naive

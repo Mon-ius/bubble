@@ -5,8 +5,8 @@
 The simulator sits at the intersection of four strands of
 literature: the experimental-bubble tradition, the heterogeneous
 agent-based finance tradition, the expected-utility decision-theoretic
-tradition, and the emerging work on large language models as
-economic~agents.
+tradition, and the emerging work on AI agents as
+economic~subjects.
 
 \paragraph{Experimental bubbles.} The taxonomy of the market
 in this paper is directly inherited from \citet{smith1988bubbles},
@@ -35,9 +35,9 @@ Together these three rules provide a rational anchor, a momentum
 amplifier, and a liquidity floor; the DLM experienced agent then
 contributes the horizon-conditional bubble-suppression channel.
 
-\paragraph{Expected utility and LLM traders.}
-\citet{lopezlira2025llm} introduces a utility-maximising LLM agent
-whose prior is a perturbation of~$\FV_t$, whose action space is
+\paragraph{Expected utility and AI-agent traders.}
+\citet{lopezlira2025llm} introduces a utility-maximising AI-agent
+trader whose prior is a perturbation of~$\FV_t$, whose action space is
 $\{\text{hold},\text{cross bid},\text{cross ask},\text{passive bid},\text{passive ask}\}$,
 and whose choice rule picks the action with the highest expected
 utility,
@@ -56,24 +56,23 @@ described, so that any difference from a pure Lopez-Lira run is
 attributable to the ChatGPT-anchored prior rather than to a change
 in the decision~rule.
 
-\paragraph{Language models as economic subjects.}
-A small but rapidly growing literature studies whether large language
-models reproduce well-documented behavioural regularities when
-embedded in experimental decision tasks. The Wang~2026 paradigm is a
-deliberately narrow use of this approach. It does not ask the
-language model to trade; it does not expose the order book or the
-history of transaction prices; it does not grant the model the
-authority to choose an action from the action set. It asks one
-question---``what is your private subjective valuation per share
-right now, in cents?''---with a prompt that names the agent's risk
-preference, bias mode, and the composition of the market. The
-returned number is then clamped and treated as a prior in the
-downstream expected-utility computation. This design isolates the
-psychological channel (``how would the model price the asset, in
-light of who it is?'') from the trading channel (``what orders
-would the model place?''), and in doing so connects the experimental
-bubble literature to the psychology-of-valuation
-literature via a single numeric quantity.
+\paragraph{AI agents as economic subjects.}
+A small but rapidly growing literature studies whether AI agents
+reproduce well-documented behavioural regularities when embedded
+in experimental decision tasks. AIPE is a deliberately narrow use
+of this approach. It does not ask the AI agent to trade; it does
+not expose the order book or the history of transaction prices;
+it does not grant the AI agent the authority to choose an action
+from the action set. It asks one question---``what is your private
+subjective valuation per share right now, in cents?''---with a
+prompt that names the trader's risk preference, bias mode, and the
+composition of the market. The returned number is then clamped and
+treated as a prior in the downstream expected-utility computation.
+This design isolates the psychological channel (``how would the
+AI agent price the asset, in light of who it is?'') from the
+trading channel (``what orders would the AI agent place?''), and
+in doing so connects the experimental bubble literature to the
+psychology-of-valuation literature via a single numeric quantity.
 
 \paragraph{Market-quality instruments.} The testbed reports four
 standard bubble statistics---Haessel's~$R^2$
@@ -81,6 +80,6 @@ standard bubble statistics---Haessel's~$R^2$
 amplitude, and turnover, following SSW and
 \citet{stockl2010bubble}---alongside allocative efficiency
 $\AllocEff=(\sum_i \hat{V}_i\cdot\text{inventory}_i)/(\max_i\hat{V}_i\cdot Q)$,
-the quantitative form of the Wang~2026 research question: when
+the quantitative form of the AIPE research question: when
 $\AllocEff=1$ the asset has migrated to the agent with the highest
 anchored valuation.

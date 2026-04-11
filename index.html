@@ -43,7 +43,7 @@
     Paradigm switch — segmented control between the two research
     paradigms this simulator replicates. DLM 2005 is the classic
     human-subject bubble experiment (E-heavy, U = 0); Lopez-Lira 2025
-    is the LLM-EU-maximizer extension with messaging, trust and
+    is the AI-agent EU-maximizer extension with messaging, trust and
     deception (U-heavy, E = 0). Clicking a paradigm applies a
     population preset that fills the user-controllable slots with
     the matching agent type; individual sliders can still be edited
@@ -52,8 +52,8 @@
   -->
   <div class="paradigm-switch" role="group" aria-label="Research paradigm">
     <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — human-subject bubble experiment. Fills the population with Experienced agents.">DLM 2005</button>
-    <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — LLM expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
-    <button class="paradigm-btn" data-paradigm="wang" title="Wang (2026) — merged DLM + Lopez-Lira experiment that seats Experienced and Utility agents in the same market and optionally lets ChatGPT refresh each Utility agent's psychological valuation at the start of every period. Research question: does the asset ultimately end up in the hands of the agent with the highest psychological valuation?">Wang 2026</button>
+    <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — AI-agent expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
+    <button class="paradigm-btn" data-paradigm="wang" title="AI-Agent Prior Elicitation (AIPE) — merged DLM + Lopez-Lira experiment that seats Experienced and Utility agents in the same market and elicits each Utility agent's starting psychological valuation from an AI agent at run start. Research question: does the asset ultimately end up in the hands of the agent with the highest elicited valuation?">AIPE</button>
   </div>
   <div class="controls">
     <label>Speed
@@ -140,11 +140,11 @@
       </details>
 
       <details class="psec wang-only" open>
-        <summary>AI endpoint <span class="muted">ChatGPT · Wang 2026</span></summary>
+        <summary>AI endpoint <span class="muted">ChatGPT · AIPE</span></summary>
         <div class="psec-body ai-config">
           <p class="ai-config-note">
-            When the paradigm is set to Wang 2026 and an API key is present, each Utility
-            agent calls ChatGPT once at the start of the run to anchor its private
+            When the paradigm is set to AIPE and an API key is present, each Utility
+            agent calls the AI agent once at the start of the run to anchor its private
             subjective valuation. Provider list and endpoint match the lying project's
             GPT provider (<code>PROVIDERS.gpt</code> in <code>lying/js/ai-agent.js</code>).
             Fields are read fresh from the DOM on every run (no localStorage) and no
@@ -623,7 +623,7 @@
   header with the title and an "Edit in draw.io" shortcut, a
   hand-coded SVG flow diagram whose nodes carry inline equations, and
   a responsive grid of cards, each introducing one equation block
-  from the DLM 2005 / Lopez-Lira 2025 / Wang 2026 stack. KaTeX is
+  from the DLM 2005 / Lopez-Lira 2025 / AIPE stack. KaTeX is
   called on this pane by main.js._renderMath() whenever the user
   activates the tab, so every `$…$` span below becomes a rendered
   formula at that point. The `.drawio` source lives at
@@ -636,7 +636,7 @@
     <div class="arch-header">
       <div class="arch-title-block">
         <h2>Mathematical Architecture</h2>
-        <p class="arch-desc">DLM 2005 · Lopez-Lira 2025 · Wang 2026 — the equations that drive every tick.</p>
+        <p class="arch-desc">DLM 2005 · Lopez-Lira 2025 · AIPE — the equations that drive every tick.</p>
       </div>
       <a class="btn-drawio" id="btn-drawio" href="#" target="_blank" rel="noopener" title="Open architecture.drawio in app.diagrams.net">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -725,14 +725,14 @@
           <text class="s" x="125" y="56">α · (1 − |claim−VWAP|/VWAP)</text>
         </g>
 
-        <!-- Group 3 — Wang 2026 overlay -->
+        <!-- Group 3 — AIPE overlay -->
         <g class="arch-group g-wang">
           <rect x="30" y="240" width="320" height="160" rx="10" ry="10"/>
-          <text x="190" y="262" class="g-label">Wang 2026 · ChatGPT anchor</text>
+          <text x="190" y="262" class="g-label">AIPE · AI-agent anchor</text>
         </g>
         <g class="n n-wang n-eq" transform="translate(60 278)">
           <rect width="260" height="56" rx="6" ry="6"/>
-          <text class="t" x="130" y="24">V̂_i ← ChatGPT(agent_i)</text>
+          <text class="t" x="130" y="24">V̂_i ← AIPE(agent_i)</text>
           <text class="s" x="130" y="42">V̂_i ∈ [0.25·FV₀, 1.75·FV₀]</text>
         </g>
         <g class="n n-wang" transform="translate(60 348)">
@@ -850,10 +850,10 @@
       </div>
 
       <div class="arch-def-card card-wang">
-        <h4>Wang 2026 · psychological anchor</h4>
+        <h4>AIPE · psychological anchor</h4>
         <p class="role">Merged paradigm</p>
-        <div class="formula">$$ \hat V_i \;\leftarrow\; \text{ChatGPT}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$</div>
-        <p class="body">At run start, one chat-completion call per Utility agent asks ChatGPT for a private subjective valuation. The returned number is clamped and seeds $\text{prior}_0$ so the model's psychology shows up in the very first order.</p>
+        <div class="formula">$$ \hat V_i \;\leftarrow\; \mathrm{AIPE}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$</div>
+        <p class="body">AI-Agent Prior Elicitation (AIPE). At run start, one call per Utility agent asks an AI agent for a private subjective valuation. The returned number is clamped and seeds $\text{prior}_0$ so the elicited psychology shows up in the very first order.</p>
       </div>
 
       <div class="arch-def-card card-metric">
@@ -889,8 +889,8 @@
         <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Human-subject bubble experiment; paper constants and the Experienced agent come from here.</td></tr>
-          <tr><td class="term">LL</td><td>Lopez-Lira (2025)</td><td>LLM expected-utility extension adding messaging, trust, and deception on top of DLM's market.</td></tr>
-          <tr><td class="term">Wang</td><td>Wang (2026)</td><td>Merged DLM + Lopez-Lira paradigm in which ChatGPT seeds each Utility agent's private psychological valuation at run start.</td></tr>
+          <tr><td class="term">LL</td><td>Lopez-Lira (2025)</td><td>AI-agent expected-utility extension adding messaging, trust, and deception on top of DLM's market.</td></tr>
+          <tr><td class="term">AIPE</td><td>AI-Agent Prior Elicitation</td><td>Merged DLM + Lopez-Lira paradigm in which an AI agent elicits each Utility agent's private psychological valuation at run start.</td></tr>
           <tr><td class="term">F</td><td>Fundamentalist</td><td>Rational mean-reversion agent anchored on $\mathrm{FV}_t$; the pinned rational background.</td></tr>
           <tr><td class="term">T</td><td>Trend follower</td><td>Positive-feedback / momentum trader estimating slope from the last six prints.</td></tr>
           <tr><td class="term">R</td><td>Random (ZI)</td><td>Gode–Sunder zero-intelligence trader that posts uniform bids/asks.</td></tr>
@@ -918,7 +918,7 @@
           <tr><td class="term math">$b_i \in \{-0.15, 0, +0.15\}$</td><td>Persistent per-agent valuation bias</td><td>Lopez-Lira Utility agent prior</td></tr>
           <tr><td class="term math">$\varepsilon \sim \mathcal{U}[-0.03, 0.03]$</td><td>Per-tick valuation noise</td><td>Lopez-Lira prior jitter</td></tr>
           <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$, updated by EMA with $\alpha = 0.30$</td><td>Lopez-Lira adaptive belief blend</td></tr>
-          <tr><td class="term math">$\hat V_i$</td><td>Agent $i$'s private subjective valuation; anchored by ChatGPT in Wang 2026</td><td>Wang 2026 psychological anchor</td></tr>
+          <tr><td class="term math">$\hat V_i$</td><td>Agent $i$'s private subjective valuation; elicited by an AI agent under AIPE</td><td>AIPE psychological anchor</td></tr>
           <tr><td class="term math">$p_{\text{fill}} = 0.30$</td><td>Assumed fill probability for a non-crossing (passive) quote</td><td>Lopez-Lira EU scoring</td></tr>
           <tr><td class="term math">$Q$</td><td>Total shares outstanding (conserved across time)</td><td>Normalized deviation, turnover</td></tr>
         </tbody>
@@ -963,8 +963,8 @@
         <thead><tr><th>Tag</th><th>Citation</th><th>Role in this simulator</th></tr></thead>
         <tbody>
           <tr><td class="term">DLM 2005</td><td>Dufwenberg, Lindqvist &amp; Moore, <em>Bubbles and Experience: An Experiment</em>, AER 95(5), 1731–1737</td><td>Asset life, dividend shape, fundamental value, Experienced agent</td></tr>
-          <tr><td class="term">LL 2025</td><td>Lopez-Lira, <em>LLM Expected-Utility Market Makers</em> (working paper)</td><td>Utility agent, messaging, trust EMA, deception</td></tr>
-          <tr><td class="term">Wang 2026</td><td>Wang, <em>Merged DLM + LLM Psychological Asset Allocation</em> (current)</td><td>Combined E+U population with ChatGPT psychological anchor</td></tr>
+          <tr><td class="term">LL 2025</td><td>Lopez-Lira, <em>AI-Agent Expected-Utility Market Makers</em> (working paper)</td><td>Utility agent, messaging, trust EMA, deception</td></tr>
+          <tr><td class="term">AIPE</td><td>Wang, <em>Bubbles and Priors: An AI-Agent Experiment</em> (current)</td><td>Combined E+U population with AI-agent psychological anchor</td></tr>
           <tr><td class="term">SSW 1988</td><td>Smith, Suchanek &amp; Williams, <em>Bubbles, Crashes and Endogenous Expectations in Experimental Spot Asset Markets</em>, Econometrica 56(5)</td><td>Fundamentalist rational-anchor lineage</td></tr>
           <tr><td class="term">DSSW 1990</td><td>De Long, Shleifer, Summers &amp; Waldmann, <em>Positive-Feedback Investment Strategies</em>, JF 45(2)</td><td>Trend-follower momentum lineage</td></tr>
           <tr><td class="term">GS 1993</td><td>Gode &amp; Sunder, <em>Allocative Efficiency of Markets with Zero-Intelligence Traders</em>, JPE 101(1)</td><td>Zero-intelligence liquidity floor</td></tr>
@@ -1002,7 +1002,7 @@
           <div class="slide-env-row">
             <span class="slide-env-badge slide-dlm">DLM 2005</span>
             <span class="slide-env-badge slide-ll">Lopez-Lira 2025</span>
-            <span class="slide-env-badge slide-wang">Wang 2026</span>
+            <span class="slide-env-badge slide-wang">AIPE</span>
           </div>
           <p class="slide-note-sm">Browser-based replication · vanilla JS · no build</p>
         </div>
@@ -1110,7 +1110,7 @@
 
       <div class="slide" data-slide="10">
         <div class="slide-body">
-          <h2 class="slide-heading">Wang 2026 · merged market</h2>
+          <h2 class="slide-heading">AIPE · merged market</h2>
           <p class="slide-text">Seat DLM's <strong>Experienced</strong> agents alongside Lopez-Lira's <strong>Utility</strong> agents in the same continuous double auction. The question: where does the asset settle when half the population knows the fundamental staircase and the other half is driven by private psychological valuations?</p>
           <div class="slide-class-grid">
             <div class="slide-card slide-highlight"><h4>E · Experienced</h4><p class="slide-sm">Bubble-suppressing, horizon-aware.</p></div>
@@ -1121,11 +1121,11 @@
 
       <div class="slide" data-slide="11">
         <div class="slide-body">
-          <h2 class="slide-heading">ChatGPT psychological anchor</h2>
+          <h2 class="slide-heading">AIPE · psychological anchor</h2>
           <div class="slide-formula-card">
-            $$ \hat V_i \;\leftarrow\; \text{ChatGPT}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$
+            $$ \hat V_i \;\leftarrow\; \mathrm{AIPE}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$
           </div>
-          <p class="slide-text">One parallel chat-completion per Utility agent at run start. The prompt encodes the agent's risk preference and bias mode; the returned number is clamped and used as the prior on the first decide tick, then the Lopez-Lira belief model takes over.</p>
+          <p class="slide-text">AI-Agent Prior Elicitation. One parallel AI-agent call per Utility agent at run start. The prompt encodes the trader's risk preference and bias mode; the returned number is clamped and used as the prior on the first decide tick, then the Lopez-Lira belief model takes over.</p>
           <p class="slide-note-sm">Provider list + endpoint match the lying project's GPT roster.</p>
         </div>
       </div>
@@ -1137,7 +1137,7 @@
             Does the asset ultimately end up in the hands of the agent with the highest psychological valuation?
           </div>
           <div class="slide-formula-card">$$ i^\star = \arg\max_{i \in U} \hat V_i \quad \stackrel{?}{\Longleftrightarrow} \quad \text{argmax}_i\; \text{inventory}_i(T) $$</div>
-          <p class="slide-text">The Wang 2026 metric block reports top-holder vs max-$\hat V$ match / miss and the normalized valuation gap each tick so the answer is visible live.</p>
+          <p class="slide-text">The AIPE metric block reports top-holder vs max-$\hat V$ match / miss and the normalized valuation gap each tick so the answer is visible live.</p>
         </div>
       </div>
 
@@ -1172,11 +1172,11 @@
       <div class="slide" data-slide="14">
         <div class="slide-body slide-center">
           <h2 class="slide-heading">Try it</h2>
-          <p class="slide-text">Switch paradigms in the navbar. Dial the population in Experiment settings. For Wang 2026, paste a GPT key into the AI endpoint card and press Start — the status line reports how many agents got an anchor.</p>
+          <p class="slide-text">Switch paradigms in the navbar. Dial the population in Experiment settings. For AIPE, paste a GPT key into the AI endpoint card and press Start — the status line reports how many agents got an anchor.</p>
           <div class="slide-env-row">
             <span class="slide-env-badge slide-dlm">DLM 2005</span>
             <span class="slide-env-badge slide-ll">Lopez-Lira 2025</span>
-            <span class="slide-env-badge slide-wang">Wang 2026</span>
+            <span class="slide-env-badge slide-wang">AIPE</span>
           </div>
           <p class="slide-note-sm">Keyboard: ← / → to navigate slides · F for fullscreen · Esc to exit</p>
         </div>

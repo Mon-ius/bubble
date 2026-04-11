@@ -538,7 +538,7 @@ body:not(.extended) .ext-only { display: none !important; }
    preference panel and neither becomes visible noise when its slot is
    empty. */
 body:not(.has-experienced) .exp-only { display: none !important; }
-/* Hide the Wang 2026 AI endpoint psec unless the Wang paradigm is
+/* Hide the AIPE AI endpoint psec unless the AIPE paradigm is
    active. Mirrors the .ext-only / .exp-only gates — the AI-config
    fields are meaningless for DLM and Lopez-Lira, so they only
    render when body.wang-mode is set by _setParadigm('wang'). */
@@ -892,7 +892,7 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   transform: translateY(0);
 }
 
-/* ---------- AI endpoint (Wang 2026) ---------- */
+/* ---------- AI endpoint (AIPE) ---------- */
 /*
  * Three-input form inside the .wang-only psec: API key, endpoint
  * override, and model name. Nothing is persisted — main.js reads
@@ -1815,7 +1815,7 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   stroke-width: 1.4;
   marker-end: url(#arch-arrow);
 }
-/* Wang 2026 overlay connector (ai.js → Utility prior). Dashed + pink to
+/* AIPE overlay connector (ai.js → Utility prior). Dashed + pink to
    signal that it only fires when paradigm === 'wang' and an API key is
    provided, and that it overrides the deterministic prior block. */
 .arch-diagram .link-wang {
