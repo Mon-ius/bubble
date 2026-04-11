@@ -1243,10 +1243,17 @@ body:not(.extended) .ext-only { display: none !important; }
 }
 
 /* ---------- Feed ---------- *
- * The panel is a flex column so the <ul> can grow to fill the row
- * height set by the taller sibling (.panel-agents). Without this the
- * list capped at a fixed max-height and left a big empty gap whenever
- * the Agents panel grew — e.g. when the Note glossary was added.
+ * The panel is a flex column so the <ul> fills whatever row height the
+ * shared grid cell ends up at. The row is sized by min-content of the
+ * taller sibling (.panel-agents), so we need #trade-feed to contribute
+ * *nothing* to panel-feed's own intrinsic height — otherwise a long
+ * trade list would inflate the row past the Agents panel and stretch
+ * Agents along with it. `flex-basis: 0` is what makes that work: with
+ * basis 0 the UL's content size does not propagate into the flex
+ * container's min-content calculation, so panel-feed's min-content
+ * stays at ~h2 height and the grid row tracks Agents exactly. The list
+ * still flex-grows to fill the row, and its own `overflow-y: auto`
+ * kicks in for anything that would spill past the Agents-height cap.
  * ------------------------------------------------------------------ */
 .panel-feed {
   display: flex;
@@ -1257,7 +1264,7 @@ body:not(.extended) .ext-only { display: none !important; }
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
   font-family: var(--font-ui);
