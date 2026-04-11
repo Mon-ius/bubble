@@ -327,17 +327,34 @@ class DLMTrader extends Agent {
     const bid = market.book.bestBid();
     const ask = market.book.bestAsk();
 
-    // Bootstrap: post a noisy bid near a slightly inflated FV (real
-    // undergrads bid above FV from the very first tick of round 1).
+    // Bootstrap: post a noisy quote on either side near FV. Real
+    // undergrads bid above FV from tick 1 (producing the classic SSW
+    // overshoot), but some subjects also want to cash out shares at
+    // any plausible premium, so we post asks at FV × [1.00, 1.10]
+    // and bids at FV × [1.02, 1.12] — overlapping ranges that let
+    // the first few trades execute at asker prices and prime the
+    // slope window for the trending branches below.
     if (hist.length < 2) {
-      const target = fv * (1.02 + (rng() - 0.5) * 0.10);
-      if (this.cash >= target && rng() < 0.55) {
-        return order('bid', round2(target), 1, {
-          ruleUsed:         'dlm_fresh_bootstrap_bid',
-          estimatedValue:   fv,
-          expectedProfit:   0,
-          triggerCondition: 'no in-round price history yet',
-        });
+      if (rng() < 0.55) {
+        if (rng() < 0.5) {
+          const target = fv * (1.02 + rng() * 0.10);
+          if (this.cash >= target) {
+            return order('bid', round2(target), 1, {
+              ruleUsed:         'dlm_fresh_bootstrap_bid',
+              estimatedValue:   fv,
+              expectedProfit:   0,
+              triggerCondition: 'no in-round price history yet',
+            });
+          }
+        } else if (this.inventory > 0) {
+          const target = fv * (1.00 + rng() * 0.10);
+          return order('ask', round2(target), 1, {
+            ruleUsed:         'dlm_fresh_bootstrap_ask',
+            estimatedValue:   fv,
+            expectedProfit:   0,
+            triggerCondition: 'no in-round price history yet',
+          });
+        }
       }
       return hold({ ruleUsed: 'dlm_fresh_wait', estimatedValue: fv, triggerCondition: 'priming round' });
     }
