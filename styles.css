@@ -795,6 +795,33 @@ body:not(.extended) .ext-only { display: none !important; }
   margin-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
+/* .panel-sim is collapsed by default; clicking the header toggles
+   the list open. Mirrors the .panel-params fold pattern so the
+   two foldable panels feel identical. */
+.panel-sim .const-head {
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.18s var(--ease);
+}
+.panel-sim .const-head:hover { border-bottom-color: var(--amber); }
+.panel-sim .const-head .chevron {
+  align-self: center;
+  color: var(--fg-3);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.25s var(--ease), color 0.18s var(--ease);
+}
+.panel-sim .const-head:hover .chevron { color: var(--amber); }
+.panel-sim.collapsed {
+  padding-bottom: 18px;
+}
+.panel-sim.collapsed .const-head {
+  margin-bottom: 0;
+  border-bottom-color: transparent;
+  padding-bottom: 4px;
+}
+.panel-sim.collapsed .const-list { display: none; }
+.panel-sim.collapsed .const-head .chevron { transform: rotate(-90deg); }
 .panel-paper .const-head h2,
 .panel-sim .const-head h2 {
   margin: 0;

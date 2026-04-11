@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 <header class="app-header">
@@ -173,7 +173,7 @@
   </section>
 
   <!-- ============================================================
-       Simulator constants — fixed-by-implementation values that are
+       Hidden Constants — fixed-by-implementation values that are
        NOT proposed in DLM 2005. The paper runs a continuous 2-minute
        z-Tree auction per period with human subjects and specifies no
        agent model at all, so every knob the agent-based replication
@@ -183,16 +183,18 @@
        constants that used to live in the Experiment settings panel
        as sliders but have been pinned here because none of them are
        grounded in DLM's experimental design. Rendered as a read-only
-       card so the distinction from the Paper constants (which
-       reproduce DLM's design) and the Experiment settings (which
-       are true adjustable knobs) stays visible at the top of the
-       app. Items tagged `.ext-only` only appear in Utility-extended
-       mode because they only matter when Utility agents are present.
+       card that is folded by default — click the header to expand —
+       so the distinction from the Paper constants (which reproduce
+       DLM's design) and the Experiment settings (which are true
+       adjustable knobs) stays visible at the top of the app without
+       dominating the layout. Items tagged `.ext-only` only appear
+       in Utility-extended mode because they only matter when Utility
+       agents are present.
        ============================================================ -->
-  <section class="panel panel-sim">
-    <div class="const-head">
-      <h2>Simulator constants</h2>
-      <span class="const-cite">Fixed by this implementation · not proposed in DLM 2005</span>
+  <section class="panel panel-sim collapsed" id="panel-sim">
+    <div class="const-head" id="panel-sim-head">
+      <h2>Hidden Constants</h2>
+      <span class="chevron" aria-hidden="true">▾</span>
     </div>
     <dl class="const-list">
       <div class="const-item">

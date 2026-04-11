@@ -271,6 +271,15 @@ const App = {
     if (head && panel) {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
+
+    // Same fold-on-click behavior for the Hidden Constants panel.
+    // Starts collapsed (class applied in the HTML) because these are
+    // simulator-invented values most users never need to inspect.
+    const simHead = document.getElementById('panel-sim-head');
+    const simPanel = document.getElementById('panel-sim');
+    if (simHead && simPanel) {
+      simHead.addEventListener('click', () => simPanel.classList.toggle('collapsed'));
+    }
   },
 
   /**
