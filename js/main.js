@@ -894,7 +894,8 @@ const App = {
       // Strict-DLM routing flags consumed by the engine: strictDLM
       // gates the round-4 replacement step, treatmentSize selects how
       // many experienced subjects are replaced by inexperienced ones
-      // (DLM 2005 §I, p. 1733 — T2 or T4 treatment).
+      // (DLM 2005 §I, p. 1733 — T2 = R4-⅔, T4 = R4-⅓ in the paper's
+      // notation on p. 1735).
       strictDLM:     this.paradigm === 'dlm',
       treatmentSize: this.paradigm === 'dlm' ? this.dlmConfig.treatment : 0,
     };

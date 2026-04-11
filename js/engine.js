@@ -270,6 +270,13 @@ class Engine {
    * in the first three rounds were randomly selected, removed, and
    * replaced by the same number of inexperienced subjects."
    *
+   * The paper labels the two conditions by the fraction of
+   * experienced subjects remaining in round 4 (Table 2, p. 1735):
+   *   - R4-⅔ (two-thirds experienced) — two fresh subjects replace
+   *     two veterans, four veterans survive.  Shorthand here: T2.
+   *   - R4-⅓ (one-third experienced)  — four fresh subjects replace
+   *     four veterans, two veterans survive.  Shorthand here: T4.
+   *
    * The simulator implements this by:
    *   1. selecting `treatmentSize` agents with roundsPlayed >= 3
    *      (every surviving original DLMTrader has played all three

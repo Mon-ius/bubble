@@ -1107,9 +1107,11 @@ function dlmSampleAgents(rng) {
 /**
  * dlmSampleReplacementAgent — draw a single fresh DLMTrader spec for
  * the round-4 replacement step. Used by Engine when one of the two
- * treatments (T2 or T4) swaps experienced subjects out of the round-4
- * market and replaces them with the same number of fresh, never-before-
- * played subjects. Endowment is drawn from the same two-type pool.
+ * treatments (T2 = DLM's R4-⅔, two fresh; T4 = DLM's R4-⅓, four
+ * fresh; Table 2, p. 1735) swaps experienced subjects out of the
+ * round-4 market and replaces them with the same number of fresh,
+ * never-before-played subjects. Endowment is drawn from the same
+ * two-type pool.
  *
  * The `excludeNames` set lets the engine pass in names already used
  * by surviving agents so a fresh draw never collides with an existing

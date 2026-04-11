@@ -110,7 +110,7 @@
       <details class="psec dlm-only" open>
         <summary>DLM 2005 replication</summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="Round-4 replacement treatment. DLM 2005 §I, p. 1733: after three rounds played by the same six subjects, the experimenter randomly selects either 2 or 4 of them, removes them, and replaces them with inexperienced subjects for the fourth round. T2 leaves four experienced traders + two inexperienced replacements; T4 leaves two experienced + four inexperienced. Experience is endogenous in this simulator — survivors become experienced only by playing rounds 1–3.">
+          <div class="param-row" data-tip="Round-4 replacement treatment. DLM 2005 §I, p. 1733: after three rounds played by the same six subjects, the experimenter randomly selects either 2 or 4 of them, removes them, and replaces them with inexperienced subjects for the fourth round. The paper labels these conditions by the fraction of experienced traders remaining in round 4 — R4-⅔ (two-thirds experienced, four veterans + two fresh, shorthand T2 here) and R4-⅓ (one-third experienced, two veterans + four fresh, shorthand T4 here); see Table 1 footnote a on p. 1734 and Table 2 footnote c on p. 1735. Experience is endogenous in this simulator — survivors become experienced only by playing rounds 1–3.">
             <div class="param-head">
               <label>Treatment</label>
               <span class="pval">round 4</span>
@@ -118,11 +118,11 @@
             <div class="dlm-treatment-row">
               <label class="dlm-treatment-opt">
                 <input type="radio" name="dlm-treatment" value="2" checked>
-                <span>T2 — replace 2 of 6</span>
+                <span>T2 · R4-⅔ — 4 veterans + 2 fresh</span>
               </label>
               <label class="dlm-treatment-opt">
                 <input type="radio" name="dlm-treatment" value="4">
-                <span>T4 — replace 4 of 6</span>
+                <span>T4 · R4-⅓ — 2 veterans + 4 fresh</span>
               </label>
             </div>
           </div>
@@ -256,14 +256,14 @@
               <dd class="const-note">Both bundles have an identical buy-and-hold value of 1,000¢ under the risk-neutral fundamental <span data-sym="fvDef"></span>; the two types differ only in inventory/cash mix, so the split is distributional, not value-creating.<span class="const-src">§I, p. 1733</span></dd>
             </div>
             <div class="const-item">
-              <dt>round-4 replacement <span class="const-val">T2 or T4</span></dt>
+              <dt>round-4 replacement <span class="const-val">R4-⅔ or R4-⅓</span></dt>
               <dd class="const-label">Two-treatment design</dd>
-              <dd class="const-note">&ldquo;In the fourth round, depending on treatment, two or four experienced subjects who had participated in the first three rounds were randomly selected, removed, and replaced by the same number of inexperienced subjects.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+              <dd class="const-note">&ldquo;In the fourth round, depending on treatment, two or four experienced subjects who had participated in the first three rounds were randomly selected, removed, and replaced by the same number of inexperienced subjects.&rdquo; The paper labels these conditions by the fraction of experienced subjects remaining in round 4: R4-⅔ (four veterans + two fresh, shorthand T2) and R4-⅓ (two veterans + four fresh, shorthand T4); the R4-⅔ / R4-⅓ notation appears in the hypothesis row of Table 2.<span class="const-src">§I, p. 1733; Table 2, p. 1735</span></dd>
             </div>
             <div class="const-item">
               <dt>sessions <span class="const-val">= 10</span></dt>
-              <dd class="const-label">Five per treatment (T2 and T4)</dd>
-              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design by sequencing 5 × T2 then 5 × T4 through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
+              <dd class="const-label">Five per treatment (R4-⅔ and R4-⅓)</dd>
+              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design by sequencing 5 × T2 (R4-⅔) then 5 × T4 (R4-⅓) through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
             </div>
             <div class="const-item">
               <dt>payoff <span class="const-val">Σ final cash + 500¢</span></dt>

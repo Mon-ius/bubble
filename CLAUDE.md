@@ -71,9 +71,11 @@ market that lasts `T × ticksPerPeriod = 180` ticks, so a session is
    branch to the experienced branch for the next round,
 4. if strict-DLM mode is active and the round that just ended was round 3,
    runs `_round4Replacement(k)` — Fisher-Yates selects `k ∈ {2, 4}`
-   survivors (the treatment size T2 or T4), removes them, draws `k` fresh
-   `DLMTrader` specs via `dlmSampleReplacementAgent` (each with a unique
-   display name filtered against the surviving roster and an iid
+   survivors (T2 = DLM's R4-⅔, two-thirds experienced; T4 = DLM's
+   R4-⅓, one-third experienced — the paper's shorthand appears in
+   Table 2 on p. 1735), removes them, draws `k` fresh `DLMTrader`
+   specs via `dlmSampleReplacementAgent` (each with a unique display
+   name filtered against the surviving roster and an iid
    type-A / type-B endowment), and splices them back in at the vacated
    numeric ids with `roundsPlayed = 0` and `replacementFresh = true`,
 5. rewinds every surviving agent's `cash` and `inventory` to its
@@ -181,7 +183,13 @@ index sequence `[0, 0, 0, 1, 1, 1]` (type A = 200¢ + 6 shares,
 type B = 600¢ + 2 shares, both with buy-and-hold value 1000¢),
 Fisher-Yates shuffles it, and writes the matching cash/inventory pair
 onto each spec. A T2/T4 treatment selector and a **Run 10-session
-batch** button are exposed only in this mode; the batch runner drives
+batch** button are exposed only in this mode. The shorthand T2/T4
+maps onto DLM's own convention, which labels conditions by the
+fraction of experienced subjects remaining in round 4: **T2 ↔
+R4-⅔** (two fresh replacements, four veterans, two-thirds
+experienced) and **T4 ↔ R4-⅓** (four fresh replacements, two
+veterans, one-third experienced); the R4-⅔ / R4-⅓ notation is the
+paper's and appears in Table 2 on p. 1735. The batch runner drives
 10 synchronous `Engine.runToEnd()` loops (5 T2 + 5 T4, interleaved) and
 reports per-session `meanDev`, `turnover`, `trades`, `payoffTotal`, and
 the round-4 replacement record into the DLM panel, then restores the
