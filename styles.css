@@ -559,27 +559,6 @@ body:not(.extended) .ext-only { display: none !important; }
   gap: 16px;
 }
 
-/* Sub-heading used inside a .psec-body to divide a merged section
-   (e.g. "Utility-agent calibration" → "Belief update" + "Trust &
-   decision") without creating a nested <details>. The first sub-
-   heading sits flush with the body top, later ones get breathing
-   room to make the group boundary obvious. */
-.psec-sub {
-  margin: 0;
-  padding-top: 6px;
-  color: var(--fg-3);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.psec-sub + .param-row { margin-top: -4px; }
-.psec-sub:not(:first-child) {
-  margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--border);
-}
-
 .param-row {
   display: flex;
   flex-direction: column;

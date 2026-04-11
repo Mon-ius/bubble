@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 <header class="app-header">
@@ -123,63 +123,6 @@
         </div>
       </details>
 
-      <details class="psec ext-only">
-        <summary>Utility-agent calibration</summary>
-        <div class="psec-body">
-          <h4 class="psec-sub">Belief update</h4>
-          <div class="param-row" data-tip="Weight on the agent's own prior when blending incoming messages, for naive-belief agents. Default 0.6 = 60% prior + 40% message average. Lower values make the agent more gullible; 1.0 makes it ignore messages entirely.">
-            <div class="param-head">
-              <label for="p-naive-w">Naive prior</label>
-              <span class="pval" id="v-naive-w">0.60</span>
-            </div>
-            <input type="range" id="p-naive-w" min="0" max="1" step="0.05" value="0.6">
-          </div>
-          <div class="param-row" data-tip="Same formula as naive but much heavier on the prior. Default 0.9 = 90% prior + 10% message average — messages barely move the belief. Use this to model an agent that hears everything but trusts almost nothing.">
-            <div class="param-head">
-              <label for="p-skep-w">Skeptical prior</label>
-              <span class="pval" id="v-skep-w">0.90</span>
-            </div>
-            <input type="range" id="p-skep-w" min="0" max="1" step="0.05" value="0.9">
-          </div>
-          <div class="param-row" data-tip="Maximum fraction of belief an adaptive agent will shift toward the trust-weighted message mean in one period. Default 0.5 means even if every sender is fully trusted, the new belief is at most 50% message + 50% prior. Prevents runaway over-update from a single high-trust period.">
-            <div class="param-head">
-              <label for="p-adapt-cap">Adaptive cap</label>
-              <span class="pval" id="v-adapt-cap">0.50</span>
-            </div>
-            <input type="range" id="p-adapt-cap" min="0" max="1" step="0.05" value="0.5">
-          </div>
-          <div class="param-row" data-tip="Per-tick uniform noise added to every utility agent's prior belief, before any bias or message update: prior = FV × (1 + bias + U(−noise, +noise)). Default 0.03 = ±3%. Higher values add more within-period belief churn, producing noisier trade decisions.">
-            <div class="param-head">
-              <label for="p-val-noise">Valuation noise</label>
-              <span class="pval" id="v-val-noise">0.030</span>
-            </div>
-            <input type="range" id="p-val-noise" min="0" max="0.10" step="0.005" value="0.03">
-          </div>
-          <h4 class="psec-sub">Trust &amp; decision</h4>
-          <div class="param-row" data-tip="Learning rate for the exponential moving average trust update: trust[r→s] ← (1 − α) × old + α × closeness. Closeness is 1 − |claim − vwap|/vwap for that period. Default 0.3 weights the new observation at 30%. Lower = slower and more conservative; higher = reacts faster to new evidence but noisier.">
-            <div class="param-head">
-              <label for="p-trust-alpha">Trust α</label>
-              <span class="pval" id="v-trust-alpha">0.30</span>
-            </div>
-            <input type="range" id="p-trust-alpha" min="0" max="1" step="0.05" value="0.3">
-          </div>
-          <div class="param-row" data-tip="Probability used when scoring passive (non-crossing) orders inside the expected-utility calculation: EU = pFill × U(filled) + (1 − pFill) × U(not filled). Default 0.3 means a passive quote is assumed to fill 30% of the time. A proper model would estimate this from order-book state; this is a deliberate constant placeholder.">
-            <div class="param-head">
-              <label for="p-pfill">Passive fill prob.</label>
-              <span class="pval" id="v-pfill">0.30</span>
-            </div>
-            <input type="range" id="p-pfill" min="0" max="1" step="0.05" value="0.3">
-          </div>
-          <div class="param-row" data-tip="Overrides the per-slot biasAmount for every biased U agent (U2, U4, U5 in the default strategy cube). Default 0.15 = 15% persistent over/under-valuation vs FV. Set to 0 to neutralize all bias without removing the agents.">
-            <div class="param-head">
-              <label for="p-bias-amt">Bias magnitude</label>
-              <span class="pval" id="v-bias-amt">0.15</span>
-            </div>
-            <input type="range" id="p-bias-amt" min="0" max="0.40" step="0.01" value="0.15">
-          </div>
-        </div>
-      </details>
-
     </div>
   </section>
 
@@ -226,13 +169,19 @@
   <!-- ============================================================
        Simulator constants — fixed-by-implementation values that are
        NOT proposed in DLM 2005. The paper runs a continuous 2-minute
-       z-Tree auction per period; an agent-based replication needs a
-       discrete loop, so each period is sliced into a fixed number of
-       decision rounds. `ticksPerPeriod` is the only such constant
-       today. It lives in its own read-only card so it is obviously
-       distinct from both the Experiment settings (which are true
-       adjustable knobs) and the Paper constants (which reproduce the
-       original design).
+       z-Tree auction per period with human subjects and specifies no
+       agent model at all, so every knob the agent-based replication
+       needs for belief updates, trust, bias, and order scoring is a
+       simulator invention. `ticksPerPeriod` is the discretization of
+       the 2-minute window; the rest are Utility-agent calibration
+       constants that used to live in the Experiment settings panel
+       as sliders but have been pinned here because none of them are
+       grounded in DLM's experimental design. Rendered as a read-only
+       card so the distinction from the Paper constants (which
+       reproduce DLM's design) and the Experiment settings (which
+       are true adjustable knobs) stays visible at the top of the
+       app. Items tagged `.ext-only` only appear in Utility-extended
+       mode because they only matter when Utility agents are present.
        ============================================================ -->
   <section class="panel panel-sim">
     <div class="const-head">
@@ -244,6 +193,41 @@
         <dt>ticks / period <span class="const-val">= 18</span></dt>
         <dd class="const-label">Agent decision rounds inside one period</dd>
         <dd class="const-note">DLM 2005 runs a continuous 2-minute z-Tree double auction per period; this simulator discretizes that window into 18 decision rounds (≈ one agent turn every 6.7 real-time seconds) so the engine loop can step deterministically. 18 is dense enough to reproduce the bubble-crash pattern while keeping the replay buffer compact.<span class="const-src">engine.js — period-boundary trigger</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>naive prior weight <span class="const-val">= 0.60</span></dt>
+        <dd class="const-label">Belief blend for naive Utility agents</dd>
+        <dd class="const-note">Weight on the agent's own prior when blending incoming peer messages: posterior = 0.60 × prior + 0.40 × mean(messages). Not specified by DLM 2005, which studies human subjects and has no belief-update model. Chosen so naive agents move noticeably toward peers without collapsing onto them.<span class="const-src">agents.js — UTILITY_DEFAULTS.naivePriorWeight</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>skeptical prior weight <span class="const-val">= 0.90</span></dt>
+        <dd class="const-label">Belief blend for skeptical Utility agents</dd>
+        <dd class="const-note">Same convex combination as the naive weight but 90% prior + 10% peer average, so a skeptical agent hears messages but is barely moved by them. Not in DLM 2005; introduced so the strategy cube contains a "listen but don't trust" archetype.<span class="const-src">agents.js — UTILITY_DEFAULTS.skepticalPriorWeight</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>adaptive weight cap <span class="const-val">= 0.50</span></dt>
+        <dd class="const-label">Max one-period belief shift toward peers</dd>
+        <dd class="const-note">Upper bound on the fraction of belief an adaptive agent can shift toward the trust-weighted message mean in a single period: even with fully-trusted senders the new belief is at most 50% messages + 50% prior. Not in DLM 2005; guards against runaway over-update from a single high-trust period.<span class="const-src">agents.js — UTILITY_DEFAULTS.adaptiveWeightCap</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>valuation noise <span class="const-val">= ±3%</span></dt>
+        <dd class="const-label">Per-tick uniform noise on the Utility-agent prior</dd>
+        <dd class="const-note">Before any bias or message update, each Utility agent draws prior = FV × (1 + bias + U(−0.03, +0.03)). Not in DLM 2005; added so trade decisions do not degenerate to lockstep when every biased/unbiased agent starts each tick from the identical prior.<span class="const-src">agents.js — UTILITY_DEFAULTS.valuationNoise</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>trust α <span class="const-val">= 0.30</span></dt>
+        <dd class="const-label">EMA learning rate for the pairwise trust update</dd>
+        <dd class="const-note">Pairwise trust is updated as trust[r→s] ← (1 − α) × old + α × closeness, where closeness = 1 − |claim − vwap|/vwap for the period. α = 0.30 weights each new observation at 30%. Not in DLM 2005, which has no messaging layer; chosen for a balance between responsiveness and stability.<span class="const-src">engine.js — TrustTracker period close-out</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>passive fill probability <span class="const-val">= 0.30</span></dt>
+        <dd class="const-label">pFill heuristic for scoring non-crossing quotes</dd>
+        <dd class="const-note">Expected-utility score for a passive quote is EU = pFill × U(filled) + (1 − pFill) × U(not filled) with pFill pinned at 0.30. A full model would estimate pFill from order-book state; this is a deliberate constant placeholder and is not proposed by DLM 2005.<span class="const-src">agents.js — UtilityAgent scoring loop</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>bias magnitude <span class="const-val">= 15%</span></dt>
+        <dd class="const-label">Persistent over/under-valuation of biased Utility agents</dd>
+        <dd class="const-note">Applied as prior = FV × (1 + biasAmount) with sign set by the per-slot bias mode (high/low). Drives the biased U-agent slots in the default strategy cube (U2, U4, U5). Not in DLM 2005; chosen large enough to perturb the market without dominating the risk-preference split.<span class="const-src">agents.js — UTILITY_DEFAULTS.biasAmount</span></dd>
       </div>
     </dl>
   </section>

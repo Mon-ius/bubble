@@ -43,16 +43,17 @@ const App = {
   // Utility preset so the extended panels are visible on first load.
   mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
 
-  // Every simulator-invented numeric constant exposed by the
-  // Experiment settings panel. The engine and agents read from
-  // ctx.tunables when present, so changing a slider + rebuild applies
-  // the new values on the next run. Tunables that aren't present here
-  // fall back to UTILITY_DEFAULTS via the tunable() helper in agents.js.
-  // Note: `periods`, `dividendMean`, and `ticksPerPeriod` are NOT
-  // here — the first two are paper constants pinned by DLM 2005 and
-  // the third is a simulator constant pinned by this implementation.
-  // All three live only in App.config (see the read-only Paper
-  // constants and Simulator constants panels).
+  // Simulator-invented numeric constants consumed by the engine and
+  // utility agents. None of these are proposed by DLM 2005 (which
+  // studies human subjects and specifies no agent model), so they
+  // are surfaced read-only in the Simulator constants panel rather
+  // than as Experiment-settings sliders. Still dropped on ctx here
+  // because agents.js/engine.js read them via the tunable() helper,
+  // which falls back to UTILITY_DEFAULTS for any missing key — so
+  // editing a default value in one place keeps behavior consistent.
+  // Note: `periods`, `dividendMean`, and `ticksPerPeriod` live in
+  // App.config instead — the first two are DLM 2005 paper constants
+  // and the third is the period-discretization simulator constant.
   tunables: {
     naivePriorWeight:     0.6,
     skepticalPriorWeight: 0.9,
@@ -201,15 +202,6 @@ const App = {
     'p-risk-loving': { target: 'riskMix.loving',                out: 'v-risk-loving', fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral',               out: 'v-risk-neutral',fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',                out: 'v-risk-averse', fmt: v => v + '%', int: true },
-    // Belief update
-    'p-naive-w':     { target: 'tunables.naivePriorWeight',     out: 'v-naive-w',     fmt: v => v.toFixed(2) },
-    'p-skep-w':      { target: 'tunables.skepticalPriorWeight', out: 'v-skep-w',      fmt: v => v.toFixed(2) },
-    'p-adapt-cap':   { target: 'tunables.adaptiveWeightCap',    out: 'v-adapt-cap',   fmt: v => v.toFixed(2) },
-    // Trust & evaluation
-    'p-trust-alpha': { target: 'tunables.trustAlpha',           out: 'v-trust-alpha', fmt: v => v.toFixed(2) },
-    'p-pfill':       { target: 'tunables.passiveFillProb',      out: 'v-pfill',       fmt: v => v.toFixed(2) },
-    'p-val-noise':   { target: 'tunables.valuationNoise',       out: 'v-val-noise',   fmt: v => v.toFixed(3) },
-    'p-bias-amt':    { target: 'tunables.biasAmount',           out: 'v-bias-amt',    fmt: v => v.toFixed(2) },
   },
 
   _wireParamsPanel() {
