@@ -1627,6 +1627,16 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
 }
 #trade-feed li.feed-dividend .t-price { color: var(--fv); }
 #trade-feed li.feed-dividend .t-agents { color: var(--fv); }
+#trade-feed li.feed-silent {
+  opacity: 0.45;
+  border-bottom-style: dotted;
+}
+#trade-feed li.feed-silent .t-tick,
+#trade-feed li.feed-silent .t-price,
+#trade-feed li.feed-silent .t-agents {
+  color: var(--fg-3, var(--fg-2));
+  font-weight: 400;
+}
 
 /* ---------- Replay ---------- */
 .panel-replay .replay-controls {

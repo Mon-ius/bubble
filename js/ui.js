@@ -423,24 +423,43 @@ const UI = {
   /* -------- Trade feed (trades + dividend events) -------- */
 
   renderFeed(v) {
-    const items = [];
-    for (const t of v.trades) items.push({ kind: 'trade',    tick: t.timestamp, t });
-    for (const e of v.events) {
-      if (e.type === 'dividend') items.push({ kind: 'dividend', tick: e.tick, e });
+    const currentTick = v.tick | 0;
+    if (currentTick <= 0) {
+      this.els.tradeFeed.innerHTML = '<li class="muted">no activity yet</li>';
+      return;
     }
-    items.sort((a, b) => b.tick - a.tick);
 
-    // Render every recent item (capped for DOM safety) so the feed
-    // behaves as a real scrollable list. The CSS `flex: 1 1 0` on
-    // #trade-feed caps the panel at the Agents-row height, so anything
-    // beyond what fits falls into the UL's own `overflow-y: auto` and
-    // is reachable by scrolling. The 500-item cap is a belt-and-braces
-    // guard against pathological runs — a normal 10-period bubble run
-    // produces well under a hundred events.
-    const recent = items.slice(0, 500);
-    if (!recent.length) { this.els.tradeFeed.innerHTML = '<li class="muted">no activity yet</li>'; return; }
+    // Index trades and dividend events by their tick so the per-tick
+    // walk below can probe in O(1). Multiple trades can land on the
+    // same tick (all crosses execute inside one match pass), so each
+    // bucket is a list.
+    const byTick = new Map();
+    const push = (tick, entry) => {
+      const arr = byTick.get(tick);
+      if (arr) arr.push(entry); else byTick.set(tick, [entry]);
+    };
+    for (const t of v.trades) push(t.timestamp, { kind: 'trade', t });
+    for (const e of v.events) {
+      if (e.type === 'dividend') push(e.tick, { kind: 'dividend', e });
+    }
 
-    this.els.tradeFeed.innerHTML = recent.map(r => {
+    // Walk ticks newest → oldest and emit a `silent` placeholder for
+    // any tick with no trade and no dividend so the feed reads as an
+    // exhaustive per-tick record. The 500-item cap keeps DOM cost
+    // bounded; anything beyond the cap is still reachable through the
+    // UL's own overflow-y scroll for recent-tick browsing, and the
+    // older history is recoverable via the replay slider.
+    const items = [];
+    for (let tick = currentTick; tick >= 1 && items.length < 500; tick--) {
+      const entries = byTick.get(tick);
+      if (entries && entries.length) {
+        for (const entry of entries) items.push({ ...entry, tick });
+      } else {
+        items.push({ kind: 'silent', tick });
+      }
+    }
+
+    this.els.tradeFeed.innerHTML = items.map(r => {
       if (r.kind === 'trade') {
         const t = r.t;
         const buyer  = v.agents[t.buyerId]?.name  || t.buyerId;
@@ -451,13 +470,23 @@ const UI = {
           <span class="t-agents">${buyer} ← ${seller}</span>
         </li>`;
       }
-      const where = r.e.round != null
-        ? `R${r.e.round}·P${r.e.period}`
-        : `Period ${r.e.period}`;
-      return `<li class="feed-dividend">
-        <span class="t-tick">t${r.e.tick}</span>
-        <span class="t-price">DIV $${r.e.value.toFixed(0)}</span>
-        <span class="t-agents">${where} · all holders</span>
+      if (r.kind === 'dividend') {
+        const where = r.e.round != null
+          ? `R${r.e.round}·P${r.e.period}`
+          : `Period ${r.e.period}`;
+        return `<li class="feed-dividend">
+          <span class="t-tick">t${r.e.tick}</span>
+          <span class="t-price">DIV $${r.e.value.toFixed(0)}</span>
+          <span class="t-agents">${where} · all holders</span>
+        </li>`;
+      }
+      // kind === 'silent' — no trade and no dividend fired at this
+      // tick. Rendered as a muted row so the reader can see the gap
+      // without mistaking it for activity.
+      return `<li class="feed-silent">
+        <span class="t-tick">t${r.tick}</span>
+        <span class="t-price">—</span>
+        <span class="t-agents">no log</span>
       </li>`;
     }).join('');
   },
