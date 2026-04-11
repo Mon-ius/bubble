@@ -1,22 +1,33 @@
 # Wang (2026) — LaTeX source
 
 Ten-page AER-style paper on the Wang 2026 ChatGPT-anchored extension
-of the Dufwenberg, Lindqvist & Moore (2005) experimental asset market.
+of the Dufwenberg, Lindqvist and Moore (2005) experimental asset
+market and the Lopez-Lira (2025) utility-agent population.
 
 ## Layout
 
-- `main.tex` — preamble, macros, \input{} of every section
-- `sections/` — one file per paper section
-  - `abstract.tex` — abstract + keywords + JEL codes
-  - `01_introduction.tex`
-  - `02_related_literature.tex`
-  - `03_experimental_design.tex`
-  - `04_agent_model.tex`
-  - `05_wang_innovation.tex`
-  - `06_results.tex`
-  - `07_conclusion.tex`
-- `references.bib` — BibTeX database
-- `figures/` — placeholder for figure PDFs
+```
+latex/
+├── main.tex          # thin wrapper: \input{preamble}, \input{macros}, \input{sections/...}
+├── preamble.tex      # document class, packages, geometry, AER heading style
+├── macros.tex        # math macros (\FV, \EU, \VWAP, \AllocEff, \Uloving, ...)
+├── references.bib    # cited bibliography, keyed to aer.bst
+├── sections/
+│   ├── abstract.tex
+│   ├── introduction.tex
+│   ├── related_work.tex
+│   ├── design.tex
+│   ├── agents.tex
+│   ├── anchor.tex       # ChatGPT-anchored prior mechanism
+│   ├── results.tex
+│   └── conclusion.tex
+└── figures/          # placeholder for figure PDFs
+```
+
+Each section lives in its own file and is pulled in by `main.tex` via
+`\input{}`, so individual sections can be edited, diff-reviewed, and
+re-ordered without touching the others. Section order is the single
+source of truth in `main.tex`.
 
 ## Build
 
@@ -29,5 +40,5 @@ pdflatex main
 ```
 
 Produces `main.pdf` — 10 pages including references, 11pt Times,
-Roman-numeral section headings, author-year citations via the AER
-BibTeX style (`aer.bst` ships with TeX Live).
+1-inch margins, Roman-numeral section headings, author-year citations
+via the AER BibTeX style (`aer.bst` ships with TeX Live).

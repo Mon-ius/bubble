@@ -1,4 +1,4 @@
-%% 07_conclusion.tex
+%% sections/conclusion.tex
 \section{Conclusion}
 \label{sec:conclusion}
 
@@ -7,7 +7,7 @@ experimental asset market of~\citet{dufwenberg2005bubbles},
 extended with the expected-utility messaging population
 of~\citet{lopezlira2025llm}, and introduces a new paradigm in
 which a single ChatGPT call seeds each utility agent's private
-subjective valuation at run~start. The innovation is deliberately
+subjective valuation at run~start. The extension is deliberately
 minimal: one number per agent, clamped to
 $[0.25\,\FV_0,\,1.75\,\FV_0]$, written to the
 \texttt{psychAnchor} slot and consumed on the first decision tick
@@ -24,7 +24,7 @@ clean vanilla-JavaScript implementation of two otherwise unrelated
 experimental designs, specified in enough detail
 (Sections~\ref{sec:design}--\ref{sec:agents}) that a reader can
 reconstruct the model from the paper alone. Second, the Wang~2026
-innovation introduces a narrowly-scoped use of a language model as
+extension introduces a narrowly-scoped use of a language model as
 a \emph{psychological prior elicitor} rather than as a trader: the
 model is never asked to choose an action, and its output is routed
 through the same prior slot used by the deterministic fallback,
