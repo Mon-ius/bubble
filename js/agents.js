@@ -255,52 +255,101 @@ class RandomAgent extends Agent {
 /* ---------- Experienced ----------------------------------------------- */
 /*
  * Knows the asset decays to zero. Discounts belief by remaining-horizon
- * fraction. Aggressively liquidates inventory in the final 3 periods and
- * refuses to buy at inflated prices late in the game. When these agents
- * dominate the population, the bubble never really forms.
+ * fraction. Aggressively liquidates inventory in the final periods and
+ * refuses to buy at inflated prices late in the game. When veteran-level
+ * E agents dominate the population, the bubble never really forms.
+ *
+ * The class is parameterized by an experienceLevel (one of 'naive',
+ * 'once', 'veteran') that maps to a profile in EXPERIENCE_PROFILES.
+ * The Experience-preference UI block distributes E slots across these
+ * three levels, mirroring how the Risk-preference block distributes U
+ * slots across loving/neutral/averse. Veteran preserves the original
+ * magic numbers so the legacy zero-arg constructor is unchanged.
  */
+const EXPERIENCE_PROFILES = {
+  // Round-1 first-timer. Effectively no horizon discount, holds
+  // through the bubble, only liquidates in the very last period and
+  // happily buys above belief — fuels bubble inflation.
+  naive: {
+    discountFloor:        1.00,
+    discountSlope:        0.05,
+    liquidateRemaining:   1,
+    avoidOverpayRemaining: 2,
+    avoidOverpayMul:      1.00,
+    buyDiscountMul:       1.05,
+    sellPremiumMul:       1.20,
+  },
+  // Played one prior round. Partial horizon awareness; somewhere
+  // between naive and veteran on every dimension.
+  once: {
+    discountFloor:        0.96,
+    discountSlope:        0.04,
+    liquidateRemaining:   2,
+    avoidOverpayRemaining: 3,
+    avoidOverpayMul:      0.95,
+    buyDiscountMul:       0.95,
+    sellPremiumMul:       1.10,
+  },
+  // DLM 2005 round-4 fully-experienced trader: aware the asset
+  // decays, liquidates in the final three periods, refuses to
+  // overpay late. This profile preserves the original numbers.
+  veteran: {
+    discountFloor:        0.92,
+    discountSlope:        0.06,
+    liquidateRemaining:   3,
+    avoidOverpayRemaining: 4,
+    avoidOverpayMul:      0.9,
+    buyDiscountMul:       0.92,
+    sellPremiumMul:       1.05,
+  },
+};
+
 class ExperiencedAgent extends Agent {
-  constructor(id, name, cash = 1000, inventory = 3) {
+  constructor(id, name, cash = 1000, inventory = 3, opts = {}) {
     super(id, 'experienced', cash, inventory, name);
+    const level = opts.experienceLevel || 'veteran';
+    this.experienceLevel = EXPERIENCE_PROFILES[level] ? level : 'veteran';
+    this.profile = EXPERIENCE_PROFILES[this.experienceLevel];
   }
 
   decide(market, rng) {
+    const p                 = this.profile;
     const fv                = market.fundamentalValue();
     const remaining         = market.config.periods - market.period + 1;
     const horizonFraction   = remaining / market.config.periods;
-    const belief            = fv * (0.92 + horizonFraction * 0.06);
+    const belief            = fv * (p.discountFloor + horizonFraction * p.discountSlope);
     const bid               = market.book.bestBid();
     const ask               = market.book.bestAsk();
 
-    if (remaining <= 3 && this.inventory > 0 && bid) {
+    if (remaining <= p.liquidateRemaining && this.inventory > 0 && bid) {
       return order('ask', round2(bid.price), 1, {
         ruleUsed:         'liquidate_end_of_horizon',
         estimatedValue:   belief,
         expectedProfit:   bid.price - belief,
-        triggerCondition: `remaining=${remaining} ≤ 3; dumping into bid`,
+        triggerCondition: `remaining=${remaining} ≤ ${p.liquidateRemaining}; dumping into bid`,
       });
     }
-    if (remaining <= 4 && ask && ask.price > belief * 0.9) {
+    if (remaining <= p.avoidOverpayRemaining && ask && ask.price > belief * p.avoidOverpayMul) {
       return hold({
         ruleUsed:         'avoid_overpaying_late',
         estimatedValue:   belief,
-        triggerCondition: `remaining=${remaining}, ask ${ask.price.toFixed(2)} > 0.9×belief ${belief.toFixed(2)}`,
+        triggerCondition: `remaining=${remaining}, ask ${ask.price.toFixed(2)} > ${p.avoidOverpayMul}×belief ${belief.toFixed(2)}`,
       });
     }
-    if (ask && ask.price < belief * 0.92 && this.cash >= ask.price) {
+    if (ask && ask.price < belief * p.buyDiscountMul && this.cash >= ask.price) {
       return order('bid', round2(ask.price), 1, {
         ruleUsed:         'experienced_buy_deep_discount',
         estimatedValue:   belief,
         expectedProfit:   belief - ask.price,
-        triggerCondition: `ask ${ask.price.toFixed(2)} < 0.92 × belief ${belief.toFixed(2)}`,
+        triggerCondition: `ask ${ask.price.toFixed(2)} < ${p.buyDiscountMul} × belief ${belief.toFixed(2)}`,
       });
     }
-    if (bid && bid.price > belief * 1.05 && this.inventory > 0) {
+    if (bid && bid.price > belief * p.sellPremiumMul && this.inventory > 0) {
       return order('ask', round2(bid.price), 1, {
         ruleUsed:         'experienced_sell_premium',
         estimatedValue:   belief,
         expectedProfit:   bid.price - belief,
-        triggerCondition: `bid ${bid.price.toFixed(2)} > 1.05 × belief ${belief.toFixed(2)}`,
+        triggerCondition: `bid ${bid.price.toFixed(2)} > ${p.sellPremiumMul} × belief ${belief.toFixed(2)}`,
       });
     }
     // Passive probe so the book has quotes even in an experienced-only
@@ -798,6 +847,45 @@ function distributeRiskPrefs(total, pct) {
   return seq;
 }
 
+/*
+ * distributeExperienceLevels — mirror of distributeRiskPrefs for the
+ * E-agent slot. Turns a {naive, once, veteran} percentage spec into a
+ * length-`total` sequence of per-agent experience labels using the same
+ * largest-remainder rounding scheme. Returned order is veteran → once →
+ * naive so a high veteran share lands in the earliest E slots, putting
+ * the bubble-suppressing agents at the front of the action timeline.
+ */
+function distributeExperienceLevels(total, pct) {
+  if (total <= 0) return [];
+  const p = pct || { naive: 33, once: 34, veteran: 33 };
+  const sum = (p.naive || 0) + (p.once || 0) + (p.veteran || 0);
+  const norm = sum > 0 ? p : { naive: 33, once: 34, veteran: 33 };
+  const normSum = sum > 0 ? sum : 100;
+  const raw = {
+    naive:    total * (norm.naive    || 0) / normSum,
+    once:     total * (norm.once     || 0) / normSum,
+    veteran:  total * (norm.veteran  || 0) / normSum,
+  };
+  const base = {
+    naive:    Math.floor(raw.naive),
+    once:     Math.floor(raw.once),
+    veteran:  Math.floor(raw.veteran),
+  };
+  let assigned = base.naive + base.once + base.veteran;
+  const fracs = [
+    { k: 'naive',   f: raw.naive   - base.naive   },
+    { k: 'once',    f: raw.once    - base.once    },
+    { k: 'veteran', f: raw.veteran - base.veteran },
+  ].sort((a, b) => b.f - a.f);
+  let i = 0;
+  while (assigned < total) { base[fracs[i % 3].k]++; assigned++; i++; }
+  const seq = [];
+  for (let j = 0; j < base.veteran; j++) seq.push('veteran');
+  for (let j = 0; j < base.once;    j++) seq.push('once');
+  for (let j = 0; j < base.naive;   j++) seq.push('naive');
+  return seq;
+}
+
 /* =====================================================================
    Sampling stage — names + endowments
 
@@ -859,22 +947,25 @@ function sampleEndowment(rng, dist) {
  *   cash, inventory            — sampled endowment (editable later)
  *   riskPref/biasMode/...      — utility-agent strategy fields (U only)
  *
- * options.riskMix    {loving, neutral, averse} — drives U-agent riskPref
- * options.endowment  override ENDOWMENT_DEFAULT ({cashMin,cashMax,invMin,invMax})
+ * options.riskMix       {loving, neutral, averse} — drives U-agent riskPref
+ * options.experienceMix  {naive, once, veteran}    — drives E-agent experienceLevel
+ * options.endowment     override ENDOWMENT_DEFAULT ({cashMin,cashMax,invMin,invMax})
  */
 function sampleAgents(mix, rng, options = {}) {
   const dist = options.endowment || ENDOWMENT_DEFAULT;
   const uCount = mix.U || 0;
+  const eCount = mix.E || 0;
   const total =
-    (mix.F || 0) + (mix.T || 0) + (mix.R || 0) + (mix.E || 0) + uCount;
+    (mix.F || 0) + (mix.T || 0) + (mix.R || 0) + eCount + uCount;
 
-  const names = pickNames(total, rng);
+  const names   = pickNames(total, rng);
   const riskSeq = distributeRiskPrefs(uCount, options.riskMix);
+  const expSeq  = distributeExperienceLevels(eCount, options.experienceMix);
   const specs = [];
   let id = 1;
   let nameIdx = 0;
 
-  const pushBasic = (type, typeCode, index) => {
+  const pushBasic = (type, typeCode, index, extra = {}) => {
     const e = sampleEndowment(rng, dist);
     specs.push({
       id, slot: id, type,
@@ -882,6 +973,7 @@ function sampleAgents(mix, rng, options = {}) {
       name:      names[nameIdx++],
       cash:      e.cash,
       inventory: e.inventory,
+      ...extra,
     });
     id++;
   };
@@ -889,7 +981,11 @@ function sampleAgents(mix, rng, options = {}) {
   for (let i = 0; i < (mix.F || 0); i++) pushBasic('fundamentalist', 'F', i + 1);
   for (let i = 0; i < (mix.T || 0); i++) pushBasic('trend',         'T', i + 1);
   for (let i = 0; i < (mix.R || 0); i++) pushBasic('random',        'R', i + 1);
-  for (let i = 0; i < (mix.E || 0); i++) pushBasic('experienced',   'E', i + 1);
+  for (let i = 0; i < eCount; i++) {
+    pushBasic('experienced', 'E', i + 1, {
+      experienceLevel: expSeq.length ? expSeq[i] : 'veteran',
+    });
+  }
 
   for (let i = 0; i < uCount; i++) {
     const slot  = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
@@ -939,7 +1035,10 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
       case 'random':
         agent = new RandomAgent(s.id, label, cash, inv);    break;
       case 'experienced':
-        agent = new ExperiencedAgent(s.id, label, cash, inv); break;
+        agent = new ExperiencedAgent(s.id, label, cash, inv, {
+          experienceLevel: s.experienceLevel,
+        });
+        break;
       case 'utility': {
         const opts = {
           cash, inventory: inv,

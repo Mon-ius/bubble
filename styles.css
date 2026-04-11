@@ -406,8 +406,6 @@ math[display="inline"] { white-space: nowrap; }
 
 /* ---------- Column spans ---------- */
 .panel-params   { grid-column: span 12; }
-.panel-paper    { grid-column: span 12; }
-.panel-sim      { grid-column: span 12; }
 .panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .chart-price    { grid-column: span 8; }
 .panel-book     { grid-column: span 4; }
@@ -429,6 +427,11 @@ math[display="inline"] { white-space: nowrap; }
 
 /* Hide the extended cluster unless body.extended is set by main.js */
 body:not(.extended) .ext-only { display: none !important; }
+/* Hide the Experience preferences block unless mix.E > 0. Mirrors the
+   .ext-only gate so the U slot and the E slot each control their own
+   preference panel and neither becomes visible noise when its slot is
+   empty. */
+body:not(.has-experienced) .exp-only { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
 /*
@@ -719,6 +722,14 @@ body:not(.extended) .ext-only { display: none !important; }
 .comp-bar .seg-neutral { background: var(--fg-3); }
 .comp-bar .seg-averse  { background: var(--accent); }
 .comp-bar .seg-neutral span { color: var(--fg-0); text-shadow: none; }
+/* Experience preferences: same red→grey→blue gradient as risk
+   preferences. The bubble-fueling end (naive) reuses --red, the
+   bubble-suppressing end (veteran) reuses --accent, and the
+   intermediate sits on the neutral grey. */
+.comp-bar .seg-naive   { background: var(--red); }
+.comp-bar .seg-once    { background: var(--fg-3); }
+.comp-bar .seg-veteran { background: var(--accent); }
+.comp-bar .seg-once span { color: var(--fg-0); text-shadow: none; }
 
 /*
  * Per-row hover tooltip (pure CSS). The entire .param-row is the hover
@@ -764,88 +775,50 @@ body:not(.extended) .ext-only { display: none !important; }
   transform: translateY(0);
 }
 
-/* ---------- Constant cards (Paper + Simulator) ---------- */
+/* ---------- Constant cards (Paper + Hidden) ---------- */
 /*
- * Two read-only companion cards to the Experiment settings panel,
+ * Two read-only psec sections nested inside Experiment settings,
  * sharing the same card layout but distinguished by accent colour:
  *
- *   .panel-paper  — design constants pinned by Dufwenberg, Lindqvist
+ *   .const-paper  — design constants pinned by Dufwenberg, Lindqvist
  *                   & Moore (2005) §I (asset life, dividend shape,
  *                   expected dividend, FV formula). Accent: blue.
- *   .panel-sim    — discretization constants pinned by this
- *                   simulator's implementation (ticksPerPeriod), not
- *                   proposed in the paper. Accent: amber.
+ *   .const-sim    — discretization + Utility-agent calibration
+ *                   constants pinned by this simulator's
+ *                   implementation (ticksPerPeriod, N(F/T/R) slots,
+ *                   belief weights …). Accent: amber. Default folded.
  *
- * The shared .const-* class set keeps the layout in one place; the
- * two panels only override the left-border and eq colour so the
+ * Both render inside a <details class="psec"> so the open/close
+ * affordance is handled natively by the existing psec chrome. The
+ * shared .const-* class set keeps the layout in one place; the two
+ * sections only override the left-border and val colour so the
  * "paper vs implementation" boundary is visually legible.
  */
-.panel-paper,
-.panel-sim {
-  padding: 18px 20px 20px;
-}
-.panel-paper .const-head,
-.panel-sim .const-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 12px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-/* .panel-sim is collapsed by default; clicking the header toggles
-   the list open. Mirrors the .panel-params fold pattern so the
-   two foldable panels feel identical. */
-.panel-sim .const-head {
-  cursor: pointer;
-  user-select: none;
-  transition: border-color 0.18s var(--ease);
-}
-.panel-sim .const-head:hover { border-bottom-color: var(--amber); }
-.panel-sim .const-head .chevron {
-  align-self: center;
-  color: var(--fg-3);
-  font-size: 14px;
-  line-height: 1;
-  transition: transform 0.25s var(--ease), color 0.18s var(--ease);
-}
-.panel-sim .const-head:hover .chevron { color: var(--amber); }
-.panel-sim.collapsed {
-  padding-bottom: 18px;
-}
-.panel-sim.collapsed .const-head {
-  margin-bottom: 0;
-  border-bottom-color: transparent;
-  padding-bottom: 4px;
-}
-.panel-sim.collapsed .const-list { display: none; }
-.panel-sim.collapsed .const-head .chevron { transform: rotate(-90deg); }
-.panel-paper .const-head h2,
-.panel-sim .const-head h2 {
-  margin: 0;
-  color: var(--fg-0);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.panel-paper .const-cite,
-.panel-sim .const-cite {
-  font-size: 11px;
+/* Both constant sections span the full width of the 2-col params-body
+   grid — their dense card lists need the width to breathe. */
+.panel-params .params-body > .const-paper,
+.panel-params .params-body > .const-sim { grid-column: 1 / -1; }
+.const-paper .psec-body,
+.const-sim   .psec-body { gap: 0; }
+.const-paper summary .const-cite,
+.const-sim   summary .const-cite {
+  margin-left: auto;
+  font-size: 10px;
   color: var(--fg-3);
   font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
-.panel-paper .const-list,
-.panel-sim .const-list {
+.const-paper .const-list,
+.const-sim   .const-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 12px;
   margin: 0;
 }
-.panel-paper .const-item,
-.panel-sim .const-item {
+.const-paper .const-item,
+.const-sim   .const-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -856,11 +829,11 @@ body:not(.extended) .ext-only { display: none !important; }
   border-radius: 4px;
   min-width: 0;
 }
-.panel-sim .const-item {
+.const-sim .const-item {
   border-left-color: var(--amber);
 }
-.panel-paper .const-item dt,
-.panel-sim .const-item dt {
+.const-paper .const-item dt,
+.const-sim   .const-item dt {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -869,30 +842,30 @@ body:not(.extended) .ext-only { display: none !important; }
   font-size: 13px;
   font-weight: 500;
 }
-.panel-paper .const-item dt math,
-.panel-sim .const-item dt math {
+.const-paper .const-item dt math,
+.const-sim   .const-item dt math {
   font-size: 13px;
 }
-.panel-paper .const-val {
+.const-paper .const-val {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.panel-sim .const-val {
+.const-sim .const-val {
   color: var(--amber);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.panel-paper .const-label,
-.panel-sim .const-label {
+.const-paper .const-label,
+.const-sim   .const-label {
   margin: 0;
   font-size: 10px;
   color: var(--fg-2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.panel-paper .const-note,
-.panel-sim .const-note {
+.const-paper .const-note,
+.const-sim   .const-note {
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
@@ -901,8 +874,8 @@ body:not(.extended) .ext-only { display: none !important; }
   padding-top: 4px;
   border-top: 1px dashed var(--border);
 }
-.panel-paper .const-src,
-.panel-sim .const-src {
+.const-paper .const-src,
+.const-sim   .const-src {
   display: block;
   margin-top: 4px;
   font-size: 10px;

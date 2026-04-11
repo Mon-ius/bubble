@@ -80,6 +80,15 @@ const App = {
   // instantiated with in the sampling stage.
   riskMix: { loving: 33, neutral: 34, averse: 33 },
 
+  // Experience-preference composition for experienced agents — the
+  // E-slot mirror of riskMix. Three linked shares summing to 100,
+  // distributed across DLM 2005's experience dimension: naive (round-1
+  // first-timer), once-played (intermediate), and veteran (round-4
+  // fully-experienced trader). Drives the per-slot experienceLevel in
+  // the sampling stage. Defaults bias toward veteran so the E preset
+  // remains bubble-suppressing unless the user dials in naive shares.
+  experienceMix: { naive: 0, once: 0, veteran: 100 },
+
   // Extended-mode flags consulted by the engine's communication round
   // and by the utility-agent message-listener. Kept as constants now
   // that the old Communication & deception toggles are gone — the
@@ -203,14 +212,19 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
-    // Population mix — only the user-controlled slots. F/T/R are
-    // pinned by FIXED_BACKGROUND and have no sliders.
+    // Population mix — only the user-controlled slot. F/T/R are pinned
+    // by FIXED_BACKGROUND, and U is derived as N − E − N_fixed by
+    // _onPopulationChange below since the Utility slider was always
+    // a 1:1 alias of the Total N slider once E was fixed.
     'p-mix-E':       { target: 'mix.E',                         out: 'v-mix-E',       fmt: v => String(v | 0), int: true },
-    'p-mix-U':       { target: 'mix.U',                         out: 'v-mix-U',       fmt: v => String(v | 0), int: true },
     // Risk preferences — three linked shares summing to 100
     'p-risk-loving': { target: 'riskMix.loving',                out: 'v-risk-loving', fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral',               out: 'v-risk-neutral',fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',                out: 'v-risk-averse', fmt: v => v + '%', int: true },
+    // Experience preferences — same linked-triplet pattern, applied to E slots
+    'p-exp-naive':   { target: 'experienceMix.naive',           out: 'v-exp-naive',   fmt: v => v + '%', int: true },
+    'p-exp-once':    { target: 'experienceMix.once',            out: 'v-exp-once',    fmt: v => v + '%', int: true },
+    'p-exp-veteran': { target: 'experienceMix.veteran',         out: 'v-exp-veteran', fmt: v => v + '%', int: true },
   },
 
   _wireParamsPanel() {
@@ -230,7 +244,8 @@ const App = {
       if (!input) continue;
       const structural =
         spec.target.startsWith('mix.') ||
-        spec.target.startsWith('riskMix.');
+        spec.target.startsWith('riskMix.') ||
+        spec.target.startsWith('experienceMix.');
       input.addEventListener('input', e => {
         const raw = Number(e.target.value);
         const val = spec.int ? (raw | 0) : raw;
@@ -238,8 +253,10 @@ const App = {
         const out = document.getElementById(spec.out);
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
-        if (spec.target.startsWith('mix.'))     this._refreshMixTotal();
-        if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
+        if (spec.target === 'mix.E')                  this._onExperiencedChanged(e.target);
+        if (spec.target.startsWith('mix.'))           this._refreshMixTotal();
+        if (spec.target.startsWith('riskMix.'))       this._constrainRiskMix(inputId);
+        if (spec.target.startsWith('experienceMix.')) this._constrainExperienceMix(inputId);
       });
       input.addEventListener('change', () => {
         // Structural edits (population mix counts, risk-share shares)
@@ -251,6 +268,7 @@ const App = {
       });
     }
     this._updateCompBar();
+    this._updateExpCompBar();
 
     // Total-agents slider — proportionally rescales the per-type
     // counts when the user moves it, then triggers a population
@@ -280,15 +298,6 @@ const App = {
     if (head && panel) {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
-
-    // Same fold-on-click behavior for the Hidden Constants panel.
-    // Starts collapsed (class applied in the HTML) because these are
-    // simulator-invented values most users never need to inspect.
-    const simHead = document.getElementById('panel-sim-head');
-    const simPanel = document.getElementById('panel-sim');
-    if (simHead && simPanel) {
-      simHead.addEventListener('click', () => simPanel.classList.toggle('collapsed'));
-    }
   },
 
   /**
@@ -300,11 +309,45 @@ const App = {
    * App.riskMix, the readouts, and the comp-bar are all refreshed.
    */
   _constrainRiskMix(changedId) {
-    const ids  = ['p-risk-loving', 'p-risk-neutral', 'p-risk-averse'];
-    const keys = ['loving',        'neutral',        'averse'];
-    const ci = ids.indexOf(changedId);
+    this._constrainLinkedTriplet(changedId, {
+      ids:    ['p-risk-loving', 'p-risk-neutral', 'p-risk-averse'],
+      keys:   ['loving',        'neutral',        'averse'],
+      state:  this.riskMix,
+      labels: ['v-risk-loving', 'v-risk-neutral', 'v-risk-averse'],
+      onAfter: () => this._updateCompBar(),
+    });
+  },
+
+  /**
+   * Linked-slider constraint for the three experience-preference shares.
+   * Shares the implementation with _constrainRiskMix so the two preference
+   * blocks behave identically — same sum-to-100, same proportional split,
+   * same 50/50 fallback when both other sliders are zero — and the only
+   * thing that varies is which state object and which DOM ids are touched.
+   */
+  _constrainExperienceMix(changedId) {
+    this._constrainLinkedTriplet(changedId, {
+      ids:    ['p-exp-naive', 'p-exp-once', 'p-exp-veteran'],
+      keys:   ['naive',       'once',       'veteran'],
+      state:  this.experienceMix,
+      labels: ['v-exp-naive', 'v-exp-once', 'v-exp-veteran'],
+      onAfter: () => this._updateExpCompBar(),
+    });
+  },
+
+  /**
+   * Shared linked-triplet rebalancer used by both preference blocks. When
+   * one of the three sliders moves to cv, the remaining (100 − cv) is
+   * split between the other two in proportion to their previous values,
+   * with the residual absorbed by the first of the two. If both others
+   * are zero, the remainder is split 50/50. After rebalancing, the bound
+   * state object, the readouts, and the supplied onAfter hook (used to
+   * refresh the comp-bar) are all called.
+   */
+  _constrainLinkedTriplet(changedId, cfg) {
+    const ci = cfg.ids.indexOf(changedId);
     if (ci < 0) return;
-    const els = ids.map(id => document.getElementById(id));
+    const els = cfg.ids.map(id => document.getElementById(id));
     const cv  = Number(els[ci].value) | 0;
     const oi  = [0, 1, 2].filter(i => i !== ci);
     const prev0 = Number(els[oi[0]].value) | 0;
@@ -323,13 +366,14 @@ const App = {
     els[oi[1]].value = String(r1);
     this._updateSliderPct(els[oi[0]]);
     this._updateSliderPct(els[oi[1]]);
-    this.riskMix[keys[ci]]    = cv;
-    this.riskMix[keys[oi[0]]] = r0;
-    this.riskMix[keys[oi[1]]] = r1;
-    document.getElementById('v-risk-loving').textContent  = this.riskMix.loving  + '%';
-    document.getElementById('v-risk-neutral').textContent = this.riskMix.neutral + '%';
-    document.getElementById('v-risk-averse').textContent  = this.riskMix.averse  + '%';
-    this._updateCompBar();
+    cfg.state[cfg.keys[ci]]    = cv;
+    cfg.state[cfg.keys[oi[0]]] = r0;
+    cfg.state[cfg.keys[oi[1]]] = r1;
+    for (let i = 0; i < 3; i++) {
+      const out = document.getElementById(cfg.labels[i]);
+      if (out) out.textContent = cfg.state[cfg.keys[i]] + '%';
+    }
+    if (cfg.onAfter) cfg.onAfter();
   },
 
   /**
@@ -365,6 +409,18 @@ const App = {
     bar.children[2].querySelector('span').textContent = averse  + '%';
   },
 
+  _updateExpCompBar() {
+    const bar = document.getElementById('comp-bar-exp');
+    if (!bar) return;
+    const { naive, once, veteran } = this.experienceMix;
+    bar.children[0].style.flex = naive   || 0.001;
+    bar.children[1].style.flex = once    || 0.001;
+    bar.children[2].style.flex = veteran || 0.001;
+    bar.children[0].querySelector('span').textContent = naive   + '%';
+    bar.children[1].querySelector('span').textContent = once    + '%';
+    bar.children[2].querySelector('span').textContent = veteran + '%';
+  },
+
   _pushStateToSliders() {
     for (const [inputId, spec] of Object.entries(this._paramMap)) {
       const input = document.getElementById(inputId);
@@ -398,54 +454,44 @@ const App = {
   },
 
   /**
-   * Rescale the mix to a new total population N. The F/T/R background
-   * is pinned by FIXED_BACKGROUND so only the E and U slots absorb the
-   * change; the user-controlled portion adjTarget = N − fixedSum is
-   * largest-remainder-rounded across E and U in proportion to their
-   * previous counts. If both adjustable slots are currently zero the
-   * new agents land in U so the extended panels light up from a cold
-   * start. N is clamped to ≥ fixedSum since the background cannot be
-   * shrunk away from the UI.
+   * Rescale the mix to a new total population N. F/T/R are pinned by
+   * FIXED_BACKGROUND, E is held at its current value (clamped down if
+   * the new N would not leave room for it), and U is derived as the
+   * residual N − E − fixedSum. With the U slider gone, this is just
+   * "what the N slider does": E is preserved, U absorbs the slack.
    */
   _rescaleMixToTotal(newTotal) {
     const FIXED    = this.FIXED_BACKGROUND;
     const fixedSum = FIXED.F + FIXED.T + FIXED.R;
-    const adjKeys  = ['E', 'U'];
-    const m        = this.mix;
-    const oldAdj   = adjKeys.reduce((s, k) => s + (m[k] | 0), 0);
-
     newTotal = Math.max(newTotal | 0, fixedSum);
-    const adjTarget = newTotal - fixedSum;
+    const E = Math.min(this.mix.E | 0, newTotal - fixedSum);
+    const U = newTotal - fixedSum - E;
+    this.mix = { ...FIXED, E, U };
+  },
 
-    if (adjTarget <= 0) {
-      this.mix = { ...FIXED, E: 0, U: 0 };
-      return;
+  /**
+   * Called when the user moves the Experienced slider. The Total N
+   * slider is held at its current value, so adding an E agent removes
+   * a U agent and vice versa: mix.U = N − E − fixedSum. The E input is
+   * also clamped here so the user cannot drag it past the available
+   * room (N − fixedSum).
+   */
+  _onExperiencedChanged(input) {
+    const FIXED    = this.FIXED_BACKGROUND;
+    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
+    const totalSlider = document.getElementById('p-total');
+    const N    = totalSlider ? (Number(totalSlider.value) | 0) : (fixedSum + (this.mix.E | 0) + (this.mix.U | 0));
+    const eMax = Math.max(0, N - fixedSum);
+    const E    = Math.min(Math.max(this.mix.E | 0, 0), eMax);
+    if (E !== (this.mix.E | 0)) {
+      this.mix.E = E;
+      input.value = String(E);
+      this._updateSliderPct(input);
+      const out = document.getElementById('v-mix-E');
+      if (out) out.textContent = String(E);
     }
-    if (oldAdj === 0) {
-      this.mix = { ...FIXED, E: 0, U: adjTarget };
-      return;
-    }
-
-    const scale = adjTarget / oldAdj;
-    const next  = { ...FIXED, E: 0, U: 0 };
-    const fracs = [];
-    let assigned = 0;
-    for (const k of adjKeys) {
-      const raw  = m[k] * scale;
-      const base = Math.floor(raw);
-      next[k]    = base;
-      assigned  += base;
-      fracs.push({ k, frac: raw - base });
-    }
-    let remainder = adjTarget - assigned;
-    fracs.sort((a, b) => b.frac - a.frac);
-    let idx = 0;
-    while (remainder > 0) {
-      next[fracs[idx % fracs.length].k]++;
-      remainder--;
-      idx++;
-    }
-    this.mix = next;
+    this.mix.U = N - fixedSum - E;
+    document.body.classList.toggle('has-experienced', E > 0);
   },
 
   _getByPath(path) {
@@ -511,7 +557,8 @@ const App = {
     if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
       const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
       this.agentSpecs = sampleAgents(this.mix, sampleRng, {
-        riskMix: this.riskMix,
+        riskMix:       this.riskMix,
+        experienceMix: this.experienceMix,
       });
     }
     this.agents = buildAgentsFromSpecs(this.agentSpecs, {
@@ -540,7 +587,8 @@ const App = {
     // Toggle the extended-panel visibility class whenever any utility
     // agents are present, then re-measure canvases that were previously
     // display:none.
-    document.body.classList.toggle('extended', (this.mix.U | 0) > 0);
+    document.body.classList.toggle('extended',       (this.mix.U | 0) > 0);
+    document.body.classList.toggle('has-experienced', (this.mix.E | 0) > 0);
     UI.resizeCanvases();
     this.requestRender();
   },
