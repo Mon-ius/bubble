@@ -46,7 +46,7 @@
         <div class="psec-body">
           <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = N_fixed + N(E) + N(U), where N_fixed = N(F) + N(T) + N(R) = 4 is the pinned background of Fundamentalist, Trend follower, and Random (ZI) agents (see Hidden Constants). Moving this slider rescales only the user-controlled E and U slots: N(X)ⁿᵉʷ = ⌊N(X) · (Nⁿᵉʷ − N_fixed) / (Nᵒˡᵈ − N_fixed)⌋ for X ∈ {E, U}, with largest-remainder rounding so the integer counts sum exactly. From an all-zero E/U state, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. The slider cannot drop below N_fixed = 4.">
             <div class="param-head">
-              <label for="p-total">Total <span data-sym="agentI"></span> (N)</label>
+              <label for="p-total">Number of Agent <span data-sym="agentI"></span>(N)</label>
               <span class="pval" id="v-total">10</span>
             </div>
             <input type="range" id="p-total" min="4" max="30" step="1" value="10">
