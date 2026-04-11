@@ -119,23 +119,21 @@ const Sym = {
     _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
     _sqrt(_mi('w')),
   )),
-  /* Exact normalized utility functions — match computeUtility() in
-     js/utility.js, which evaluates U on r = w / w₀ so every agent
-     starts at U(w₀) = 1 regardless of initial wealth. Rendered on
-     the utility agent cards as a dedicated row so each U-agent
-     carries its own precise welfare functional. */
-  uLovingNorm:  _wrap(_row(
-    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+  /* Exact normalized utility right-hand sides — match computeUtility()
+     in js/utility.js, which evaluates U on r = w / w₀ so every agent
+     starts at U(w₀) = 1 regardless of initial wealth. Rendered on the
+     utility agent cards in the value column, with `U_i(w)` as the
+     label subscript, so the row reads as "Utility U_i(w) | (w/w₀)²"
+     and lines up with every other "label | value" metric row. */
+  uLovingNorm:  _wrap(
     _sup(_row(_mo('('), _frac(_mi('w'), _sub(_mi('w'), _mn('0'))), _mo(')')), _mn('2')),
-  )),
-  uNeutralNorm: _wrap(_row(
-    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+  ),
+  uNeutralNorm: _wrap(
     _frac(_mi('w'), _sub(_mi('w'), _mn('0'))),
-  )),
-  uAverseNorm:  _wrap(_row(
-    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+  ),
+  uAverseNorm:  _wrap(
     _sqrt(_frac(_mi('w'), _sub(_mi('w'), _mn('0')))),
-  )),
+  ),
   uOfW:      _wrap(_row(_sub(_mi('U'), _mi('i')), _mo('('), _mi('w'), _mo(')'))),   // U_i(w)
   uDef:      _wrap(_row(                                                            // u_{i,t} = U_i(w_{i,t}) / U_i(w_{i,0})
     _sub(_mi('u'), _it), _mo('='),
