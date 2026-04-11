@@ -35,13 +35,15 @@ const Replay = {
     const agentState = {};
     for (const [id, a] of Object.entries(agents)) {
       agentState[id] = {
-        id:         a.id,
-        type:       a.type,
-        typeLabel:  a.typeLabel,
-        name:       a.displayName,
-        cash:       a.cash,
-        inventory:  a.inventory,
-        lastAction: a.lastAction,
+        id:               a.id,
+        type:             a.type,
+        typeLabel:        a.typeLabel,
+        name:             a.displayName,
+        cash:             a.cash,
+        inventory:        a.inventory,
+        initialCash:      a.initialCash,
+        initialInventory: a.initialInventory,
+        lastAction:       a.lastAction,
         // Extended fields (undefined for legacy agents).
         riskPref:            a.riskPref,
         trueValuation:       a.trueValuation,
@@ -55,6 +57,7 @@ const Replay = {
     return {
       tick:           market.tick,
       period:         market.period,
+      round:          market.round,
       lastPrice:      market.lastPrice,
       fv:             market.fundamentalValue(),
       bids: market.book.bids.map(o => ({ price: o.price, remaining: o.remaining, agentId: o.agentId })),
@@ -77,9 +80,11 @@ const Replay = {
   buildViewAt(market, logger, tick, ctx = {}) {
     const snap = logger.getSnapshot(tick);
     if (!snap) {
+      const rounds = market.config.roundsPerSession || 1;
       return {
         tick:                0,
         period:              1,
+        round:               1,
         lastPrice:           null,
         fv:                  market.fundamentalValue(1),
         bids:                [],
@@ -87,7 +92,7 @@ const Replay = {
         agents:              {},
         trades:              [],
         priceHistory:        [],
-        volumeByPeriod:      new Array(market.config.periods + 2).fill(0),
+        volumeByPeriod:      new Array(rounds * market.config.periods + 2).fill(0),
         traces:              [],
         events:              [],
         messages:            [],
@@ -101,6 +106,7 @@ const Replay = {
     return {
       tick:                snap.tick,
       period:              snap.period,
+      round:               snap.round,
       lastPrice:            snap.lastPrice,
       fv:                   snap.fv,
       bids:                 snap.bids,

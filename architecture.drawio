@@ -7,16 +7,19 @@
 
         <!-- Group: Paper constants (DLM 2005) -->
         <mxCell id="g-paper" value="Paper constants &#x2014; Dufwenberg, Lindqvist &amp; Moore (2005)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="40" width="360" height="220" as="geometry"/>
+          <mxGeometry x="40" y="40" width="360" height="290" as="geometry"/>
+        </mxCell>
+        <mxCell id="n-rounds" value="R = 4 rounds / session&#xa;same six traders, round-end reset of cash + inventory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="320" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="n-bigT" value="T = 10&#xa;Asset life (periods)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="80" width="150" height="50" as="geometry"/>
+          <mxGeometry x="60" y="150" width="150" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="n-div" value="d &#x2208; {0, 20}&#xa;&#x1d53c;[d] = 10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="230" y="80" width="150" height="50" as="geometry"/>
+          <mxGeometry x="230" y="150" width="150" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="n-fv" value="FV&#x209c; = &#x1d53c;[d] &#xb7; (T &#x2212; t + 1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="160" width="320" height="60" as="geometry"/>
+        <mxCell id="n-fv" value="FV&#x209c; = &#x1d53c;[d] &#xb7; (T &#x2212; t + 1)&#xa;resets at every round start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="220" width="320" height="60" as="geometry"/>
         </mxCell>
 
         <!-- Group: Strategies -->

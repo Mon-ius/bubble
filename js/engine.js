@@ -173,16 +173,59 @@ class Engine {
     this.logger.snapshot(this._captureSnapshot());
 
     // Period boundary: dividend + comms round + period advance + book reset.
+    // At the final period of a non-terminal round the engine also runs a
+    // round-end transition: fresh endowments, book clear, round counter
+    // incremented, period reset to 1. DLM 2005 subjects start every round
+    // with the same cash/inventory schedule; we reset from App.agentSpecs
+    // to honour that, while carrying agent identity (riskPref, beliefs,
+    // trust matrix) across rounds so the cross-round learning channel
+    // the paper hinges on is the only source of persistent state.
     if (m.tick % this.config.ticksPerPeriod === 0) {
       const d = m.payDividend(this.agents, this._rng);
-      this.logger.logEvent({ tick: m.tick, type: 'dividend', period: m.period, value: d });
+      this.logger.logEvent({ tick: m.tick, type: 'dividend', period: m.period, round: m.round, value: d });
       // Communication + trust update (no-op unless extended mode + comms on).
       this._communicationRound();
       if (m.period < this.config.periods) {
         m.period++;
         m.book.clear();
-        this.logger.logEvent({ tick: m.tick, type: 'period_start', period: m.period });
+        this.logger.logEvent({ tick: m.tick, type: 'period_start', period: m.period, round: m.round });
+      } else if (m.round < (this.config.roundsPerSession || 1)) {
+        this.logger.logEvent({ tick: m.tick, type: 'round_end', round: m.round });
+        this._resetRound();
+        m.round++;
+        m.period    = 1;
+        m.lastPrice = null;
+        m.book.clear();
+        this.logger.logEvent({ tick: m.tick, type: 'round_start', round: m.round });
       }
+    }
+  }
+
+  /**
+   * Round-end transition. Every agent's cash and inventory are rewound
+   * to the spec that the sampling stage recorded for them, so round r+1
+   * starts with the same endowment schedule as round 1 — DLM's "before
+   * a market opened, half of the traders started with 200¢ and six
+   * assets, while each of the other traders started with 600¢ and two
+   * assets". Learned state (utility trust matrix, belief posteriors)
+   * is intentionally not touched; that is the cross-round experience
+   * channel the paper's bubble-suppression result relies on. Each agent
+   * also gets an optional `onRoundStart` hook so subclasses can null
+   * out transient per-round state (trend history, subjective prior).
+   */
+  _resetRound() {
+    const specs = this.ctx && this.ctx.agentSpecs;
+    for (const id of Object.keys(this.agents)) {
+      const a = this.agents[id];
+      if (Array.isArray(specs)) {
+        const spec = specs.find(s => s.id === a.id);
+        if (spec) {
+          a.cash      = spec.cash;
+          a.inventory = spec.inventory;
+        }
+      }
+      a.roundsPlayed = (a.roundsPlayed || 0) + 1;
+      if (typeof a.onRoundStart === 'function') a.onRoundStart();
     }
   }
 
@@ -223,7 +266,8 @@ class Engine {
   }
 
   isFinished() {
-    return this.market.tick >= this.config.periods * this.config.ticksPerPeriod;
+    const rounds = this.config.roundsPerSession || 1;
+    return this.market.tick >= rounds * this.config.periods * this.config.ticksPerPeriod;
   }
 
   /**
@@ -236,13 +280,15 @@ class Engine {
     const agentState = {};
     for (const [id, a] of Object.entries(this.agents)) {
       agentState[id] = {
-        id:         a.id,
-        type:       a.type,
-        typeLabel:  a.typeLabel,
-        name:       a.displayName,
-        cash:       Math.round(a.cash * 100) / 100,
-        inventory:  a.inventory,
-        lastAction: a.lastAction,
+        id:               a.id,
+        type:             a.type,
+        typeLabel:        a.typeLabel,
+        name:             a.displayName,
+        cash:             Math.round(a.cash * 100) / 100,
+        inventory:        a.inventory,
+        initialCash:      a.initialCash,
+        initialInventory: a.initialInventory,
+        lastAction:       a.lastAction,
         // Extended fields (undefined for legacy agents — harmless).
         riskPref:            a.riskPref,
         trueValuation:       a.trueValuation,
@@ -256,6 +302,7 @@ class Engine {
     return {
       tick:               m.tick,
       period:             m.period,
+      round:              m.round,
       lastPrice:          m.lastPrice,
       fv:                 m.fundamentalValue(),
       bids: m.book.bids.map(o => ({ price: o.price, remaining: o.remaining, agentId: o.agentId })),

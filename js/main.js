@@ -30,11 +30,23 @@ const App = {
   //   tickInterval            — wall-clock cadence only, driven by
   //                             the header Speed slider. Zero effect
   //                             on market dynamics.
+  // DLM 2005 unit of study is a *session* of four consecutive markets
+  // ("rounds") with six traders sharing the same population across
+  // rounds 1-3 and a mixed-experience swap in round 4. One round lasts
+  // ten periods with a {0,20}¢ i.i.d. dividend, so an entire session
+  // is roundsPerSession × periods × ticksPerPeriod = 720 ticks by
+  // default. The three numbers below are DLM paper constants and are
+  // surfaced read-only in the Paper constants panel — the user does
+  // not edit them, so that every comparison holds market structure
+  // fixed. ticksPerPeriod is the simulator's own discretisation of
+  // DLM's two-minute continuous trading windows and lives alongside
+  // the paper constants because it shapes the tick-level dynamics.
   config: {
-    periods:        10,
-    ticksPerPeriod: 18,
-    dividendMean:   10,
-    tickInterval:   340,
+    roundsPerSession: 4,
+    periods:          10,
+    ticksPerPeriod:   18,
+    dividendMean:     10,
+    tickInterval:     340,
   },
 
   // Population composition — feeds the sampling stage in agents.js,
@@ -895,6 +907,11 @@ const App = {
       trustTracker: this.trustTracker,
       extended:     this.extendedConfig,
       tunables:     this.tunables,
+      // agentSpecs is how the engine reaches the original endowment
+      // draw when it runs the DLM round-end reset: every agent is
+      // rewound to the spec cash/inventory between rounds so each of
+      // the four markets in a session starts from the same schedule.
+      agentSpecs:   this.agentSpecs,
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();

@@ -98,6 +98,7 @@ const UI = {
   init() {
     this.refreshTheme();
     // Stat cells
+    this.els.round   = document.getElementById('stat-round');
     this.els.period  = document.getElementById('stat-period');
     this.els.tick    = document.getElementById('stat-tick');
     this.els.price   = document.getElementById('stat-price');
@@ -181,6 +182,9 @@ const UI = {
   /* -------- Stats row -------- */
 
   renderStats(v, config) {
+    const rounds = config.roundsPerSession || 1;
+    const round  = v.round || 1;
+    if (this.els.round) this.els.round.textContent = `${round} / ${rounds}`;
     this.els.period.textContent = `${v.period} / ${config.periods}`;
     this.els.tick.textContent   = v.tick;
     this.els.price.textContent  = v.lastPrice == null ? '—' : v.lastPrice.toFixed(2);
@@ -188,7 +192,10 @@ const UI = {
     this.els.bubble.textContent = v.lastPrice == null
       ? '—'
       : Math.abs(v.lastPrice - v.fv).toFixed(2);
-    this.els.volume.textContent = v.volumeByPeriod[v.period] || 0;
+    // Volume readout tracks the current round's period, indexed into
+    // the session-wide array via the global period index.
+    const g = (round - 1) * config.periods + v.period;
+    this.els.volume.textContent = v.volumeByPeriod[g] || 0;
   },
 
   /* -------- Order book -------- */
@@ -375,10 +382,13 @@ const UI = {
           <span class="t-agents">${buyer} ← ${seller}</span>
         </li>`;
       }
+      const where = r.e.round != null
+        ? `R${r.e.round}·P${r.e.period}`
+        : `Period ${r.e.period}`;
       return `<li class="feed-dividend">
         <span class="t-tick">t${r.e.tick}</span>
         <span class="t-price">DIV $${r.e.value.toFixed(0)}</span>
-        <span class="t-agents">Period ${r.e.period} · all holders</span>
+        <span class="t-agents">${where} · all holders</span>
       </li>`;
     }).join('');
   },
@@ -391,17 +401,20 @@ const UI = {
     // padL 44: y-tick numerics only. padB 38: tick row + "Period t" label.
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
-    const maxFV      = config.dividendMean * config.periods;
-    const priceMax   = Math.max(
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
+    const totalTicks     = sessionPeriods * config.ticksPerPeriod;
+    const maxFV          = config.dividendMean * config.periods;
+    const priceMax       = Math.max(
       maxFV * 1.3,
       ...v.priceHistory.map(p => p.price || 0),
     );
     const xMin = 0, xMax = totalTicks;
     const yMin = 0, yMax = Math.max(10, priceMax * 1.05);
 
-    // Alternating period bands for visual separation.
-    for (let p = 1; p <= config.periods; p++) {
+    // Alternating period bands for visual separation, iterated across
+    // every period of every round in the session.
+    for (let p = 1; p <= sessionPeriods; p++) {
       if (p % 2 === 0) {
         const x1 = Viz.mapX(rect, (p - 1) * config.ticksPerPeriod, xMin, xMax);
         const x2 = Viz.mapX(rect,  p      * config.ticksPerPeriod, xMin, xMax);
@@ -411,17 +424,37 @@ const UI = {
 
     Viz.axes(ctx, rect, {
       xMin, xMax, yMin, yMax,
-      xTicks: config.periods, yTicks: 5,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: rounds, yTicks: 5,
+      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
       yFmt: y => y.toFixed(0),
     });
 
-    // Deterministic FV step line — FV_t = (T − t + 1)·μ_d.
+    // Round dividers — a thin vertical rule at every round boundary
+    // except the run endpoints, so the saw-tooth is visually anchored
+    // to the round that produced it (DLM Figure 1 uses the same cut).
+    if (rounds > 1) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.frame;
+      ctx.lineWidth   = 1;
+      for (let r = 1; r < rounds; r++) {
+        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, xMin, xMax);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, rect.y);
+        ctx.lineTo(x + 0.5, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Deterministic FV saw-tooth — FV_t = (T − t + 1)·μ_d resets at
+    // each round start, so the line climbs back to maxFV at every
+    // round boundary and declines to μ_d at every round end.
     const fvPoints = [];
-    for (let p = 1; p <= config.periods; p++) {
-      const fv = config.dividendMean * (config.periods - p + 1);
-      fvPoints.push({ x: (p - 1) * config.ticksPerPeriod, y: fv });
-      fvPoints.push({ x:  p      * config.ticksPerPeriod, y: fv });
+    for (let g = 1; g <= sessionPeriods; g++) {
+      const localP = ((g - 1) % config.periods) + 1;
+      const fv     = config.dividendMean * (config.periods - localP + 1);
+      fvPoints.push({ x: (g - 1) * config.ticksPerPeriod, y: fv });
+      fvPoints.push({ x:  g      * config.ticksPerPeriod, y: fv });
     }
     Viz.line(ctx, rect, fvPoints, { xMin, xMax, yMin, yMax, color: this.theme.amber, width: 2, dashed: true });
 
@@ -439,7 +472,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
 
     Viz.legendRow(ctx, rect, [
       { color: this.theme.accent, label: '● observed price' },
@@ -454,7 +487,9 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
+    const totalTicks     = sessionPeriods * config.ticksPerPeriod;
     const pts = v.priceHistory.map(p => ({
       x: p.tick,
       y: p.price != null ? Math.abs(p.price - p.fv) : null,
@@ -465,14 +500,28 @@ const UI = {
 
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin, yMax,
-      xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: rounds, yTicks: 4,
+      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
       yFmt: y => y.toFixed(0),
     });
     Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
     Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    if (rounds > 1) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.frame;
+      ctx.lineWidth   = 1;
+      for (let r = 1; r < rounds; r++) {
+        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, rect.y);
+        ctx.lineTo(x + 0.5, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
       { color: this.theme.red, label: '▬ absolute mispricing' },
     ]);
@@ -491,43 +540,59 @@ const UI = {
 
     // Share the totalTicks coordinate frame with the price and bubble
     // charts so all three row-1 figures anchor periods to the same
-    // horizontal positions.
-    const totalTicks = config.periods * config.ticksPerPeriod;
+    // horizontal positions — across every round in the session.
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
+    const totalTicks     = sessionPeriods * config.ticksPerPeriod;
     const xMin = 0, xMax = totalTicks;
 
     const pts = [];
-    for (let p = 1; p <= config.periods; p++) {
+    for (let g = 1; g <= sessionPeriods; g++) {
       pts.push({
-        x: (p - 0.5) * config.ticksPerPeriod,
-        y: v.volumeByPeriod[p] || 0,
+        x: (g - 0.5) * config.ticksPerPeriod,
+        y: v.volumeByPeriod[g] || 0,
       });
     }
     const yMax = Math.max(4, ...pts.map(p => p.y)) * 1.1;
 
     // Alternating period bands — same pattern used by renderPriceChart.
-    for (let p = 1; p <= config.periods; p++) {
-      if (p % 2 === 0) {
-        const x1 = Viz.mapX(rect, (p - 1) * config.ticksPerPeriod, xMin, xMax);
-        const x2 = Viz.mapX(rect,  p      * config.ticksPerPeriod, xMin, xMax);
+    for (let g = 1; g <= sessionPeriods; g++) {
+      if (g % 2 === 0) {
+        const x1 = Viz.mapX(rect, (g - 1) * config.ticksPerPeriod, xMin, xMax);
+        const x2 = Viz.mapX(rect,  g      * config.ticksPerPeriod, xMin, xMax);
         Viz.verticalBand(ctx, rect, x1, x2, this.theme.band);
       }
     }
 
     Viz.axes(ctx, rect, {
       xMin, xMax, yMin: 0, yMax,
-      xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: rounds, yTicks: 4,
+      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
       yFmt: y => y.toFixed(0),
     });
 
-    const barW = (rect.w / config.periods) * 0.55;
+    const barW = (rect.w / sessionPeriods) * 0.55;
     Viz.bars(ctx, rect, pts, {
       xMin, xMax, yMin: 0, yMax,
       color: this.theme.green,
       barWidth: barW,
     });
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    if (rounds > 1) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.frame;
+      ctx.lineWidth   = 1;
+      for (let r = 1; r < rounds; r++) {
+        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, xMin, xMax);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, rect.y);
+        ctx.lineTo(x + 0.5, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
       { color: this.theme.green, label: '▮ shares traded' },
     ], { padY: -10 });
@@ -540,15 +605,19 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
     const maxFV    = config.dividendMean * config.periods;
     const maxPrice = Math.max(maxFV * 1.4, ...v.trades.map(t => t.price || 0));
-    const nCols    = config.periods;
+    const nCols    = sessionPeriods;
     const nRows    = 10;
     const grid     = Array.from({ length: nRows }, () => new Array(nCols).fill(0));
     let maxCount   = 0;
     for (const t of v.trades) {
-      const col = Math.min(nCols - 1, Math.max(0, t.period - 1));
-      const row = Math.min(nRows - 1, Math.floor((t.price / maxPrice) * nRows));
+      const tRound = t.round || 1;
+      const g      = (tRound - 1) * config.periods + t.period;
+      const col    = Math.min(nCols - 1, Math.max(0, g - 1));
+      const row    = Math.min(nRows - 1, Math.floor((t.price / maxPrice) * nRows));
       grid[row][col] += t.quantity;
       if (grid[row][col] > maxCount) maxCount = grid[row][col];
     }
@@ -582,16 +651,20 @@ const UI = {
       const y   = rect.y + (nRows - r) * cellH;
       ctx.fillText(val.toFixed(0), rect.x - 5, y);
     }
-    // Period labels (bottom)
+    // Round labels (bottom) — one label per round, centred above that
+    // round's block of period columns. The heatmap still buckets trades
+    // at period resolution, but period-level labels would crowd for a
+    // session of 40 columns so we elide them.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let p = 1; p <= nCols; p++) {
-      const x = rect.x + (p - 0.5) * cellW;
-      ctx.fillText('P' + p, x, rect.y + rect.h + 6);
+    for (let r = 1; r <= rounds; r++) {
+      const mid = (r - 0.5) * config.periods;
+      const x   = rect.x + mid * cellW;
+      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* -------- Agent action timeline -------- */
@@ -602,10 +675,12 @@ const UI = {
     // padL 66: wide enough for the longest agent name (e.g. "Quinn").
     const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
-    const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
-    const nA         = Math.max(1, ids.length);
-    const rowH       = rect.h / nA;
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
+    const totalTicks     = sessionPeriods * config.ticksPerPeriod;
+    const ids            = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA             = Math.max(1, ids.length);
+    const rowH           = rect.h / nA;
 
     // Row backgrounds + names.
     ctx.save();
@@ -625,17 +700,31 @@ const UI = {
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
     ctx.restore();
 
-    // Period separators.
+    // Period separators across every round in the session, then heavier
+    // round dividers on top so the eye can pick out round boundaries.
     ctx.save();
     ctx.strokeStyle = this.theme.grid;
-    for (let p = 1; p < config.periods; p++) {
-      const x = Viz.mapX(rect, p * config.ticksPerPeriod, 0, totalTicks);
+    for (let g = 1; g < sessionPeriods; g++) {
+      const x = Viz.mapX(rect, g * config.ticksPerPeriod, 0, totalTicks);
       ctx.beginPath();
       ctx.moveTo(x, rect.y);
       ctx.lineTo(x, rect.y + rect.h);
       ctx.stroke();
     }
     ctx.restore();
+    if (rounds > 1) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.frame;
+      ctx.lineWidth   = 1;
+      for (let r = 1; r < rounds; r++) {
+        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, rect.y);
+        ctx.lineTo(x + 0.5, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // One rect per agent decision, colored by action type.
     const colors = { bid: this.theme.green, ask: this.theme.red, hold: this.theme.fg3 };
@@ -657,19 +746,22 @@ const UI = {
       }
     }
 
-    // X labels (period markers).
+    // X labels — one R label per round, centred under that round's
+    // block of ticks. Period-level labels would crowd a 4-round
+    // session so we elide them.
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let p = 1; p <= config.periods; p++) {
-      const x = Viz.mapX(rect, (p - 0.5) * config.ticksPerPeriod, 0, totalTicks);
-      ctx.fillText('P' + p, x, rect.y + rect.h + 6);
+    for (let r = 1; r <= rounds; r++) {
+      const mid = (r - 0.5) * config.periods * config.ticksPerPeriod;
+      const x   = Viz.mapX(rect, mid, 0, totalTicks);
+      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* ============================================================
@@ -687,7 +779,7 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
+    const totalTicks = (config.roundsPerSession || 1) * config.periods * config.ticksPerPeriod;
     const hist       = v.valuationHistory || [];
     const byAgent    = {};
     for (const row of hist) {
@@ -708,17 +800,24 @@ const UI = {
 
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin: 0, yMax,
-      xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: config.roundsPerSession || 1, yTicks: 4,
+      xFmt: x => 'R' + Math.min(
+        config.roundsPerSession || 1,
+        Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1,
+      ),
       yFmt: y => y.toFixed(0),
     });
 
-    // Dashed FV reference step line.
+    // Dashed FV reference saw-tooth — resets to maxFV at every round
+    // boundary so the line mirrors the price chart's saw-tooth across
+    // the full session.
+    const sessionPeriodsVal = (config.roundsPerSession || 1) * config.periods;
     const fvPoints = [];
-    for (let p = 1; p <= config.periods; p++) {
-      const fv = config.dividendMean * (config.periods - p + 1);
-      fvPoints.push({ x: (p - 1) * config.ticksPerPeriod, y: fv });
-      fvPoints.push({ x:  p      * config.ticksPerPeriod, y: fv });
+    for (let g = 1; g <= sessionPeriodsVal; g++) {
+      const localP = ((g - 1) % config.periods) + 1;
+      const fv     = config.dividendMean * (config.periods - localP + 1);
+      fvPoints.push({ x: (g - 1) * config.ticksPerPeriod, y: fv });
+      fvPoints.push({ x:  g      * config.ticksPerPeriod, y: fv });
     }
     Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.theme.amber, width: 2, dashed: true });
 
@@ -774,7 +873,7 @@ const UI = {
     drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* -------- Utility-over-time chart -------- */
@@ -785,7 +884,7 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
+    const totalTicks = (config.roundsPerSession || 1) * config.periods * config.ticksPerPeriod;
     const hist       = v.utilityHistory || [];
     const byAgent    = {};
     for (const row of hist) {
@@ -806,8 +905,11 @@ const UI = {
 
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin, yMax,
-      xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: config.roundsPerSession || 1, yTicks: 4,
+      xFmt: x => 'R' + Math.min(
+        config.roundsPerSession || 1,
+        Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1,
+      ),
       yFmt: y => y.toFixed(2),
     });
 
@@ -825,7 +927,7 @@ const UI = {
       Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
     }
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* -------- Messages timeline -------- */
@@ -836,10 +938,12 @@ const UI = {
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
 
-    const totalTicks = config.periods * config.ticksPerPeriod;
-    const ids        = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
-    const nA         = Math.max(1, ids.length);
-    const rowH       = rect.h / nA;
+    const rounds         = config.roundsPerSession || 1;
+    const sessionPeriods = rounds * config.periods;
+    const totalTicks     = sessionPeriods * config.ticksPerPeriod;
+    const ids            = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA             = Math.max(1, ids.length);
+    const rowH           = rect.h / nA;
 
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -859,14 +963,28 @@ const UI = {
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
     ctx.restore();
 
-    // Period separators.
+    // Period separators across the whole session, with heavier round
+    // dividers laid on top.
     ctx.save();
     ctx.strokeStyle = this.theme.grid;
-    for (let p = 1; p < config.periods; p++) {
-      const x = Viz.mapX(rect, p * config.ticksPerPeriod, 0, totalTicks);
+    for (let g = 1; g < sessionPeriods; g++) {
+      const x = Viz.mapX(rect, g * config.ticksPerPeriod, 0, totalTicks);
       ctx.beginPath(); ctx.moveTo(x, rect.y); ctx.lineTo(x, rect.y + rect.h); ctx.stroke();
     }
     ctx.restore();
+    if (rounds > 1) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.frame;
+      ctx.lineWidth   = 1;
+      for (let r = 1; r < rounds; r++) {
+        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, rect.y);
+        ctx.lineTo(x + 0.5, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // Messages: one dot per broadcast, colored by signal, ringed red if deceptive.
     const msgs = v.messages || [];
@@ -888,19 +1006,20 @@ const UI = {
       }
     }
 
-    // X labels.
+    // X labels — one R label per round.
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let p = 1; p <= config.periods; p++) {
-      const x = Viz.mapX(rect, (p - 0.5) * config.ticksPerPeriod, 0, totalTicks);
-      ctx.fillText('P' + p, x, rect.y + rect.h + 6);
+    for (let r = 1; r <= rounds; r++) {
+      const mid = (r - 0.5) * config.periods * config.ticksPerPeriod;
+      const x   = Viz.mapX(rect, mid, 0, totalTicks);
+      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* -------- Trust matrix heatmap -------- */
@@ -975,36 +1094,60 @@ const UI = {
     // padT 28 leaves room for the in-plot legend row above the chart.
     const rect = Viz.plotRect(width, height, 44, 14, 28, 38);
 
-    const totalTicks  = config.periods * config.ticksPerPeriod;
+    const rounds      = config.roundsPerSession || 1;
+    const ticksPerRnd = config.periods * config.ticksPerPeriod;
+    const totalTicks  = rounds * ticksPerRnd;
     const ids         = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
     const n           = ids.length;
     if (!n) return;
 
-    // Reconstruct per-tick inventory by replaying trades.
-    // Starting inventory is whatever each agent's initial inventory is
-    // — here always 3, giving totalShares = n * 3.
-    const initialInv  = 3;
-    const totalShares = n * initialInv;
-    const yMax        = Math.max(totalShares, totalShares + 2);
+    // Per-agent initial inventory comes from the spec captured at draw
+    // time (sampleAgents pulls from {2,3,4}); fall back to 3 only if
+    // the view doesn't carry the field for legacy snapshots.
+    const initialInv = {};
+    let totalShares  = 0;
+    for (const id of ids) {
+      const inv = v.agents[id] && v.agents[id].initialInventory != null
+        ? v.agents[id].initialInventory
+        : 3;
+      initialInv[id] = inv;
+      totalShares   += inv;
+    }
+    const yMax = Math.max(totalShares, totalShares + 2);
 
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin: 0, yMax,
-      xTicks: config.periods, yTicks: 4,
-      xFmt: x => 'P' + Math.round(x / config.ticksPerPeriod + 1),
+      xTicks: rounds, yTicks: 4,
+      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / ticksPerRnd) + 1),
       yFmt: y => y.toFixed(0),
     });
 
-    // Build inv[tick][id] by walking through trades in order.
+    // Build inv[tick][id] by walking through trades in order. At every
+    // round boundary the engine rewinds each agent's inventory back to
+    // the spec value, so the replay walk has to mirror that — without
+    // this reset, rounds 2-4 would inherit drifted balances and the
+    // stacked area would no longer sum to totalShares.
     const invByTick = new Array(totalTicks + 1);
-    const start = {};
-    for (const id of ids) start[id] = initialInv;
+    const start     = {};
+    for (const id of ids) start[id] = initialInv[id];
     invByTick[0] = start;
     let tIdx = 0;
-    const sortedTrades = v.trades;   // already append-order
+    const sortedTrades = v.trades;
     for (let tick = 1; tick <= totalTicks; tick++) {
-      const cur = {};
+      const cur  = {};
       const prev = invByTick[tick - 1];
-      for (const id of ids) cur[id] = prev[id];
+      // Round-boundary reset: ticks at the end of period T of a non-final
+      // round restart every agent's inventory before the next tick's
+      // trades land.
+      const isRoundBoundary =
+        rounds > 1 &&
+        tick % ticksPerRnd === 1 &&
+        tick > 1;
+      if (isRoundBoundary) {
+        for (const id of ids) cur[id] = initialInv[id];
+      } else {
+        for (const id of ids) cur[id] = prev[id];
+      }
       while (tIdx < sortedTrades.length && sortedTrades[tIdx].timestamp <= tick) {
         const t = sortedTrades[tIdx];
         if (cur[t.buyerId]  != null) cur[t.buyerId]  += t.quantity;
@@ -1038,7 +1181,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Period t', 'bottom');
+    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
   },
 
   /* -------- Extended metrics panel -------- */
@@ -1055,31 +1198,42 @@ const UI = {
 
     // ---- Dufwenberg, Lindqvist & Moore (2005) market-quality statistics.
     // All of these operate on the per-period mean trade price P̄_t and the
-    // deterministic fundamental value FV_t = (T − t + 1)·μ_d. We reconstruct
-    // P̄_t from v.trades grouped by trade.period.
-    const sumByPeriod = {}, cntByPeriod = {};
+    // deterministic fundamental value FV_t = (T − t + 1)·μ_d. With the
+    // multi-round session wrapper a "period" key needs to be (round,
+    // period) so a round-2 period-5 trade isn't lumped with a round-1
+    // period-5 trade. We index every aggregator by the global period
+    // g = (round−1)·T + period and compute FV from the local period.
+    const rounds = config.roundsPerSession || 1;
+    const sumByG = {}, cntByG = {};
     for (const t of v.trades) {
-      sumByPeriod[t.period] = (sumByPeriod[t.period] || 0) + t.price;
-      cntByPeriod[t.period] = (cntByPeriod[t.period] || 0) + 1;
+      const tRound = t.round || 1;
+      const g      = (tRound - 1) * config.periods + t.period;
+      sumByG[g] = (sumByG[g] || 0) + t.price;
+      cntByG[g] = (cntByG[g] || 0) + 1;
     }
-    const meanP = new Array(config.periods + 1).fill(null);
-    for (let p = 1; p <= config.periods; p++) {
-      if (cntByPeriod[p]) meanP[p] = sumByPeriod[p] / cntByPeriod[p];
+    const sessionPeriodsM = rounds * config.periods;
+    const meanP = new Array(sessionPeriodsM + 1).fill(null);
+    for (let g = 1; g <= sessionPeriodsM; g++) {
+      if (cntByG[g]) meanP[g] = sumByG[g] / cntByG[g];
     }
-    const fvOf = p => config.dividendMean * (config.periods - p + 1);
+    const localPeriodOf = g => ((g - 1) % config.periods) + 1;
+    const fvOfG = g => config.dividendMean * (config.periods - localPeriodOf(g) + 1);
+    // Per-trade FV uses the trade's own period within its own round; the
+    // round dimension cancels because FV is round-invariant.
+    const fvOfTrade = t => config.dividendMean * (config.periods - t.period + 1);
 
     // Total shares outstanding (conserved under double-auction trades).
     let totalShares = 0;
     for (const a of Object.values(v.agents)) totalShares += (a.inventory || 0);
 
-    // Haessel (1978) R²: 1 − Σ(P̄_t − FV_t)² / Σ(P̄_t − mean P̄)². Uses only
+    // Haessel (1978) R²: 1 − Σ(P̄_g − FV_g)² / Σ(P̄_g − mean P̄)². Uses only
     // periods that had trades. Can be negative if the fit is worse than
     // predicting the sample mean of P̄.
     let haessel = null;
     {
       const obs = [];
-      for (let p = 1; p <= config.periods; p++) {
-        if (meanP[p] != null) obs.push({ y: meanP[p], x: fvOf(p) });
+      for (let g = 1; g <= sessionPeriodsM; g++) {
+        if (meanP[g] != null) obs.push({ y: meanP[g], x: fvOfG(g) });
       }
       if (obs.length >= 2) {
         const ybar = obs.reduce((s, c) => s + c.y, 0) / obs.length;
@@ -1097,29 +1251,32 @@ const UI = {
     let normAbsDev = null;
     if (totalShares > 0 && v.trades.length) {
       let s = 0;
-      for (const t of v.trades) s += Math.abs(t.price - fvOf(t.period)) * t.quantity;
+      for (const t of v.trades) s += Math.abs(t.price - fvOfTrade(t)) * t.quantity;
       normAbsDev = s / totalShares;
     }
 
     // Normalized average price deviation:
-    // Σ_periods |P̄_t − FV_t| / total shares outstanding.
+    // Σ_periods |P̄_t − FV_t| / total shares outstanding, summed over
+    // every period of every round in the session.
     let normAvgDev = null;
     if (totalShares > 0) {
       let s = 0;
-      for (let p = 1; p <= config.periods; p++) {
-        if (meanP[p] != null) s += Math.abs(meanP[p] - fvOf(p));
+      for (let g = 1; g <= sessionPeriodsM; g++) {
+        if (meanP[g] != null) s += Math.abs(meanP[g] - fvOfG(g));
       }
       normAvgDev = s / totalShares;
     }
 
-    // Price amplitude: (max (P̄_t − FV_t) − min (P̄_t − FV_t)) / FV_1.
+    // Price amplitude: (max (P̄_g − FV_g) − min (P̄_g − FV_g)) / FV_1.
+    // Pooled across all rounds — DLM 2005 reports per-round amplitudes
+    // as well, but the dashboard surface is one number per session.
     let amplitude = null;
     {
       const diffs = [];
-      for (let p = 1; p <= config.periods; p++) {
-        if (meanP[p] != null) diffs.push(meanP[p] - fvOf(p));
+      for (let g = 1; g <= sessionPeriodsM; g++) {
+        if (meanP[g] != null) diffs.push(meanP[g] - fvOfG(g));
       }
-      const fv1 = fvOf(1);
+      const fv1 = config.dividendMean * config.periods;
       if (diffs.length && fv1 > 0) amplitude = (Math.max(...diffs) - Math.min(...diffs)) / fv1;
     }
 

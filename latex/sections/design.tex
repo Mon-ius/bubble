@@ -2,6 +2,32 @@
 \section{Experimental Design}
 \label{sec:design}
 
+\subsection{Session structure: four consecutive rounds}
+
+The unit of study in~\citet{dufwenberg2005bubbles} is a
+\emph{session} of four consecutive ten-period markets played by the
+same six traders. The paper insists on the terminology explicitly:
+\begin{quote}
+``A session involved four consecutive markets. In the following, we
+shall talk in terms of four different rounds. Note the distinction
+between rounds and periods; a round (being a market) consists of
+ten periods.''~\citep[p.~1733]{dufwenberg2005bubbles}
+\end{quote}
+The session wrapper is the load-bearing element of the original
+design: bubbles inflate in round~1, attenuate in rounds~2--3, and
+have effectively died by round~4 even though the population is
+identical---experience, not composition, kills the bubble. The
+simulator therefore wraps the per-round market in a session loop of
+$R=4$ rounds. At every round boundary the order book is cleared,
+each agent's cash and inventory are rewound to its sampled spec,
+and the period counter resets to one. Learned state---trust
+matrices, belief modes, the EU candidate cache---is intentionally
+preserved across the boundary so that the cross-round learning
+channel that drives the paper's headline result is the only source
+of persistent change between consecutive markets. Both
+$R$ and $T$ are surfaced read-only in the simulator's ``Paper
+constants'' panel and are not user tunable.
+
 \subsection{The asset and the fundamental}
 
 The asset is a finite-lived claim on an iid per-period dividend
@@ -11,31 +37,40 @@ probability. Letting $d$ denote the period-$t$ dividend draw,
 d\sim\text{Uniform}\{0,20\},\qquad \E[d]=10,\qquad T=10.
 \label{eq:dividend}
 \end{equation}
-The asset lives for $T=10$ periods and pays nothing thereafter,
-so its risk-neutral fundamental value at the start of period~$t$ is
+The asset lives for $T=10$ periods within each round and pays
+nothing thereafter, so its risk-neutral fundamental value at the
+start of period~$t$ of any round is
 \begin{equation}
 \FV_t \;=\; \E[d]\cdot(T-t+1) \;=\; 10\cdot(T-t+1),
 \label{eq:fv}
 \end{equation}
 that is, a linearly declining staircase from $\FV_1=100$ to
 $\FV_T=10$ with a terminal value of zero after the final dividend
-pays. Equation~\eqref{eq:dividend} and equation~\eqref{eq:fv}
-reproduce the paper constants of~\citet{dufwenberg2005bubbles}
-exactly; both the number of periods and the dividend mean are
-surfaced read-only in the simulator's ``Paper constants'' panel and
-are not user~tunable, so that every comparison across populations
-holds the market structure fixed.
+pays. The fundamental resets to $\FV_1=100$ at the start of every
+new round, so the price chart traces a four-tooth saw-tooth across
+the full session. Equation~\eqref{eq:dividend} and
+equation~\eqref{eq:fv} reproduce the dividend process and the
+fundamental schedule of~\citet{dufwenberg2005bubbles} exactly. The
+session length $R$, the per-round asset life $T$, and the dividend
+mean $\E[d]$ are all surfaced read-only in the simulator's ``Paper
+constants'' panel so that every comparison across populations holds
+the market structure fixed.
 
 \subsection{Continuous double auction with period discretisation}
 
 The simulator discretises each period into $K=18$ decision rounds,
-so a run comprises $T\cdot K=180$ ticks. Every tick, each agent
-posts at most one order, routed to a price--time-priority order
-book; a crossing pair matches at the resting price. At the end of
-each period, outstanding quotes are withdrawn and the dividend is
-drawn from~\eqref{eq:dividend} and credited to each holder. The
-$K=18$ discretisation is pinned in the ``Simulator constants''
-panel and is not user~tunable.
+so a single round comprises $T\cdot K=180$ ticks and a full
+four-round session comprises $R\cdot T\cdot K=720$ ticks. Every
+tick, each agent posts at most one order, routed to a price--time
+priority order book; a crossing pair matches at the resting price.
+At the end of each period the outstanding quotes are withdrawn and
+the dividend is drawn from~\eqref{eq:dividend} and credited to each
+holder. At the end of period~$T$ of every non-final round the
+session loop also rewinds endowments, clears the book, and resets
+the period counter to one before the next round begins. The $K=18$
+discretisation is the simulator's own approximation of the
+two-minute continuous z-Tree window used in the paper, is pinned in
+the ``Simulator constants'' panel, and is not user tunable.
 
 \subsection{Sampling and endowments}
 
@@ -43,16 +78,25 @@ At $t=0$ the simulator draws a flat list of per-agent specifications
 from the user's chosen population mix. For each slot, cash is
 sampled uniformly from $[800,1200]$ experimental cents and initial
 inventory is drawn uniformly from $\{2,3,4\}$ shares, so that total
-endowments are heterogeneous but bounded. Every slot is also
-assigned a randomly drawn personal name (from an internal name
-list) and a type label such as F1, U3, E2, which is used in the
-agents panel and the trust matrix for human legibility. Crucially,
-the sampling RNG is derived from $\text{seed}\oplus\mathtt{0xA5A5A5A5}$
-and is independent of the engine RNG; this is the
-invariant that lets a user edit cash or inventory on an existing
-draw and re-run without re-sampling agent types, while still
-producing the same per-tick trading sequence as a matched run
-without the~edit.
+endowments are heterogeneous but bounded. This is a deliberate
+relaxation of the two discrete endowment types in the original
+study---half the traders started with 200~cents and six shares and
+the other half with 600~cents and two shares so that the implied
+buy-and-hold value was identical at $1{,}000$~cents---and trades a
+sharper baseline against DLM for a smoother sweep over the
+population mix when the user moves the agent-count slider. Every
+slot is also assigned a randomly drawn personal name (from an
+internal name list) and a type label such as F1, U3, E2, which is
+used in the agents panel and the trust matrix for human
+legibility. Crucially, the sampling RNG is derived from
+$\text{seed}\oplus\mathtt{0xA5A5A5A5}$ and is independent of the
+engine RNG; this is the invariant that lets a user edit cash or
+inventory on an existing draw and re-run without re-sampling agent
+types, while still producing the same per-tick trading sequence as
+a matched run without the~edit. The same per-agent endowment is
+also used by the round-end reset described above, so every round
+of a session starts each trader from the same balance schedule even
+though the within-round sequence of trades evolves freely.
 
 \subsection{Populations}
 
@@ -104,3 +148,5 @@ pair and are flagged as an invariant in the project style guide.
 The seed is re-rolled only on Reset, and the replay system
 reconstructs past states by slicing append-only history arrays on
 \texttt{Market} and \texttt{Logger}---no frame is ever recomputed.
+A single seed therefore reproduces the entire 720-tick session
+end-to-end, rounds and round-end resets included.

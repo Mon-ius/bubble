@@ -8,10 +8,14 @@ preliminary findings from three paradigm presets rather than a
 calibrated empirical test. Each paradigm holds the market
 structure of Section~\ref{sec:design} fixed and varies only the
 population composition. Unless otherwise noted, $N=10$ agents
-share one market for $T=10$ periods, the seeded PRNG is rolled
+share one session of $R=4$ consecutive ten-period rounds with the
+DLM~2005 round-end endowment reset, the seeded PRNG is rolled
 fresh at the start of every run, and the AIPE anchor is
 drawn from the default model \texttt{gpt-5.4} with the paper's
-system and user prompts verbatim.
+system and user prompts verbatim. The market-quality statistics
+reported below are pooled across all four rounds of a session;
+the per-round breakdown that drives the experience-kills-bubbles
+finding is described in the baseline DLM subsection.
 
 \subsection{Baseline DLM 2005: experience kills the bubble}
 
@@ -23,9 +27,13 @@ Haessel's~$R^2$ is typically above~$0.90$. The naive experienced
 profile ($\varphi_0=1.00,\varphi_1=0.05$) yields a weak
 bubble-killing channel and modest overshooting in periods $3$--$5$;
 the veteran profile ($\varphi_0=0.92,\varphi_1=0.06$, liquidate at
-$h\le 3$) sharpens convergence to below one experimental cent. The
-qualitative DLM~2005 finding---that experience, rather than
-instructions or incentives, kills the bubble---is reproduced.
+$h\le 3$) sharpens convergence to below one experimental cent.
+Across the four rounds of a session the bubble that does form in
+round~$1$ visibly attenuates in rounds~$2$--$3$ and is essentially
+absent in round~$4$, even though the population is identical, the
+seed is the same, and the market structure has not moved---the
+qualitative DLM~2005 finding that experience, rather than
+instructions or incentives, kills the bubble is reproduced.
 
 \subsection{Lopez-Lira 2025: the strategy cube shapes the bubble}
 

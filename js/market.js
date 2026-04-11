@@ -30,7 +30,7 @@ class Order {
 Order.nextId = 1;
 
 class Trade {
-  constructor(bidOrder, askOrder, price, quantity, timestamp, period) {
+  constructor(bidOrder, askOrder, price, quantity, timestamp, period, round) {
     this.id         = Trade.nextId++;
     this.buyerId    = bidOrder.agentId;
     this.sellerId   = askOrder.agentId;
@@ -40,6 +40,7 @@ class Trade {
     this.quantity   = quantity;
     this.timestamp  = timestamp;
     this.period     = period;
+    this.round      = round;
   }
 }
 Trade.nextId = 1;
@@ -95,18 +96,34 @@ class OrderBook {
  * at the *start* of period t is FV_t = μ × (T − t + 1): the remaining
  * expected dividend stream. After period T's dividend is paid the asset
  * is worthless.
+ *
+ * DLM 2005 nests T periods inside a *session* of `roundsPerSession`
+ * consecutive markets ("rounds"). The Market therefore also tracks a
+ * 1-indexed `round` counter; FV resets at the start of every round so
+ * `priceHistory.fv` traces the saw-tooth in Figure 1 of the paper. The
+ * per-period volume series is sized for the full session (rounds ×
+ * periods + 2) and indexed by a global period
+ * `g = (round − 1) · periods + period`, so a single array spans every
+ * round end-to-end with no per-round slicing.
  */
 class Market {
   constructor(config) {
     this.config          = config;
     this.book            = new OrderBook();
     this.trades          = [];
-    this.priceHistory    = [];                                     // { tick, period, price, fv, bid, ask }
-    this.volumeByPeriod  = new Array(config.periods + 2).fill(0);
-    this.dividendHistory = [];                                     // { period, value }
+    this.priceHistory    = [];                                     // { tick, period, round, price, fv, bid, ask }
+    const sessionPeriods = (config.roundsPerSession || 1) * config.periods;
+    this.volumeByPeriod  = new Array(sessionPeriods + 2).fill(0);
+    this.dividendHistory = [];                                     // { period, round, value }
+    this.round           = 1;
     this.period          = 1;
     this.tick            = 0;
     this.lastPrice       = null;
+  }
+
+  /** Global 1-indexed period across the full session. */
+  sessionPeriod(period = this.period, round = this.round) {
+    return (round - 1) * this.config.periods + period;
   }
 
   fundamentalValue(period = this.period) {
@@ -157,9 +174,9 @@ class Market {
       order.remaining -= qty;
       best.remaining  -= qty;
       if (order.side === 'bid') {
-        fills.push(new Trade(order, best, price, qty, this.tick, this.period));
+        fills.push(new Trade(order, best, price, qty, this.tick, this.period, this.round));
       } else {
-        fills.push(new Trade(best, order, price, qty, this.tick, this.period));
+        fills.push(new Trade(best, order, price, qty, this.tick, this.period, this.round));
       }
     }
     this.book.removeFilled();
@@ -171,7 +188,7 @@ class Market {
     for (const t of trades) {
       this.trades.push(t);
       this.lastPrice = t.price;
-      this.volumeByPeriod[this.period] += t.quantity;
+      this.volumeByPeriod[this.sessionPeriod()] += t.quantity;
       const buyer  = agents[t.buyerId];
       const seller = agents[t.sellerId];
       buyer.cash       -= t.price * t.quantity;
@@ -186,7 +203,7 @@ class Market {
     const hi = this.config.dividendMean * 2;
     const d  = rng() < 0.5 ? 0 : hi;
     for (const a of Object.values(agents)) a.cash += d * a.inventory;
-    this.dividendHistory.push({ period: this.period, value: d });
+    this.dividendHistory.push({ period: this.period, round: this.round, value: d });
     return d;
   }
 
@@ -195,6 +212,7 @@ class Market {
     this.priceHistory.push({
       tick:   this.tick,
       period: this.period,
+      round:  this.round,
       price:  this.lastPrice,
       fv:     this.fundamentalValue(),
       bid:    this.book.bestBid() ? this.book.bestBid().price : null,

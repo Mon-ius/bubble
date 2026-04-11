@@ -49,6 +49,43 @@ Invariants that the replay system relies on:
 - `ui.js` must never reach into `Market`/`Engine`/`Agent` state directly;
   always go through a view object from `replay.js`.
 
+## Session structure: rounds and periods
+
+A run is one *session* of `roundsPerSession` consecutive *rounds* (default
+`R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
+market that lasts `T × ticksPerPeriod = 180` ticks, so a default session is
+`R × T × K = 720` ticks. At the end of period `T` of a non-final round the
+`Engine`:
+
+1. logs a `round_end` event,
+2. rewinds every agent's `cash` and `inventory` to its `agentSpecs` entry
+   (mirroring DLM's "before a market opened, half started with 200¢ + 6
+   shares, the other half with 600¢ + 2 shares" reset),
+3. clears the order book and sets `lastPrice = null`,
+4. increments `Market.round`, resets `Market.period = 1`,
+5. logs a `round_start` event,
+6. calls `agent.onRoundStart()` so subclasses can null out per-round
+   transient state (`TrendFollower` clears slope history; `UtilityAgent`
+   rebases `initialWealth` and clears subjective/reported valuations and
+   received messages).
+
+What is **deliberately preserved** across the boundary: trust matrices,
+belief modes, risk preferences, the agent's identity. That cross-round
+learning channel is the whole point of DLM 2005's session structure
+(experience kills the bubble), and the simulator reproduces it by leaving
+those fields untouched in `_resetRound()`.
+
+The per-round volume series lives in a single `Market.volumeByPeriod` array
+of size `R × T + 2`, indexed by a global period
+`g = (round − 1) × T + period`. Use `Market.sessionPeriod()` whenever you
+need that index. Trades and `priceHistory` entries carry a `round` tag so
+multi-round views can bucket them correctly.
+
+The `replay.js` views and the `ui.js` charts both compute the full session
+extent from `roundsPerSession` and draw round dividers at every round
+boundary; legacy single-round runs still work because all of the multi-round
+logic falls through cleanly when `roundsPerSession = 1`.
+
 ## Parameters panel and tunables
 
 Every numeric constant that shapes the sim is exposed in the Parameters panel

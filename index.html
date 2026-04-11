@@ -220,8 +220,13 @@
         <div class="psec-body">
           <dl class="const-list">
             <div class="const-item">
+              <dt>rounds / session <span class="const-val">= 4</span></dt>
+              <dd class="const-label">Consecutive markets played by the same subjects</dd>
+              <dd class="const-note">&ldquo;A session involved four consecutive markets. In the following, we shall talk in terms of four different rounds. Note the distinction between rounds and periods; a round (being a market) consists of ten periods.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
               <dt><span data-sym="bigT"></span> <span class="const-val">= 10</span></dt>
-              <dd class="const-label">Asset life, in periods</dd>
+              <dd class="const-label">Asset life, in periods (per round)</dd>
               <dd class="const-note">&ldquo;An asset's life span is ten periods.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
             </div>
             <div class="const-item">
@@ -324,6 +329,7 @@
   </section>
 
   <section class="panel panel-stats">
+    <div class="stat"><span class="label">Round</span><span class="value" id="stat-round">1 / 4</span></div>
     <div class="stat"><span class="label">Period</span><span class="value" id="stat-period">1 / 10</span></div>
     <div class="stat"><span class="label">Tick</span><span class="value" id="stat-tick">0</span></div>
     <div class="stat"><span class="label">Price</span><span class="value price" id="stat-price">—</span></div>

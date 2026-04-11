@@ -38,8 +38,22 @@ class Agent {
     this.initialCash      = cash;
     this.initialInventory = inventory;
     this.lastAction       = 'hold';
+    // DLM 2005 runs a session of four consecutive markets with the
+    // same subject pool — the Engine increments this counter at each
+    // round boundary so subclasses can condition behaviour on how
+    // many rounds of experience the agent has already accumulated.
+    this.roundsPlayed     = 0;
   }
   decide(_market, _rng) { return { type: 'hold', reasoning: { ruleUsed: 'noop' } }; }
+  /**
+   * Optional round-boundary hook. The Engine calls this on every agent
+   * after cash + inventory have been rewound to the spec values, so
+   * subclasses should clear any per-round transient state here (local
+   * price history, subjective priors, cached fills). Learned state
+   * that should persist across rounds — trust matrices, belief modes,
+   * risk preferences — is left alone.
+   */
+  onRoundStart() {}
 }
 
 /* ---------- Fundamentalist -------------------------------------------- */
@@ -125,7 +139,14 @@ class TrendFollower extends Agent {
   }
 
   decide(market, rng) {
-    const hist = market.priceHistory.filter(h => h.price !== null).slice(-6);
+    // Momentum must not leak across round boundaries: DLM starts every
+    // round with a fresh market, so a trend follower in round 2 should
+    // see price history from round 2 only. Filtering on the current
+    // round guarantees the 6-tick slope starts empty at every round
+    // opening and the "bootstrap" branch fires just like round 1.
+    const hist = market.priceHistory
+      .filter(h => h.price !== null && h.round === market.round)
+      .slice(-6);
     const fv   = market.fundamentalValue();
     const bid  = market.book.bestBid();
 
@@ -480,6 +501,25 @@ class UtilityAgent extends Agent {
 
     // Frozen baseline — used to normalize utility so U(w0) = 1.
     this.initialWealth = this.cash + this.inventory * 100;
+  }
+
+  /**
+   * Re-initialise transient per-round state at the start of round r+1.
+   * The DLM round-end reset has already rewound cash/inventory to the
+   * spec values, so we rebase initialWealth against the *new* endowment
+   * (otherwise U(w₀) ≠ 1 at the start of round 2, which would distort
+   * the EU ranking across rounds). Subjective and reported valuations
+   * are cleared so the first decide() of the new round reseeds them
+   * from the freshly reset FV prior. Learned state — trust EMAs kept
+   * in the TrustTracker, beliefMode, riskPref, biasMode — is left
+   * alone: that is the cross-round experience channel DLM relies on.
+   */
+  onRoundStart() {
+    this.initialWealth       = this.cash + this.inventory * 100;
+    this.subjectiveValuation = 100;
+    this.trueValuation       = 100;
+    this.reportedValuation   = null;
+    this.receivedMsgs        = [];
   }
 
   /* ---- Pipeline step 1: observe ---- */
