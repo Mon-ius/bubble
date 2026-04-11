@@ -77,14 +77,23 @@ const App = {
 
   // Research paradigm tag — surfaced in the navbar as a segmented
   // switch between 'dlm' (Dufwenberg, Lindqvist & Moore 2005, human
-  // subjects, E-heavy population) and 'lll' (Lopez-Lira 2025, LLM
-  // EU-maximizer with messaging/trust, U-heavy population). Purely
-  // a preset applier: clicking a paradigm button fills the user-
-  // controlled slots with the matching agent type, but individual
-  // sliders remain fully editable afterwards. Default 'lll' matches
-  // the default mix above (E=0, U=6) so extended panels light up on
-  // first load.
+  // subjects, E-heavy population), 'lll' (Lopez-Lira 2025, LLM
+  // EU-maximizer with messaging/trust, U-heavy population) and
+  // 'wang' (Wang 2026, merged E + U population with an optional
+  // ChatGPT-anchor step at run start). Purely a preset applier:
+  // clicking a paradigm button fills the user-controlled slots
+  // with the matching agent type, but individual sliders remain
+  // fully editable afterwards. Default 'lll' matches the default
+  // mix above (E=0, U=6) so extended panels light up on first load.
   paradigm: 'lll',
+
+  // Wang 2026 AI endpoint state. Populated from the #ai-key /
+  // #ai-endpoint / #ai-model inputs on every input event and
+  // consumed by start() when paradigm === 'wang'. Nothing is
+  // persisted to localStorage, matching the lying project's
+  // deliberately forgetful design — the key must be re-entered
+  // after a page reload.
+  aiConfig: { apiKey: '', endpoint: '', model: 'gpt-4o-mini' },
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
@@ -311,7 +320,7 @@ const App = {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
 
-    // Paradigm switch — two-button segmented control in the header.
+    // Paradigm switch — three-button segmented control in the header.
     // Each button applies a population preset via _setParadigm; no
     // dragging, no per-tick wiring. The .active class is set here for
     // the initial default and maintained by _setParadigm on click.
@@ -319,6 +328,28 @@ const App = {
       btn.addEventListener('click', () => this._setParadigm(btn.dataset.paradigm));
     });
     this._syncParadigmButtons();
+
+    // Wang 2026 — AI endpoint inputs. Kept in App.aiConfig live so
+    // start() can read it synchronously without another DOM lookup.
+    // Nothing is persisted; a page reload clears the key deliberately.
+    const aiKey      = document.getElementById('ai-key');
+    const aiEndpoint = document.getElementById('ai-endpoint');
+    const aiModel    = document.getElementById('ai-model');
+    if (aiKey) {
+      aiKey.addEventListener('input', e => {
+        this.aiConfig.apiKey = (e.target.value || '').trim();
+      });
+    }
+    if (aiEndpoint) {
+      aiEndpoint.addEventListener('input', e => {
+        this.aiConfig.endpoint = (e.target.value || '').trim();
+      });
+    }
+    if (aiModel) {
+      aiModel.addEventListener('input', e => {
+        this.aiConfig.model = (e.target.value || '').trim() || 'gpt-4o-mini';
+      });
+    }
 
     // Nav-tab click handler — swaps which .tab-pane is visible and
     // mirrors the active state onto the tab button. Kept deliberately
@@ -334,15 +365,25 @@ const App = {
   },
 
   /**
-   * Apply a paradigm preset to the population. 'dlm' fills the user
-   * slots with Experienced agents (E = N − N_fixed, U = 0); 'lll'
-   * fills them with Utility agents (U = N − N_fixed, E = 0). Also
-   * updates the Experienced slider + readout, the body classes that
-   * gate the ext-only / exp-only panels, and the active button, then
-   * rebuilds the current draw so the change is visible immediately.
+   * Apply a paradigm preset to the population.
+   *
+   *   'dlm'  — fills the user slots with Experienced agents
+   *            (E = N − N_fixed, U = 0).
+   *   'lll'  — fills them with Utility agents
+   *            (U = N − N_fixed, E = 0).
+   *   'wang' — splits the user slots roughly in half between E
+   *            and U so both paper designs share the same market.
+   *            ⌈half⌉ goes to E and the remainder to U so the U
+   *            block still wins on odd capacities and the extended
+   *            panels stay populated.
+   *
+   * Also updates the Experienced slider + readout, the body classes
+   * that gate the ext-only / exp-only / wang-only panels, and the
+   * active button, then rebuilds the current draw so the change is
+   * visible immediately.
    */
   _setParadigm(paradigm) {
-    if (paradigm !== 'dlm' && paradigm !== 'lll') return;
+    if (paradigm !== 'dlm' && paradigm !== 'lll' && paradigm !== 'wang') return;
     this.paradigm = paradigm;
     const FIXED    = this.FIXED_BACKGROUND;
     const fixedSum = FIXED.F + FIXED.T + FIXED.R;
@@ -354,9 +395,16 @@ const App = {
     if (paradigm === 'dlm') {
       this.mix.E = capacity;
       this.mix.U = 0;
-    } else {
+    } else if (paradigm === 'lll') {
       this.mix.E = 0;
       this.mix.U = capacity;
+    } else {
+      // 'wang' — merged market. Ceiling goes to E so even capacities
+      // split evenly; odd capacities give the extra slot to E to
+      // keep the bubble-suppressing side viable without starving U.
+      const eHalf = Math.ceil(capacity / 2);
+      this.mix.E  = eHalf;
+      this.mix.U  = capacity - eHalf;
     }
     // Sync the Experienced slider UI with the new preset.
     const eInput = document.getElementById('p-mix-E');
@@ -366,6 +414,7 @@ const App = {
     }
     const eOut = document.getElementById('v-mix-E');
     if (eOut) eOut.textContent = String(this.mix.E);
+    document.body.classList.toggle('wang-mode', paradigm === 'wang');
     this._syncParadigmButtons();
     this.rebuild();
   },
@@ -373,13 +422,26 @@ const App = {
   /**
    * Reflect App.paradigm on the navbar buttons. Called on init and
    * after any paradigm-changing action so the segmented control stays
-   * in sync when users come in via a slider (E > 0 = dlm, U > 0 = lll).
+   * in sync when users come in via a slider:
+   *
+   *   E > 0, U = 0  → dlm
+   *   U > 0, E = 0  → lll
+   *   E > 0, U > 0  → wang (merged)
+   *
+   * The App.paradigm field is only overwritten if the slider-inferred
+   * paradigm is unambiguous; an all-zero mix or the Wang 2026 button
+   * explicitly setting 'wang' keeps the current flag.
    */
   _syncParadigmButtons() {
-    const active = (this.mix.E | 0) > 0 && (this.mix.U | 0) === 0 ? 'dlm'
-                 : (this.mix.U | 0) > 0 && (this.mix.E | 0) === 0 ? 'lll'
-                 : this.paradigm;
+    const E = this.mix.E | 0;
+    const U = this.mix.U | 0;
+    let active;
+    if (E > 0 && U === 0)      active = 'dlm';
+    else if (U > 0 && E === 0) active = 'lll';
+    else if (E > 0 && U > 0)   active = 'wang';
+    else                       active = this.paradigm;
     this.paradigm = active;
+    document.body.classList.toggle('wang-mode', active === 'wang');
     document.querySelectorAll('.paradigm-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.paradigm === active);
     });
@@ -695,9 +757,47 @@ const App = {
     this.rebuild();
   },
 
-  start() {
+  /**
+   * Kick off the simulation loop. Wang 2026 hooks in here: if the
+   * paradigm is 'wang' AND an API key is present AND the population
+   * has at least one Utility agent, await one OpenAI chat completion
+   * per Utility agent before launching the engine. Each returned
+   * anchor is written onto `agent.psychAnchor` so the first decide()
+   * tick seeds `subjectiveValuation` from the model's answer instead
+   * of the deterministic Lopez-Lira prior. Errors, missing keys, and
+   * non-Wang paradigms skip the await entirely — Wang 2026 must still
+   * produce a run when the network is unavailable.
+   */
+  async start() {
     if (this.replayMode) this.exitReplay();
+    if (this.paradigm === 'wang' && this.aiConfig && this.aiConfig.apiKey) {
+      this._setAiStatus('consulting ChatGPT…');
+      try {
+        const anchors = await AI.getPsychAnchors(this.agents, this.config, this.aiConfig);
+        let applied = 0;
+        for (const id in anchors) {
+          const agent = this.agents[id];
+          if (!agent) continue;
+          agent.psychAnchor = anchors[id].anchor;
+          applied++;
+        }
+        this._setAiStatus(applied > 0 ? `Anchored ${applied} agent${applied === 1 ? '' : 's'}` : 'No anchors returned — deterministic fallback');
+      } catch (err) {
+        console.warn('[App.start] Wang 2026 anchor call failed:', err);
+        this._setAiStatus('ChatGPT call failed — deterministic fallback');
+      }
+    }
     this.engine.start();
+  },
+
+  /**
+   * Render a one-line status string under the AI endpoint psec.
+   * Purely advisory — the run proceeds regardless of the outcome,
+   * and the message is silently dropped if the psec is not mounted.
+   */
+  _setAiStatus(msg) {
+    const el = document.getElementById('ai-status');
+    if (el) el.textContent = msg;
   },
 
   pause() {

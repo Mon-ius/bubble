@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 <header class="app-header">
@@ -39,6 +39,7 @@
   <div class="paradigm-switch" role="group" aria-label="Research paradigm">
     <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — human-subject bubble experiment. Fills the population with Experienced agents.">DLM 2005</button>
     <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — LLM expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
+    <button class="paradigm-btn" data-paradigm="wang" title="Wang (2026) — merged DLM + Lopez-Lira experiment that seats Experienced and Utility agents in the same market and optionally lets ChatGPT refresh each Utility agent's psychological valuation at the start of every period. Research question: does the asset ultimately end up in the hands of the agent with the highest psychological valuation?">Wang 2026</button>
   </div>
   <div class="controls">
     <label>Speed
@@ -121,6 +122,38 @@
             </div>
             <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
           </div>
+        </div>
+      </details>
+
+      <details class="psec wang-only" open>
+        <summary>AI endpoint <span class="muted">ChatGPT · Wang 2026</span></summary>
+        <div class="psec-body ai-config">
+          <p class="ai-config-note">
+            When the paradigm is set to Wang 2026 and an API key is present, each Utility
+            agent calls ChatGPT once at the start of the run to anchor its private
+            subjective valuation. Fields are read fresh from the DOM on every run
+            (no localStorage) and no call is made if the key field is empty —
+            the simulation falls back to the deterministic Lopez-Lira belief model.
+          </p>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-key">API key</label>
+            </div>
+            <input type="password" id="ai-key" class="input-text input-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-endpoint">Endpoint (optional)</label>
+            </div>
+            <input type="text" id="ai-endpoint" class="input-text input-endpoint" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-model">Model</label>
+            </div>
+            <input type="text" id="ai-model" class="input-text input-model" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" value="gpt-4o-mini">
+          </div>
+          <div class="ai-status" id="ai-status" aria-live="polite"></div>
         </div>
       </details>
 
@@ -643,6 +676,13 @@
           <text class="s" x="90" y="35">Utility belief model</text>
         </g>
 
+        <!-- ai.js (Wang 2026 only) -->
+        <g class="n n-wang" transform="translate(60 370)">
+          <rect width="220" height="52" rx="8" ry="8"/>
+          <text class="t" x="110" y="22">ai.js</text>
+          <text class="s" x="110" y="38">ChatGPT anchor · Wang 2026</text>
+        </g>
+
         <!-- logger.js -->
         <g class="n n-store" transform="translate(380 450)">
           <rect width="220" height="60" rx="8" ry="8"/>
@@ -684,6 +724,9 @@
         <!-- Connectors (extended-mode overlay) -->
         <path class="link link-ext" d="M 720 270 L 760 320"/>
         <path class="link link-ext" d="M 720 290 L 760 378"/>
+
+        <!-- Wang 2026 overlay: ai.js → agents.js (psychological anchor) -->
+        <path class="link link-wang" d="M 280 396 L 500 280"/>
       </svg>
     </div>
 
@@ -718,6 +761,11 @@
         <p class="role">Extended · valuation</p>
         <p class="body">Belief + valuation model for the Utility agent: blends prior, bias, noise, and trust-weighted peer messages into a subjective per-share value. Exposes <code>UTILITY_DEFAULTS</code> for the Hidden Constants panel.</p>
       </div>
+      <div class="arch-def-card card-wang">
+        <h4>ai.js</h4>
+        <p class="role">Wang 2026 · anchor</p>
+        <p class="body">OpenAI-compatible fetch wrapper (ChatGPT-only). On each run start, if the Wang 2026 paradigm is active and an API key is supplied, <code>getPsychAnchors</code> queries the model once per Utility agent for a psychological valuation anchor that seeds <code>subjectiveValue</code>. Reuses the <code>{endpoint, apiKey, model}</code> shape from the lying project's agent roster.</p>
+      </div>
       <div class="arch-def-card card-store">
         <h4>logger.js</h4>
         <p class="role">Persistence</p>
@@ -742,16 +790,17 @@
   </div>
 </section>
 
-<script data-cfasync="false" src="js/mathml.js?v=8"></script>
-<script data-cfasync="false" src="js/utility.js?v=8"></script>
-<script data-cfasync="false" src="js/messaging.js?v=8"></script>
-<script data-cfasync="false" src="js/market.js?v=8"></script>
-<script data-cfasync="false" src="js/agents.js?v=8"></script>
-<script data-cfasync="false" src="js/logger.js?v=8"></script>
-<script data-cfasync="false" src="js/viz.js?v=8"></script>
-<script data-cfasync="false" src="js/engine.js?v=8"></script>
-<script data-cfasync="false" src="js/ui.js?v=8"></script>
-<script data-cfasync="false" src="js/replay.js?v=8"></script>
-<script data-cfasync="false" src="js/main.js?v=8"></script>
+<script data-cfasync="false" src="js/mathml.js?v=9"></script>
+<script data-cfasync="false" src="js/utility.js?v=9"></script>
+<script data-cfasync="false" src="js/messaging.js?v=9"></script>
+<script data-cfasync="false" src="js/market.js?v=9"></script>
+<script data-cfasync="false" src="js/agents.js?v=9"></script>
+<script data-cfasync="false" src="js/logger.js?v=9"></script>
+<script data-cfasync="false" src="js/viz.js?v=9"></script>
+<script data-cfasync="false" src="js/engine.js?v=9"></script>
+<script data-cfasync="false" src="js/ai.js?v=9"></script>
+<script data-cfasync="false" src="js/ui.js?v=9"></script>
+<script data-cfasync="false" src="js/replay.js?v=9"></script>
+<script data-cfasync="false" src="js/main.js?v=9"></script>
 </body>
 </html>

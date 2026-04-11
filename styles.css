@@ -20,6 +20,7 @@
   --blue: #2563eb; --blue-bg: #eff6ff;
   --purple: #7c3aed; --purple-bg: #f5f3ff;
   --teal: #0d9488; --teal-bg: #f0fdfa;
+  --pink: #db2777; --pink-bg: #fdf2f8;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,.07);
   --shadow-lg: 0 8px 24px rgba(0,0,0,.09);
@@ -54,6 +55,7 @@
   --accent-light: #1e3a5f;
   --red-bg: #2d1b1b; --green-bg: #1a2e1a; --amber-bg: #2d2614;
   --blue-bg: #1a2540; --purple-bg: #231a35; --teal-bg: #142925;
+  --pink-bg: #2b1524;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
   --shadow-md: 0 4px 14px rgba(0,0,0,.35);
   --shadow-lg: 0 8px 28px rgba(0,0,0,.4);
@@ -70,6 +72,7 @@
     --accent-light: #1e3a5f;
     --red-bg: #2d1b1b; --green-bg: #1a2e1a; --amber-bg: #2d2614;
     --blue-bg: #1a2540; --purple-bg: #231a35; --teal-bg: #142925;
+    --pink-bg: #2b1524;
     --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
     --shadow-md: 0 4px 14px rgba(0,0,0,.35);
     --shadow-lg: 0 8px 28px rgba(0,0,0,.4);
@@ -535,6 +538,11 @@ body:not(.extended) .ext-only { display: none !important; }
    preference panel and neither becomes visible noise when its slot is
    empty. */
 body:not(.has-experienced) .exp-only { display: none !important; }
+/* Hide the Wang 2026 AI endpoint psec unless the Wang paradigm is
+   active. Mirrors the .ext-only / .exp-only gates — the AI-config
+   fields are meaningless for DLM and Lopez-Lira, so they only
+   render when body.wang-mode is set by _setParadigm('wang'). */
+body:not(.wang-mode) .wang-only { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
 /*
@@ -876,6 +884,76 @@ body:not(.has-experienced) .exp-only { display: none !important; }
 .psec-body > .param-row[data-tip]:first-child:hover::after,
 .psec-body > .param-row[data-tip]:first-child:focus-within::after {
   transform: translateY(0);
+}
+
+/* ---------- AI endpoint (Wang 2026) ---------- */
+/*
+ * Three-input form inside the .wang-only psec: API key, endpoint
+ * override, and model name. Nothing is persisted — main.js reads
+ * the fields on every run start and forwards them to AI.call()
+ * only when App.paradigm === 'wang' and the key is non-empty.
+ * Styling matches the rest of the parameter panel (no range track
+ * here, just text inputs that sit in a subtle rail) so the
+ * Wang-only block does not break the visual rhythm of the other
+ * psec cards. The accent colour is pink to pair with the pink
+ * ai.js node in the Architecture diagram.
+ */
+.ai-config { gap: 10px; }
+.ai-config .ai-config-note {
+  margin: 0 0 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.ai-config .param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-config .param-head label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-2);
+}
+.ai-config .input-text {
+  appearance: none;
+  width: 100%;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  transition: border-color 0.18s var(--ease),
+              box-shadow 0.18s var(--ease);
+}
+.ai-config .input-text::placeholder { color: var(--fg-3); }
+.ai-config .ai-status {
+  min-height: 14px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--pink);
+}
+.ai-config .ai-status:empty { display: none; }
+.ai-config .input-text:hover { border-color: var(--bg-3); }
+.ai-config .input-text:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink) 22%, transparent);
+}
+.wang-only[open] {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pink) 28%, transparent),
+              var(--shadow-sm);
+}
+.wang-only summary {
+  color: var(--pink);
+}
+.wang-only summary .muted {
+  color: color-mix(in srgb, var(--pink) 70%, var(--fg-3));
 }
 
 /* ---------- Constant cards (Paper + Hidden) ---------- */
@@ -1633,6 +1711,7 @@ body:not(.has-experienced) .exp-only { display: none !important; }
 .arch-diagram .n-ext    { --nc: var(--amber);  --nb: var(--amber-bg); }
 .arch-diagram .n-store  { --nc: var(--teal);   --nb: var(--teal-bg); }
 .arch-diagram .n-view   { --nc: var(--red);    --nb: var(--red-bg); }
+.arch-diagram .n-wang   { --nc: var(--pink);   --nb: var(--pink-bg); }
 
 .arch-diagram .n rect {
   fill: var(--nb);
@@ -1670,6 +1749,13 @@ body:not(.has-experienced) .exp-only { display: none !important; }
    signal they only fire when mix.U > 0. */
 .arch-diagram .link-ext {
   stroke: var(--amber);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.3;
+}
+/* Wang 2026 overlay (ai.js → agents.js). Dashed to signal that it
+   only fires when paradigm === 'wang' and an API key is provided. */
+.arch-diagram .link-wang {
+  stroke: var(--pink);
   stroke-dasharray: 4 3;
   stroke-width: 1.3;
 }
@@ -1753,6 +1839,8 @@ body:not(.has-experienced) .exp-only { display: none !important; }
 .arch-def-card.card-store  h4 { color: var(--teal); }
 .arch-def-card.card-view   { border-left-color: var(--red); }
 .arch-def-card.card-view   h4 { color: var(--red); }
+.arch-def-card.card-wang   { border-left-color: var(--pink); }
+.arch-def-card.card-wang   h4 { color: var(--pink); }
 
 /* ---------- Scrollbars ---------- */
 *::-webkit-scrollbar { width: 8px; height: 8px; }

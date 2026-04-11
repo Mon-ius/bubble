@@ -1153,6 +1153,40 @@ const UI = {
 
     const pDev = (v.lastPrice != null && avgV != null) ? Math.abs(v.lastPrice - avgV) : null;
 
+    // ---- Wang (2026) psychological allocation outcome.
+    // Research question: does the asset ultimately end up in the hands
+    // of the agent with the highest psychological valuation? Identifies
+    // the top-holder (agent with the most shares) and the agent with
+    // the maximum subjective V̂, compares their ids, and reports a
+    // normalized gap = (max V̂ − top-holder V̂) / max V̂ so a zero means
+    // the asset is already with the right hands.
+    let psychTopHolderId = null;
+    let psychTopHolderV  = null;
+    let psychMaxVid      = null;
+    let psychMaxV        = null;
+    let psychGap         = null;
+    let psychMatch       = null;
+    if (Vlist.length) {
+      let maxInv = -Infinity;
+      for (const c of Vlist) {
+        const agent = v.agents[c.id];
+        if (!agent) continue;
+        if ((agent.inventory || 0) > maxInv) {
+          maxInv = agent.inventory || 0;
+          psychTopHolderId = c.id;
+          psychTopHolderV  = c.vv;
+        }
+      }
+      let maxV = -Infinity;
+      for (const c of Vlist) {
+        if (c.vv > maxV) { maxV = c.vv; psychMaxVid = c.id; psychMaxV = c.vv; }
+      }
+      if (psychTopHolderV != null && psychMaxV != null && psychMaxV > 0) {
+        psychGap   = (psychMaxV - psychTopHolderV) / psychMaxV;
+        psychMatch = psychTopHolderId === psychMaxVid;
+      }
+    }
+
     let deceptionMag = null;
     let nDeceptive = 0;
     const msgs = v.messages || [];
@@ -1183,6 +1217,12 @@ const UI = {
       <div class="metric-row"><span>|P − ⟨V̂⟩|</span><strong>${fmt(pDev)}</strong></div>
       <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨${sym.lieGap || ''}⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
       <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
+
+      <div class="metric-group-label">Psychological allocation · Wang (2026)</div>
+      <div class="metric-row"><span>Top holder vs highest V̂</span><strong class="${psychMatch === true ? 'ok' : psychMatch === false ? 'bad' : ''}">${psychMatch == null ? '—' : psychMatch ? 'match' : 'miss'}</strong></div>
+      <div class="metric-row"><span>Top-holder id · V̂</span><strong>${psychTopHolderId == null ? '—' : 'A' + psychTopHolderId + ' · ' + fmt(psychTopHolderV)}</strong></div>
+      <div class="metric-row"><span>Max-V̂ id · V̂*</span><strong>${psychMaxVid == null ? '—' : 'A' + psychMaxVid + ' · ' + fmt(psychMaxV)}</strong></div>
+      <div class="metric-row"><span>Valuation gap&nbsp;&nbsp;<em>(V̂* − V̂ₕ) / V̂*</em></span><strong>${fmt(psychGap, 3)}</strong></div>
     `;
   },
 
