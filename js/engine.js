@@ -70,6 +70,17 @@ class Engine {
     this._timer = setTimeout(() => this._loop(), this.tickInterval);
   }
 
+  /**
+   * Synchronous step loop used by the multi-session batch driver.
+   * Runs the engine to completion in a single tight loop with no
+   * setTimeout, no rendering, and no onTick callbacks. Returns
+   * after the final tick of the final round of the session.
+   */
+  runToEnd() {
+    while (!this.isFinished()) this.step();
+    if (this.onEnd) this.onEnd();
+  }
+
   /** Run one tick of the simulation. */
   step() {
     const m = this.market;
@@ -190,15 +201,148 @@ class Engine {
         m.book.clear();
         this.logger.logEvent({ tick: m.tick, type: 'period_start', period: m.period, round: m.round });
       } else if (m.round < (this.config.roundsPerSession || 1)) {
+        // Capture each agent's final cash for this round before the
+        // reset rewinds it. The session payoff is the sum across
+        // rounds plus the $5 (=500¢) show-up fee, exactly as in DLM
+        // 2005 ("subjects were privately paid, in cash, the amount
+        // of their final cash holdings from each round").
+        this._captureRoundFinalCash(m.round);
         this.logger.logEvent({ tick: m.tick, type: 'round_end', round: m.round });
+        // Endogenous experience: each agent that just finished
+        // playing this round has its roundsPlayed counter
+        // incremented HERE, before the replacement step runs, so
+        // the survivors of rounds 1–3 enter the replacement step
+        // with roundsPlayed = 3 and the fresh agents spliced in by
+        // _round4Replacement keep their roundsPlayed = 0 because
+        // the increment has already fired for the existing agents.
+        for (const id of Object.keys(this.agents)) {
+          const a = this.agents[id];
+          a.roundsPlayed = (a.roundsPlayed || 0) + 1;
+        }
+        // Strict-DLM round-3 → round-4 transition fires the
+        // treatment-controlled replacement step BEFORE the round-4
+        // reset rewinds endowments, so the new fresh agents take
+        // their replacement endowments and the surviving veterans
+        // start round 4 from their original spec.
+        if (m.round === 3 && this._isStrictDLM()) {
+          this._round4Replacement();
+        }
         this._resetRound();
         m.round++;
         m.period    = 1;
         m.lastPrice = null;
         m.book.clear();
         this.logger.logEvent({ tick: m.tick, type: 'round_start', round: m.round });
+      } else if (m.round === (this.config.roundsPerSession || 1) && m.period === this.config.periods) {
+        // Final round, final period: capture payoff one last time
+        // so the session payoff sum spans every round.
+        this._captureRoundFinalCash(m.round);
       }
     }
+  }
+
+  /** True if the engine is running a strict-DLM-mode session. */
+  _isStrictDLM() {
+    return !!(this.ctx && this.ctx.strictDLM);
+  }
+
+  /**
+   * Snapshot agent.cash for every agent into Logger.roundFinalCash[r-1].
+   * Called at the end of period T of each round, *after* the last
+   * dividend has been credited and *before* _resetRound rewinds the
+   * cash field. The captured number is the experimental-cent payoff
+   * the subject "took home" from that round under the DLM 2005 design.
+   */
+  _captureRoundFinalCash(round) {
+    const byAgent = {};
+    for (const id of Object.keys(this.agents)) {
+      const a = this.agents[id];
+      byAgent[a.id] = Math.round(a.cash * 100) / 100;
+    }
+    this.logger.logRoundFinalCash(round, byAgent);
+  }
+
+  /**
+   * Strict-DLM round-3 → round-4 replacement step.
+   *
+   * DLM 2005 §I, p. 1733: "In the fourth round, depending on
+   * treatment, two or four experienced subjects who had participated
+   * in the first three rounds were randomly selected, removed, and
+   * replaced by the same number of inexperienced subjects."
+   *
+   * The simulator implements this by:
+   *   1. selecting `treatmentSize` agents with roundsPlayed >= 3
+   *      (every surviving original DLMTrader has played all three
+   *      preceding rounds), uniformly at random,
+   *   2. removing those agents from this.agents and from
+   *      ctx.agentSpecs (so the round-end reset cannot rewind them
+   *      back into existence),
+   *   3. drawing the same number of fresh DLMTrader specs from
+   *      dlmSampleReplacementAgent, instantiating them with
+   *      roundsPlayed = 0 and replacementFresh = true, and inserting
+   *      them in the vacated id slots.
+   *
+   * The fresh agents inherit the *removed* agent's id so the rest of
+   * the engine — order book, trace logs, snapshots — continues to key
+   * agents by a stable integer.
+   */
+  _round4Replacement() {
+    const treatmentSize = (this.ctx && this.ctx.treatmentSize) | 0;
+    if (treatmentSize <= 0) return;
+    const specs = this.ctx.agentSpecs;
+    if (!Array.isArray(specs)) return;
+
+    // Pool of agent ids that have completed all three preceding
+    // rounds. The Engine increments roundsPlayed inside _resetRound
+    // and we are here BEFORE that call fires for the round-3 → 4
+    // boundary, so the surviving original agents currently sit at
+    // roundsPlayed = 2 and the ones that played rounds 1, 2, and 3
+    // satisfy that condition by construction.
+    const eligible = Object.keys(this.agents)
+      .map(Number)
+      .filter(id => !this.agents[id].replacementFresh);
+    if (!eligible.length) return;
+
+    // Fisher–Yates pick of `treatmentSize` agents without replacement.
+    const pool = eligible.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(this._rng() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const removeIds = pool.slice(0, Math.min(treatmentSize, pool.length));
+
+    // Collect existing display names so the replacement draw never
+    // reuses a name already on the table (purely cosmetic — the
+    // numeric id is the real identity channel).
+    const usedNames = new Set(
+      Object.values(this.agents).map(a => {
+        // Strip the "#N " prefix back down to the personal name so the
+        // exclude set matches what dlmSampleReplacementAgent reads.
+        const dn = a.displayName || '';
+        const m  = dn.match(/^#\d+\s+(.*)$/);
+        return m ? m[1] : dn;
+      }),
+    );
+    const replacements = [];
+    for (const oldId of removeIds) {
+      const freshSpec = dlmSampleReplacementAgent(oldId, this._rng, usedNames);
+      usedNames.add(freshSpec.name);
+      // Preserve the spec slot index so replay/UI keys still line up.
+      const idx = specs.findIndex(s => s.id === oldId);
+      if (idx >= 0) specs[idx] = freshSpec;
+      const fresh = new DLMTrader(oldId, `#${oldId} ${freshSpec.name}`, freshSpec.cash, freshSpec.inventory);
+      fresh.typeLabel        = freshSpec.typeLabel;
+      fresh.replacementFresh = true;
+      fresh.endowmentType    = freshSpec.endowmentType;
+      this.agents[oldId]     = fresh;
+      replacements.push({ id: oldId, name: freshSpec.name, endowmentType: freshSpec.endowmentType });
+    }
+    this.logger.logEvent({
+      tick:           this.market.tick,
+      type:           'round_4_replacement',
+      treatmentSize,
+      replaced:       replacements,
+    });
   }
 
   /**
@@ -224,7 +368,9 @@ class Engine {
           a.inventory = spec.inventory;
         }
       }
-      a.roundsPlayed = (a.roundsPlayed || 0) + 1;
+      // roundsPlayed is incremented by the round-end branch in step()
+      // before this method is called, so a fresh agent spliced in by
+      // _round4Replacement keeps its roundsPlayed = 0 here.
       if (typeof a.onRoundStart === 'function') a.onRoundStart();
     }
   }
@@ -289,6 +435,12 @@ class Engine {
         initialCash:      a.initialCash,
         initialInventory: a.initialInventory,
         lastAction:       a.lastAction,
+        // Endogenous-experience + DLM replacement tracking. Read by
+        // the UI agent card to print a "rounds played" badge and the
+        // fresh-replacement flag for the round-4 newcomers.
+        roundsPlayed:     a.roundsPlayed | 0,
+        replacementFresh: !!a.replacementFresh,
+        endowmentType:    a.endowmentType,
         // Extended fields (undefined for legacy agents — harmless).
         riskPref:            a.riskPref,
         trueValuation:       a.trueValuation,

@@ -114,17 +114,24 @@ const App = {
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
-  // instantiated with in the sampling stage.
+  // instantiated with in the sampling stage. Only consumed by the
+  // Lopez-Lira and AIPE paradigms; strict-DLM mode ignores it.
   riskMix: { loving: 33, neutral: 34, averse: 33 },
 
-  // Experience-preference composition for experienced agents — the
-  // E-slot mirror of riskMix. Three linked shares summing to 100,
-  // distributed across DLM 2005's experience dimension: naive (round-1
-  // first-timer), once-played (intermediate), and veteran (round-4
-  // fully-experienced trader). Drives the per-slot experienceLevel in
-  // the sampling stage. Defaults bias toward veteran so the E preset
-  // remains bubble-suppressing unless the user dials in naive shares.
-  experienceMix: { naive: 0, once: 0, veteran: 100 },
+  // Strict-DLM 2005 mode configuration. Active when App.paradigm ===
+  // 'dlm'. The treatment selects how many experienced subjects are
+  // randomly removed and replaced by inexperienced ones at the start
+  // of round 4 (DLM 2005 §I, p. 1733: "two or four experienced
+  // subjects … were randomly selected, removed, and replaced by the
+  // same number of inexperienced subjects"). batchResults caches the
+  // most recent multi-session run summary so the UI can re-render it
+  // without re-running. Experience itself is endogenous — there is
+  // no field here that pre-labels any agent as experienced.
+  dlmConfig: {
+    treatment:    2,
+    batchResults: null,
+    sessionLabel: null,
+  },
 
   // Extended-mode flags consulted by the engine's communication round
   // and by the utility-agent message-listener. Kept as constants now
@@ -249,19 +256,11 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
-    // Population mix — only the user-controlled slot. F/T/R are pinned
-    // by FIXED_BACKGROUND, and U is derived as N − E − N_fixed by
-    // _onPopulationChange below since the Utility slider was always
-    // a 1:1 alias of the Total N slider once E was fixed.
-    'p-mix-E':       { target: 'mix.E',                         out: 'v-mix-E',       fmt: v => String(v | 0), int: true },
-    // Risk preferences — three linked shares summing to 100
-    'p-risk-loving': { target: 'riskMix.loving',                out: 'v-risk-loving', fmt: v => v + '%', int: true },
-    'p-risk-neutral':{ target: 'riskMix.neutral',               out: 'v-risk-neutral',fmt: v => v + '%', int: true },
-    'p-risk-averse': { target: 'riskMix.averse',                out: 'v-risk-averse', fmt: v => v + '%', int: true },
-    // Experience preferences — same linked-triplet pattern, applied to E slots
-    'p-exp-naive':   { target: 'experienceMix.naive',           out: 'v-exp-naive',   fmt: v => v + '%', int: true },
-    'p-exp-once':    { target: 'experienceMix.once',            out: 'v-exp-once',    fmt: v => v + '%', int: true },
-    'p-exp-veteran': { target: 'experienceMix.veteran',         out: 'v-exp-veteran', fmt: v => v + '%', int: true },
+    // Risk preferences — three linked shares summing to 100. Only
+    // consumed by the Lopez-Lira and AIPE paradigms.
+    'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
+    'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
+    'p-risk-averse': { target: 'riskMix.averse',  out: 'v-risk-averse',  fmt: v => v + '%', int: true },
   },
 
   _wireParamsPanel() {
@@ -281,8 +280,7 @@ const App = {
       if (!input) continue;
       const structural =
         spec.target.startsWith('mix.') ||
-        spec.target.startsWith('riskMix.') ||
-        spec.target.startsWith('experienceMix.');
+        spec.target.startsWith('riskMix.');
       input.addEventListener('input', e => {
         const raw = Number(e.target.value);
         const val = spec.int ? (raw | 0) : raw;
@@ -290,10 +288,7 @@ const App = {
         const out = document.getElementById(spec.out);
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
-        if (spec.target === 'mix.E')                  this._onExperiencedChanged(e.target);
-        if (spec.target.startsWith('mix.'))           this._refreshMixTotal();
-        if (spec.target.startsWith('riskMix.'))       this._constrainRiskMix(inputId);
-        if (spec.target.startsWith('experienceMix.')) this._constrainExperienceMix(inputId);
+        if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
       });
       input.addEventListener('change', () => {
         // Structural edits (population mix counts, risk-share shares)
@@ -305,15 +300,23 @@ const App = {
       });
     }
     this._updateCompBar();
-    this._updateExpCompBar();
 
     // Total-agents slider — proportionally rescales the per-type
     // counts when the user moves it, then triggers a population
     // rebuild on release. Wired separately because it doesn't map
-    // to a single mix/tunables key.
+    // to a single mix/tunables key. Disabled in strict-DLM mode
+    // (N is pinned at 6 by the paper) — see _setParadigm.
     const totalSlider = document.getElementById('p-total');
     if (totalSlider) {
       totalSlider.addEventListener('input', e => {
+        if (this.paradigm === 'dlm') {
+          // DLM mode: pinned at 6. Snap the slider back if the user
+          // somehow nudged it (the disabled state should prevent this
+          // but the guard is cheap).
+          e.target.value = '6';
+          this._updateSliderPct(e.target);
+          return;
+        }
         const newTotal = Number(e.target.value) | 0;
         this._rescaleMixToTotal(newTotal);
         this._pushStateToSliders();
@@ -321,7 +324,31 @@ const App = {
         this._updateSliderPct(e.target);
         this._syncParadigmButtons();
       });
-      totalSlider.addEventListener('change', () => this.reset());
+      totalSlider.addEventListener('change', () => {
+        if (this.paradigm !== 'dlm') this.reset();
+      });
+    }
+
+    // Strict-DLM treatment selector + multi-session batch button.
+    // Both controls are only visible in DLM mode (gated by the
+    // .dlm-mode body class). The treatment selector is a pair of
+    // radio buttons; the batch button kicks off the 10-session run
+    // synchronously and writes results into App.dlmConfig.batchResults.
+    const tRadios = document.querySelectorAll('input[name="dlm-treatment"]');
+    tRadios.forEach(r => {
+      r.addEventListener('change', e => {
+        const t = Number(e.target.value) | 0;
+        if (t === 2 || t === 4) {
+          this.dlmConfig.treatment = t;
+          // Soft rebuild so the engine ctx picks up the new treatment
+          // size for the next round-4 transition.
+          this.rebuild();
+        }
+      });
+    });
+    const batchBtn = document.getElementById('btn-dlm-batch');
+    if (batchBtn) {
+      batchBtn.addEventListener('click', () => this.runDlmBatch());
     }
 
     // Prime the custom --pct on every slider so the filled portion of
@@ -546,86 +573,83 @@ const App = {
   },
 
   /**
-   * Apply a paradigm preset to the population.
+   * Apply a paradigm preset.
    *
-   *   'dlm'  — fills the user slots with Experienced agents
-   *            (E = N − N_fixed, U = 0).
-   *   'lll'  — fills them with Utility agents
-   *            (U = N − N_fixed, E = 0).
-   *   'wang' — splits the user slots roughly in half between E
-   *            and U so both paper designs share the same market.
-   *            ⌈half⌉ goes to E and the remainder to U so the U
-   *            block still wins on odd capacities and the extended
-   *            panels stay populated.
+   *   'dlm'  — strict DLM 2005 mode. Pins N=6, drops the F/T/R
+   *            background and the U block, hands rebuild() the
+   *            dlmSampleAgents path which produces six DLMTraders
+   *            with the two discrete endowment types from §I,
+   *            p. 1733. Round-4 replacement is enabled with the
+   *            current dlmConfig.treatment, and the multi-session
+   *            batch driver is reachable from the DLM panel.
    *
-   * Also updates the Experienced slider + readout, the body classes
-   * that gate the ext-only / exp-only / wang-only panels, and the
-   * active button, then rebuilds the current draw so the change is
-   * visible immediately.
+   *   'lll'  — Lopez-Lira (2025). F/T/R background + U slots,
+   *            relaxed endowment draw, no E (no agent is ever
+   *            instantiated as pre-experienced).
+   *
+   *   'wang' — AIPE (AI-Agent Prior Elicitation). Same population
+   *            shape as Lopez-Lira (no E either) plus the
+   *            run-start AI anchor pass over every Utility agent.
    */
   _setParadigm(paradigm) {
     if (paradigm !== 'dlm' && paradigm !== 'lll' && paradigm !== 'wang') return;
     this.paradigm = paradigm;
     const FIXED    = this.FIXED_BACKGROUND;
     const fixedSum = FIXED.F + FIXED.T + FIXED.R;
-    const totalSlider = document.getElementById('p-total');
-    const N        = totalSlider
-      ? Math.max(fixedSum, Number(totalSlider.value) | 0)
-      : (fixedSum + (this.mix.E | 0) + (this.mix.U | 0));
-    const capacity = Math.max(0, N - fixedSum);
     if (paradigm === 'dlm') {
-      this.mix.E = capacity;
-      this.mix.U = 0;
-    } else if (paradigm === 'lll') {
-      this.mix.E = 0;
-      this.mix.U = capacity;
+      // Strict DLM: bypass the mix entirely. The rebuild path keys
+      // off this.paradigm and routes to dlmSampleAgents.
+      this.mix = { F: 0, T: 0, R: 0, E: 0, U: 0 };
     } else {
-      // 'wang' — merged market. Ceiling goes to E so even capacities
-      // split evenly; odd capacities give the extra slot to E to
-      // keep the bubble-suppressing side viable without starving U.
-      const eHalf = Math.ceil(capacity / 2);
-      this.mix.E  = eHalf;
-      this.mix.U  = capacity - eHalf;
+      const totalSlider = document.getElementById('p-total');
+      const N        = totalSlider
+        ? Math.max(fixedSum, Number(totalSlider.value) | 0)
+        : (fixedSum + (this.mix.U | 0));
+      const capacity = Math.max(0, N - fixedSum);
+      this.mix = { F: FIXED.F, T: FIXED.T, R: FIXED.R, E: 0, U: capacity };
     }
-    // Sync the Experienced slider UI with the new preset.
-    const eInput = document.getElementById('p-mix-E');
-    if (eInput) {
-      eInput.value = String(this.mix.E);
-      this._updateSliderPct(eInput);
-    }
-    const eOut = document.getElementById('v-mix-E');
-    if (eOut) eOut.textContent = String(this.mix.E);
     document.body.classList.toggle('wang-mode', paradigm === 'wang');
+    document.body.classList.toggle('dlm-mode',  paradigm === 'dlm');
+    this._applyDlmModeUI();
     this._syncParadigmButtons();
-    this.rebuild();
+    this.reset();
   },
 
   /**
    * Reflect App.paradigm on the navbar buttons. Called on init and
-   * after any paradigm-changing action so the segmented control stays
-   * in sync when users come in via a slider:
-   *
-   *   E > 0, U = 0  → dlm
-   *   U > 0, E = 0  → lll
-   *   E > 0, U > 0  → wang (merged)
-   *
-   * The App.paradigm field is only overwritten if the slider-inferred
-   * paradigm is unambiguous; an all-zero mix or the AIPE button
-   * explicitly setting 'wang' keeps the current flag.
+   * after any paradigm-changing action so the segmented control
+   * stays in sync.
    */
   _syncParadigmButtons() {
-    const E = this.mix.E | 0;
-    const U = this.mix.U | 0;
-    let active;
-    if (E > 0 && U === 0)      active = 'dlm';
-    else if (U > 0 && E === 0) active = 'lll';
-    else if (E > 0 && U > 0)   active = 'wang';
-    else                       active = this.paradigm;
-    this.paradigm = active;
+    const active = this.paradigm;
     document.body.classList.toggle('wang-mode', active === 'wang');
+    document.body.classList.toggle('dlm-mode',  active === 'dlm');
     document.querySelectorAll('.paradigm-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.paradigm === active);
     });
+  },
+
+  /**
+   * Pin the Total-agents slider to 6 in DLM mode and free it in
+   * the other paradigms. Sets disabled, snaps the value, and
+   * refreshes the readout + filled-track percentage so the slider
+   * looks visibly locked.
+   */
+  _applyDlmModeUI() {
+    const totalSlider = document.getElementById('p-total');
+    if (!totalSlider) return;
+    if (this.paradigm === 'dlm') {
+      totalSlider.disabled = true;
+      totalSlider.value    = '6';
+      this._updateSliderPct(totalSlider);
+      const out = document.getElementById('v-total');
+      if (out) out.textContent = '6';
+      // Sync treatment radios with current dlmConfig.treatment.
+      const radios = document.querySelectorAll('input[name="dlm-treatment"]');
+      radios.forEach(r => { r.checked = Number(r.value) === this.dlmConfig.treatment; });
+    } else {
+      totalSlider.disabled = false;
+    }
   },
 
   /**
@@ -643,23 +667,6 @@ const App = {
       state:  this.riskMix,
       labels: ['v-risk-loving', 'v-risk-neutral', 'v-risk-averse'],
       onAfter: () => this._updateCompBar(),
-    });
-  },
-
-  /**
-   * Linked-slider constraint for the three experience-preference shares.
-   * Shares the implementation with _constrainRiskMix so the two preference
-   * blocks behave identically — same sum-to-100, same proportional split,
-   * same 50/50 fallback when both other sliders are zero — and the only
-   * thing that varies is which state object and which DOM ids are touched.
-   */
-  _constrainExperienceMix(changedId) {
-    this._constrainLinkedTriplet(changedId, {
-      ids:    ['p-exp-naive', 'p-exp-once', 'p-exp-veteran'],
-      keys:   ['naive',       'once',       'veteran'],
-      state:  this.experienceMix,
-      labels: ['v-exp-naive', 'v-exp-once', 'v-exp-veteran'],
-      onAfter: () => this._updateExpCompBar(),
     });
   },
 
@@ -737,18 +744,6 @@ const App = {
     bar.children[2].querySelector('span').textContent = averse  + '%';
   },
 
-  _updateExpCompBar() {
-    const bar = document.getElementById('comp-bar-exp');
-    if (!bar) return;
-    const { naive, once, veteran } = this.experienceMix;
-    bar.children[0].style.flex = naive   || 0.001;
-    bar.children[1].style.flex = once    || 0.001;
-    bar.children[2].style.flex = veteran || 0.001;
-    bar.children[0].querySelector('span').textContent = naive   + '%';
-    bar.children[1].querySelector('span').textContent = once    + '%';
-    bar.children[2].querySelector('span').textContent = veteran + '%';
-  },
-
   _pushStateToSliders() {
     for (const [inputId, spec] of Object.entries(this._paramMap)) {
       const input = document.getElementById(inputId);
@@ -764,7 +759,9 @@ const App = {
 
   _refreshMixTotal() {
     const m = this.mix;
-    const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.E | 0) + (m.U | 0);
+    const total = this.paradigm === 'dlm'
+      ? 6
+      : (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
     const el = document.getElementById('mix-total');
     if (el) el.textContent = `(total ${total})`;
     // Keep the Total agents slider and its readout in sync with the
@@ -782,45 +779,19 @@ const App = {
   },
 
   /**
-   * Rescale the mix to a new total population N. F/T/R are pinned by
-   * FIXED_BACKGROUND, E is held at its current value (clamped down if
-   * the new N would not leave room for it), and U is derived as the
-   * residual N − E − fixedSum. With the U slider gone, this is just
-   * "what the N slider does": E is preserved, U absorbs the slack.
+   * Rescale the population to a new total N (only meaningful in
+   * Lopez-Lira / AIPE mode — DLM mode pins N at 6). F/T/R are pinned
+   * by FIXED_BACKGROUND, U absorbs the slack. The E slot is gone in
+   * the strict-experience refactor, so there is no longer an
+   * "experienced count" to preserve.
    */
   _rescaleMixToTotal(newTotal) {
+    if (this.paradigm === 'dlm') return;
     const FIXED    = this.FIXED_BACKGROUND;
     const fixedSum = FIXED.F + FIXED.T + FIXED.R;
     newTotal = Math.max(newTotal | 0, fixedSum);
-    const E = Math.min(this.mix.E | 0, newTotal - fixedSum);
-    const U = newTotal - fixedSum - E;
-    this.mix = { ...FIXED, E, U };
-  },
-
-  /**
-   * Called when the user moves the Experienced slider. The Total N
-   * slider is held at its current value, so adding an E agent removes
-   * a U agent and vice versa: mix.U = N − E − fixedSum. The E input is
-   * also clamped here so the user cannot drag it past the available
-   * room (N − fixedSum).
-   */
-  _onExperiencedChanged(input) {
-    const FIXED    = this.FIXED_BACKGROUND;
-    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
-    const totalSlider = document.getElementById('p-total');
-    const N    = totalSlider ? (Number(totalSlider.value) | 0) : (fixedSum + (this.mix.E | 0) + (this.mix.U | 0));
-    const eMax = Math.max(0, N - fixedSum);
-    const E    = Math.min(Math.max(this.mix.E | 0, 0), eMax);
-    if (E !== (this.mix.E | 0)) {
-      this.mix.E = E;
-      input.value = String(E);
-      this._updateSliderPct(input);
-      const out = document.getElementById('v-mix-E');
-      if (out) out.textContent = String(E);
-    }
-    this.mix.U = N - fixedSum - E;
-    document.body.classList.toggle('has-experienced', E > 0);
-    this._syncParadigmButtons();
+    const U = newTotal - fixedSum;
+    this.mix = { F: FIXED.F, T: FIXED.T, R: FIXED.R, E: 0, U };
   },
 
   _getByPath(path) {
@@ -880,15 +851,23 @@ const App = {
     // Sampling RNG is independent of the engine RNG so that editing
     // endowments (which skips the re-sample path) leaves the engine's
     // tick-level draws unchanged.
-    const totalN =
-      (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) +
-      (this.mix.E | 0) + (this.mix.U | 0);
-    if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
-      const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-      this.agentSpecs = sampleAgents(this.mix, sampleRng, {
-        riskMix:       this.riskMix,
-        experienceMix: this.experienceMix,
-      });
+    if (this.paradigm === 'dlm') {
+      // Strict-DLM: fixed N=6, two-discrete endowment types, no
+      // pre-labeled experience. Experience is endogenous and develops
+      // only through rounds played in the session.
+      if (!this.agentSpecs || this.agentSpecs.length !== 6) {
+        const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
+        this.agentSpecs = dlmSampleAgents(sampleRng);
+      }
+    } else {
+      const totalN =
+        (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0);
+      if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
+        const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
+        this.agentSpecs = sampleAgents(this.mix, sampleRng, {
+          riskMix: this.riskMix,
+        });
+      }
     }
     this.agents = buildAgentsFromSpecs(this.agentSpecs, {
       biasAmount:     this.tunables.biasAmount,
@@ -912,6 +891,12 @@ const App = {
       // rewound to the spec cash/inventory between rounds so each of
       // the four markets in a session starts from the same schedule.
       agentSpecs:   this.agentSpecs,
+      // Strict-DLM routing flags consumed by the engine: strictDLM
+      // gates the round-4 replacement step, treatmentSize selects how
+      // many experienced subjects are replaced by inexperienced ones
+      // (DLM 2005 §I, p. 1733 — T2 or T4 treatment).
+      strictDLM:     this.paradigm === 'dlm',
+      treatmentSize: this.paradigm === 'dlm' ? this.dlmConfig.treatment : 0,
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();
@@ -921,8 +906,7 @@ const App = {
     // Toggle the extended-panel visibility class whenever any utility
     // agents are present, then re-measure canvases that were previously
     // display:none.
-    document.body.classList.toggle('extended',       (this.mix.U | 0) > 0);
-    document.body.classList.toggle('has-experienced', (this.mix.E | 0) > 0);
+    document.body.classList.toggle('extended', (this.mix.U | 0) > 0);
     UI.resizeCanvases();
     this.requestRender();
   },
@@ -985,6 +969,155 @@ const App = {
   _setAiStatus(msg) {
     const el = document.getElementById('ai-status');
     if (el) el.textContent = msg;
+  },
+
+  /**
+   * Strict-DLM multi-session batch driver.
+   *
+   * DLM 2005 §I, p. 1733: "We report results from ten sessions in
+   * total, five of each treatment." Each session is a full
+   * roundsPerSession-round run with a fresh population, a fresh engine
+   * seed, and the current dlmConfig.treatment. The batch runs
+   * synchronously via Engine.runToEnd (no setTimeout, no rendering),
+   * captures a compact per-session summary into dlmConfig.batchResults,
+   * and then restores the pre-batch App state so the user's interactive
+   * session is not disturbed.
+   *
+   * Only valid in DLM mode. Does nothing in other paradigms.
+   */
+  runDlmBatch() {
+    if (this.paradigm !== 'dlm') return;
+    const SESSIONS_PER_TREATMENT = 5;
+    const treatments = [2, 4];
+    const results    = [];
+
+    // Preserve the pre-batch state so we can restore the live UI
+    // afterwards. The batch runs create throwaway engine/market/logger
+    // triples that never touch the display.
+    const savedSeed    = this.seed;
+    const savedSpecs   = this.agentSpecs;
+    const savedTreat   = this.dlmConfig.treatment;
+    const savedLabel   = this.dlmConfig.sessionLabel;
+
+    const batchStatus = (msg) => {
+      const el = document.getElementById('dlm-batch-status');
+      if (el) el.textContent = msg;
+    };
+    batchStatus('running 10 sessions…');
+
+    for (const treatment of treatments) {
+      for (let s = 0; s < SESSIONS_PER_TREATMENT; s++) {
+        const seed      = this._rollSeed();
+        const sampleRng = makeRNG((seed ^ 0xA5A5A5A5) >>> 0);
+        const specs     = dlmSampleAgents(sampleRng);
+        const agents    = buildAgentsFromSpecs(specs, {
+          biasAmount:     this.tunables.biasAmount,
+          valuationNoise: this.tunables.valuationNoise,
+        });
+        const market    = new Market(this.config);
+        const logger    = new Logger();
+        const ctx = {
+          messageBus:    new MessageBus(),
+          trustTracker:  new TrustTracker(Object.keys(agents).map(Number)),
+          extended:      this.extendedConfig,
+          tunables:      this.tunables,
+          agentSpecs:    specs,
+          strictDLM:     true,
+          treatmentSize: treatment,
+        };
+        const rng    = makeRNG(seed);
+        const engine = new Engine(market, agents, logger, this.config, rng, ctx);
+        engine.runToEnd();
+        results.push(this._summarizeSession({
+          treatment, session: s + 1, seed,
+          market, logger, agents, specs,
+        }));
+      }
+    }
+
+    this.dlmConfig.batchResults = {
+      ranAt:     new Date().toISOString(),
+      sessions:  results,
+      aggregate: this._aggregateBatchResults(results),
+    };
+
+    // Restore pre-batch state (seed, specs) so the interactive view
+    // resumes against the same population the user was inspecting.
+    this.seed       = savedSeed;
+    this.agentSpecs = savedSpecs;
+    this.dlmConfig.treatment    = savedTreat;
+    this.dlmConfig.sessionLabel = savedLabel;
+    this.rebuild();
+    batchStatus(`done — ${results.length} sessions (${treatments.length}×${SESSIONS_PER_TREATMENT})`);
+    this.requestRender();
+  },
+
+  /**
+   * Reduce one finished session (market + logger) into a compact row
+   * for the batch results table. Captures treatment, per-agent payoffs
+   * (including the $5 show-up fee), bubble-quality metrics from the
+   * replay view helpers, and a round-4 replacement summary so the
+   * renderer can print who was swapped out.
+   */
+  _summarizeSession({ treatment, session, seed, market, logger, agents, specs }) {
+    // Per-agent payoff = sum of per-round final cash + 500¢ show-up.
+    const payoffs = {};
+    for (const id of Object.keys(agents)) {
+      let total = 0;
+      for (const row of logger.roundFinalCash) {
+        if (row && row[id] != null) total += row[id];
+      }
+      total += 500;
+      payoffs[id] = Math.round(total * 100) / 100;
+    }
+    // Round-4 replacement event, if any.
+    const replacement = logger.events.find(e => e.type === 'round_4_replacement');
+    // Mean |p_t − FV_t| / FV_0 across the whole session as a
+    // treatment-agnostic bubble magnitude. Uses trade data so
+    // rounds with zero trades are skipped cleanly.
+    const fvByPeriod = (r, p) =>
+      this.config.dividendMean * (this.config.periods - p + 1);
+    let devSum = 0, devN = 0, turnover = 0;
+    const inv0 = specs.reduce((s, a) => s + a.inventory, 0);
+    for (const tr of market.trades) {
+      const fv = fvByPeriod(tr.round, tr.period);
+      if (fv > 0) {
+        devSum += Math.abs(tr.price - fv) / fv;
+        devN   += 1;
+      }
+      turnover += tr.quantity;
+    }
+    return {
+      treatment, session, seed,
+      payoffs,
+      payoffTotal: Math.round(Object.values(payoffs).reduce((a, b) => a + b, 0) * 100) / 100,
+      meanDev:     devN > 0 ? devSum / devN : 0,
+      turnover:    inv0 > 0 ? turnover / inv0 : 0,
+      trades:      market.trades.length,
+      replacement: replacement ? replacement.replaced : null,
+    };
+  },
+
+  /**
+   * Aggregate a batch across treatments: mean meanDev, mean turnover,
+   * mean payoff per trader. Returned as { t2: {...}, t4: {...} } so
+   * the renderer can print a side-by-side comparison.
+   */
+  _aggregateBatchResults(rows) {
+    const byTreat = { 2: [], 4: [] };
+    for (const r of rows) byTreat[r.treatment].push(r);
+    const summarize = (arr) => {
+      if (!arr.length) return null;
+      const mean = (sel) => arr.reduce((a, b) => a + sel(b), 0) / arr.length;
+      return {
+        n:        arr.length,
+        meanDev:  mean(r => r.meanDev),
+        turnover: mean(r => r.turnover),
+        trades:   mean(r => r.trades),
+        payoff:   mean(r => r.payoffTotal / 6),
+      };
+    };
+    return { t2: summarize(byTreat[2]), t4: summarize(byTreat[4]) };
   },
 
   pause() {

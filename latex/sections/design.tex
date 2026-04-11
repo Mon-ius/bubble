@@ -72,68 +72,206 @@ discretisation is the simulator's own approximation of the
 two-minute continuous z-Tree window used in the paper, is pinned in
 the ``Simulator constants'' panel, and is not user tunable.
 
-\subsection{Sampling and endowments}
+\subsection{Strict-DLM mode: fixed $N=6$ and two discrete endowments}
+\label{sec:strict-dlm}
 
-At $t=0$ the simulator draws a flat list of per-agent specifications
-from the user's chosen population mix. For each slot, cash is
-sampled uniformly from $[800,1200]$ experimental cents and initial
-inventory is drawn uniformly from $\{2,3,4\}$ shares, so that total
-endowments are heterogeneous but bounded. This is a deliberate
-relaxation of the two discrete endowment types in the original
-study---half the traders started with 200~cents and six shares and
-the other half with 600~cents and two shares so that the implied
-buy-and-hold value was identical at $1{,}000$~cents---and trades a
-sharper baseline against DLM for a smoother sweep over the
-population mix when the user moves the agent-count slider. Every
-slot is also assigned a randomly drawn personal name (from an
-internal name list) and a type label such as F1, U3, E2, which is
-used in the agents panel and the trust matrix for human
-legibility. Crucially, the sampling RNG is derived from
-$\text{seed}\oplus\mathtt{0xA5A5A5A5}$ and is independent of the
-engine RNG; this is the invariant that lets a user edit cash or
-inventory on an existing draw and re-run without re-sampling agent
-types, while still producing the same per-tick trading sequence as
-a matched run without the~edit. The same per-agent endowment is
-also used by the round-end reset described above, so every round
-of a session starts each trader from the same balance schedule even
-though the within-round sequence of trades evolves freely.
+The simulator's \emph{strict-DLM mode} replicates the original
+protocol without relaxation. Selecting the DLM~2005 paradigm in the
+navbar pins $N=6$, disables the population sliders, and routes the
+sampling stage through a dedicated two-type draw. The paper
+specifies exactly six traders per session:
+\begin{quote}
+``At each session, six subjects participated in a sequence of four
+consecutive markets for an experimental asset.''~\citep[p.~1733]{dufwenberg2005bubbles}
+\end{quote}
+and exactly two discrete endowment types with identical implied
+buy-and-hold value:
+\begin{quote}
+``Before a market opened, half of the traders started with 200 cents
+and six assets, while each of the other traders started with 600
+cents and two assets.''~\citep[p.~1733]{dufwenberg2005bubbles}
+\end{quote}
+Both bundles have buy-and-hold value $E[\text{cash}] = 200 +
+6\cdot\E[d]\cdot T = 200 + 600 = 800$ for type~A and $600 +
+2\cdot\E[d]\cdot T = 600 + 200 = 800$ for type~B, so the split is
+strictly distributional: it varies the cash--inventory mix across
+subjects without creating value heterogeneity.\footnote{More
+directly, each bundle has the same risk-neutral fundamental value
+$\mathrm{FV}_1 = 100$ per share at round start, so 200+6\,$\cdot$\,100 =
+600+2\,$\cdot$\,100 = 800 + 200 = 1{,}000\,¢ once the initial cash is
+counted.}
 
-\subsection{Populations}
+The simulator implements this with \texttt{dlmSampleAgents(rng)},
+which pins six slots, assigns the index sequence
+$[0,0,0,1,1,1]$ (three type~A, three type~B), Fisher--Yates
+shuffles it against the dedicated sampling RNG, and writes the
+matching cash/inventory pair onto each spec. No other mode touches
+the two-type draw: Lopez-Lira and AIPE continue to use the
+relaxed $U[800,1200]\times\{2,3,4\}$ sampler described for
+backwards compatibility with their respective strategy-cube
+populations.
 
-Four canonical population presets are available. Table~\ref{tab:presets}
-summarises their composition and the qualitative outcome each is
-intended to showcase.
+\subsection{Endogenous experience}
+\label{sec:endogenous-experience}
 
-\begin{table}[h]
-\centering
-\small
-\caption{Population presets}
-\label{tab:presets}
-\begin{tabular}{l l l}
-\toprule
-Preset & Composition & Expected outcome \\
-\midrule
-Inexperienced    & 2\,T\,+\,2\,R\,+\,1\,F\,+\,1\,E               & Classic bubble and crash       \\
-Experienced      & 3\,E\,+\,2\,F\,+\,1\,T                        & Tight convergence to $\FV_t$   \\
-Mixed            & 2\,F\,+\,2\,E\,+\,1\,T\,+\,1\,R               & Closest tracking of $\FV_t$    \\
-Utility          & 6\,U                                          & Lopez-Lira default             \\
-\bottomrule
-\end{tabular}
-\end{table}
+The original study is unusual in experimental economics in that
+it treats experience as a \emph{procedural} rather than
+compositional variable: subjects do not differ by type at the start
+of a session, and no one is ever recruited because they are
+``experienced''. Experience is a property of the session loop:
+a subject acquires it by playing rounds~1, 2, and 3 alongside five
+peers in a shared six-person market, and the paper's central
+finding is that this procedural experience --- not a rule-change or
+a population swap --- is what kills the bubble by round~4.
 
-The ``Number of Agents'' slider rescales the E and U slots
-proportionally while pinning the fixed F/T/R background at
-$N_{\text{fixed}}=4$. The paradigm switch in the navbar overrides
-these presets: clicking DLM~2005 fills the user-controllable slots
-with experienced agents ($E=N-N_{\text{fixed}}$, $U=0$); clicking
-Lopez-Lira~2025 fills them with utility agents ($E=0$,
-$U=N-N_{\text{fixed}}$); clicking AIPE splits the slots as
-$\lceil(N-N_{\text{fixed}})/2\rceil\to E$ and the remainder to $U$, so
-that both subject types share one market and the extended panels
-stay populated. The rounding is asymmetric on purpose: at
-capacity~$c=1,3,5$ the E~block wins the odd slot, which
-preserves the bubble-suppressing channel in small populations
-where it matters~most.
+Reproducing DLM's design therefore requires that experience not
+exist as a pre-assignable agent \emph{type}. The simulator uses a
+single class, \texttt{DLMTrader}, with a two-state \texttt{decide}
+method gated on an integer counter \texttt{roundsPlayed} that the
+engine increments at every round boundary:
+\begin{equation}
+\mathtt{DLMTrader}.\texttt{decide}(\cdot) \;=\;
+\begin{cases}
+\texttt{inexperienced}(\cdot), & \text{if } \texttt{roundsPlayed} = 0, \\
+\texttt{experienced}(\cdot),   & \text{if } \texttt{roundsPlayed} \ge 1.
+\end{cases}
+\label{eq:endo-exp}
+\end{equation}
+Every trader is instantiated with $\texttt{roundsPlayed}=0$, so
+at the start of round~1 every participant is operating on the
+inexperienced branch: it chases trend, accepts zero-intelligence
+noise, ignores the fundamental horizon, and does not liquidate
+late in a round. The engine's round-end hook then increments the
+counter for every agent that has just finished a round, so the
+same six traders enter round~2 having flipped to the experienced
+branch, which anchors bids to $\varphi(h)\cdot\FV_t$ with horizon
+$h=T-t+1$, refuses to buy above belief in late periods, and
+liquidates its remaining inventory in the final three periods of a
+round. Nothing else changes about the session; the same numeric
+id, cash, inventory and trust state persist --- only the decision
+branch flips.
+
+Crucially, no agent is ever instantiated with a positive
+\texttt{roundsPlayed}. The bubble-killing channel is therefore
+purely procedural, matching~\citet{dufwenberg2005bubbles} exactly.
+
+\subsection{Round-4 replacement and treatments}
+\label{sec:round4}
+
+The paper introduces two treatment conditions that manipulate the
+mix of experienced and inexperienced traders at the start of
+round~4:
+\begin{quote}
+``In the fourth round, depending on treatment, two or four
+experienced subjects who had participated in the first three
+rounds were randomly selected, removed, and replaced by the same
+number of inexperienced subjects.''~\citep[p.~1733]{dufwenberg2005bubbles}
+\end{quote}
+The simulator fires the replacement between rounds~3 and~4
+whenever strict-DLM mode is active. Let $k\in\{2,4\}$ denote the
+treatment size (T2 or T4). The engine's round-end branch runs, in
+order:
+\begin{enumerate}
+\item snapshot each surviving agent's period-$T$ cash into
+$\mathtt{roundFinalCash}[r-1]$ (Section~\ref{sec:payoff}),
+\item log a \texttt{round\_end} event,
+\item increment every surviving agent's \texttt{roundsPlayed} by
+one, so the four or two survivors of the T2 (resp.~T4) sweep
+carry \texttt{roundsPlayed}=3 into round~4,
+\item Fisher--Yates select $k$ agents uniformly at random from the
+pool of surviving non-replacement traders and remove them,
+\item draw $k$ fresh \texttt{DLMTrader} specs from
+\texttt{dlmSampleReplacementAgent} (each with a new name drawn
+from the remaining name pool so that no two seats share a
+display name, and a fresh endowment type~A or~B drawn iid) and
+instantiate them with $\texttt{roundsPlayed}=0$ and a
+\texttt{replacementFresh} flag for UI badging,
+\item splice the new instances back into the engine at the
+vacated numeric ids, so the order book, logger, and replay
+system continue to key by a stable id,
+\item rewind every surviving agent's cash and inventory to its
+spec (the fresh agents take their own replacement endowment on
+the same call), increment the round counter to 4, reset
+\texttt{period=1}, and clear the book.
+\end{enumerate}
+The net effect is that round~4 is played with $6-k$ veterans on
+the experienced branch of equation~\eqref{eq:endo-exp} and $k$
+fresh subjects on the inexperienced branch --- precisely the
+composition DLM's treatment manipulates.
+
+\subsection{Multi-session batch}
+\label{sec:multi-session}
+
+\citet{dufwenberg2005bubbles} report ten sessions in total, five
+per treatment, interleaved so that the overall design has
+$10\times 4 = 40$ markets. The simulator provides a one-click
+batch runner that reproduces this: pressing ``Run 10-session
+batch'' in the DLM~panel drives ten synchronous
+\texttt{Engine.runToEnd()} loops in two blocks of five,
+alternating treatment, with an independent engine seed per
+session and an independent two-type endowment draw. Each session
+writes a compact summary row --- treatment, mean
+$|p_t - \FV_t|/\FV_t$, per-share turnover, total trade count, mean
+per-subject payoff, and the round-4 replacement record --- into a
+results table in the DLM panel. The batch preserves the pre-batch
+interactive state so the user's current session is not disturbed.
+
+\subsection{Payoff accounting}
+\label{sec:payoff}
+
+Session payoffs in DLM~2005 have two components: the subject's
+final cash at the end of each round, summed across all four
+rounds, plus a show-up fee of \$5:
+\begin{quote}
+``Subjects were privately paid, in cash, the amount of their final
+cash holdings from each round. They were also paid a show-up fee
+of \$5.''~\citep[p.~1735]{dufwenberg2005bubbles}
+\end{quote}
+The simulator captures each surviving agent's cash at the end of
+period~$T$ of every round via \texttt{Logger.logRoundFinalCash},
+which writes a per-agent \texttt{\{id: cash\}} map into
+$\mathtt{roundFinalCash}[r-1]$. For agent~$i$ the session payoff
+is therefore
+\begin{equation}
+\pi_i \;=\; \sum_{r=1}^{R} \mathtt{roundFinalCash}[r-1][i] \;+\; 500,
+\label{eq:payoff}
+\end{equation}
+where the $500$~cents show-up fee is added unconditionally and
+shares held at the end of a round are worth nothing because the
+asset's life has ended (the dividend stream has paid out). Agents
+spliced in by the round-4 replacement step only contribute a
+round-4 row to the sum because they did not play rounds~1--3; this
+matches the paper's accounting for replacement subjects, who are
+paid only for the single round they participate in plus the
+show-up fee.
+
+\subsection{Departures from the original protocol}
+\label{sec:departures}
+
+The simulator reproduces DLM~2005 without exception except in one
+place: the original study runs a continuous two-minute open-outcry
+double auction in z-Tree for each period~\citep[p.~1733]{dufwenberg2005bubbles},
+whereas the simulator discretises that window into $K=18$ decision
+rounds in order to run a deterministic tick-level loop that the
+replay system can slice. Eighteen is dense enough to reproduce the
+bubble--crash pattern at qualitative parity with the paper while
+keeping the replay buffer compact; lower values starve the book,
+higher values compress the per-tick update so agents barely
+respond between decisions. This is the \emph{only} residual
+simulator approximation. No other relaxation remains: the
+population size, the two endowment types, the round count, the
+dividend distribution, the fundamental schedule, the endogenous
+experience gate, the round-4 treatment, the ten-session batch, and
+the payoff + show-up fee structure are all in strict agreement
+with the paper.
+
+The Lopez-Lira and AIPE paradigms retain the $N\ge 4$ relaxed
+sampler and the mixed F/T/R background described elsewhere in
+this paper, since they are \emph{extensions} rather than
+replications of DLM and therefore intentionally depart from the
+strict design at the populations layer. Strict-DLM mode is the
+single-button knob that turns every one of those relaxations
+off.
 
 \subsection{Reproducibility}
 

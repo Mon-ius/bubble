@@ -21,9 +21,15 @@ main.js       App state, control wiring, render scheduling (rAF-coalesced)
 engine.js     Simulation loop + seeded mulberry32 PRNG, dividend draws
   │
 market.js    ─ Order, Trade, OrderBook (price-time priority), Market
-agents.js    ─ Agent base + Fundamentalist/Trend/Random/Experienced/Utility +
-                population presets. Decisions return order objects with a
-                reasoning trace attached.
+agents.js    ─ Agent base + Fundamentalist/Trend/Random/DLMTrader/Utility +
+                sampling helpers. Decisions return order objects with a
+                reasoning trace attached. `DLMTrader` has a single class
+                with a two-branch `decide()` gated on an endogenous
+                `roundsPlayed` counter — it starts at 0 and is incremented
+                by the engine at every round boundary, flipping the agent
+                from the bubble-prone novice branch to the FV-anchored
+                veteran branch. No agent is ever instantiated with
+                `roundsPlayed > 0`; experience is purely procedural.
 messaging.js ─ Message bus + trust tracker (only used by UtilityAgent)
 utility.js   ─ UtilityAgent belief/valuation model + UTILITY_DEFAULTS
 logger.js    ─ Append-only trace, snapshot, and event stores
@@ -51,29 +57,43 @@ Invariants that the replay system relies on:
 
 ## Session structure: rounds and periods
 
-A run is one *session* of `roundsPerSession` consecutive *rounds* (default
-`R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
-market that lasts `T × ticksPerPeriod = 180` ticks, so a default session is
+A run is one *session* of `roundsPerSession` consecutive *rounds* (fixed
+at `R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
+market that lasts `T × ticksPerPeriod = 180` ticks, so a session is
 `R × T × K = 720` ticks. At the end of period `T` of a non-final round the
 `Engine`:
 
-1. logs a `round_end` event,
-2. rewinds every agent's `cash` and `inventory` to its `agentSpecs` entry
-   (mirroring DLM's "before a market opened, half started with 200¢ + 6
-   shares, the other half with 600¢ + 2 shares" reset),
-3. clears the order book and sets `lastPrice = null`,
-4. increments `Market.round`, resets `Market.period = 1`,
-5. logs a `round_start` event,
-6. calls `agent.onRoundStart()` so subclasses can null out per-round
+1. snapshots every surviving agent's cash into
+   `Logger.roundFinalCash[r-1]` for payoff accounting,
+2. logs a `round_end` event,
+3. **increments every surviving agent's `roundsPlayed` by one**, so any
+   `DLMTrader` that just finished a round flips from the inexperienced
+   branch to the experienced branch for the next round,
+4. if strict-DLM mode is active and the round that just ended was round 3,
+   runs `_round4Replacement(k)` — Fisher-Yates selects `k ∈ {2, 4}`
+   survivors (the treatment size T2 or T4), removes them, draws `k` fresh
+   `DLMTrader` specs via `dlmSampleReplacementAgent` (each with a unique
+   display name filtered against the surviving roster and an iid
+   type-A / type-B endowment), and splices them back in at the vacated
+   numeric ids with `roundsPlayed = 0` and `replacementFresh = true`,
+5. rewinds every surviving agent's `cash` and `inventory` to its
+   `agentSpecs` entry (the fresh splice-ins take their own replacement
+   endowment on the same call),
+6. clears the order book and sets `lastPrice = null`,
+7. increments `Market.round`, resets `Market.period = 1`,
+8. logs a `round_start` event,
+9. calls `agent.onRoundStart()` so subclasses can null out per-round
    transient state (`TrendFollower` clears slope history; `UtilityAgent`
    rebases `initialWealth` and clears subjective/reported valuations and
    received messages).
 
-What is **deliberately preserved** across the boundary: trust matrices,
-belief modes, risk preferences, the agent's identity. That cross-round
-learning channel is the whole point of DLM 2005's session structure
-(experience kills the bubble), and the simulator reproduces it by leaving
-those fields untouched in `_resetRound()`.
+What is **deliberately preserved** across the boundary: `roundsPlayed`
+(the endogenous experience counter), trust matrices, belief modes, risk
+preferences, and the agent's identity. That cross-round learning channel
+is the whole point of DLM 2005's session structure (experience kills the
+bubble), and the simulator reproduces it by leaving those fields
+untouched in `_resetRound()` — only cash, inventory, and per-round
+transient state rewind.
 
 The per-round volume series lives in a single `Market.volumeByPeriod` array
 of size `R × T + 2`, indexed by a global period
@@ -143,17 +163,43 @@ When adding a new tunable:
 The "Total agents (N)" slider proportionally rescales the population mix
 rather than editing individual counts.
 
-## Populations
+## Paradigms
 
-| Preset        | Composition                       | Expected outcome        |
-|---------------|-----------------------------------|-------------------------|
-| Inexperienced | 2 Trend · 2 Random · 1 F · 1 E    | Classic bubble + crash  |
-| Experienced   | 3 Experienced · 2 Fund · 1 Trend  | Tight convergence to FV |
-| Mixed         | 2 Fund · 2 Exp · 1 Trend · 1 Rand | Closest tracking of FV  |
-| Utility       | 6 Utility                         | Default on first load   |
+The navbar switches between three paradigms; each pins a different
+sampling pipeline and a different set of visible controls.
 
-Fundamental value at the start of period *t* is `FV_t = dividendMean × (T − t + 1)`
-(default: starts at 100, declines by 10 per period over 10 periods).
+| Paradigm    | Composition                                         | Purpose                                                         |
+|-------------|-----------------------------------------------------|-----------------------------------------------------------------|
+| Strict-DLM  | 6 `DLMTrader`, 3 × type A + 3 × type B              | Exact replication of Dufwenberg–Lindqvist–Moore (2005)          |
+| Lopez-Lira  | 6 `UtilityAgent` (strategy cube over bias/belief/risk) | Expected-utility messaging market from Lopez-Lira (2025)     |
+| AIPE        | Utility block + fixed F/T/R background              | AI-Agent Prior Elicitation on top of the Lopez-Lira model       |
+
+**Strict-DLM mode** is the single-button knob that enforces the paper's
+exact protocol: `N = 6` is pinned, the population sliders are disabled,
+and sampling routes through `dlmSampleAgents(rng)` which assigns the
+index sequence `[0, 0, 0, 1, 1, 1]` (type A = 200¢ + 6 shares,
+type B = 600¢ + 2 shares, both with buy-and-hold value 1000¢),
+Fisher-Yates shuffles it, and writes the matching cash/inventory pair
+onto each spec. A T2/T4 treatment selector and a **Run 10-session
+batch** button are exposed only in this mode; the batch runner drives
+10 synchronous `Engine.runToEnd()` loops (5 T2 + 5 T4, interleaved) and
+reports per-session `meanDev`, `turnover`, `trades`, `payoffTotal`, and
+the round-4 replacement record into the DLM panel, then restores the
+pre-batch interactive state.
+
+The **Lopez-Lira** and **AIPE** paradigms continue to use the relaxed
+`sampleAgents(mix, rng, options)` sampler (uniform `[800, 1200]` cash,
+uniform `{2, 3, 4}` inventory) since they are extensions rather than
+replications and intentionally depart from the strict design at the
+populations layer.
+
+Session payoff for agent `i` is
+`π_i = Σ_r roundFinalCash[r-1][i] + 500¢` (the show-up fee), captured
+by `Logger.logRoundFinalCash` at the end of period `T` of every round.
+
+Fundamental value at the start of period *t* of any round is
+`FV_t = dividendMean × (T − t + 1)` — a staircase from `FV_1 = 100` to
+`FV_T = 10` that resets at every round boundary.
 
 ## Working in this repo
 

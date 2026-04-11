@@ -45,6 +45,13 @@ class Logger {
     this.decisionEvaluations = [];
     this.beliefChanges       = [];
     this.trustHistory        = [];
+    // DLM 2005 payoff tracking. The Engine snapshots each agent's
+    // final cash holdings at the end of every round (after the last
+    // dividend has been paid and before the round-end reset rewinds
+    // cash to the spec). Indexed by round: roundFinalCash[r-1] is a
+    // {agentId: cash} map. Session payoff is the sum across rounds
+    // plus the $5 (= 500¢) show-up fee, exactly as in DLM 2005.
+    this.roundFinalCash      = [];
   }
 
   logTrace(trace)         { this.traces.push(trace); }
@@ -55,6 +62,7 @@ class Logger {
   logEvaluation(entry)    { this.decisionEvaluations.push(entry); }
   logBeliefChange(entry)  { this.beliefChanges.push(entry); }
   logTrust(entry)         { this.trustHistory.push(entry); }
+  logRoundFinalCash(round, byAgent) { this.roundFinalCash[round - 1] = byAgent; }
   snapshot(s)             { this.snapshots[s.tick] = s; }
 
   clear() {
@@ -67,6 +75,7 @@ class Logger {
     this.decisionEvaluations = [];
     this.beliefChanges       = [];
     this.trustHistory        = [];
+    this.roundFinalCash      = [];
   }
 
   /** Nearest snapshot at or before the requested tick. */

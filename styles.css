@@ -531,18 +531,20 @@ math[display="inline"] { white-space: nowrap; }
 .chart-messages  { grid-column: span 8; }
 .chart-trust     { grid-column: span 4; }
 
-/* Hide the extended cluster unless body.extended is set by main.js */
+/* Hide the extended cluster unless body.extended is set by main.js.
+   In strict-DLM mode we also force-hide .ext-only rows because the
+   Lopez-Lira/AIPE utility-agent panels (risk preferences, messaging,
+   trust, deception) are out of scope for the strict replication. */
 body:not(.extended) .ext-only { display: none !important; }
-/* Hide the Experience preferences block unless mix.E > 0. Mirrors the
-   .ext-only gate so the U slot and the E slot each control their own
-   preference panel and neither becomes visible noise when its slot is
-   empty. */
-body:not(.has-experienced) .exp-only { display: none !important; }
+body.dlm-mode .ext-only        { display: none !important; }
 /* Hide the AIPE AI endpoint psec unless the AIPE paradigm is
-   active. Mirrors the .ext-only / .exp-only gates — the AI-config
-   fields are meaningless for DLM and Lopez-Lira, so they only
-   render when body.wang-mode is set by _setParadigm('wang'). */
+   active. The AI-config fields are meaningless for DLM and
+   Lopez-Lira, so they only render when body.wang-mode is set by
+   _setParadigm('wang'). */
 body:not(.wang-mode) .wang-only { display: none !important; }
+/* Mirror for strict-DLM: the DLM replication psec (treatment radios
+   + batch runner) is only visible when the DLM paradigm is active. */
+body:not(.dlm-mode) .dlm-only   { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
 /*
@@ -972,6 +974,128 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   color: color-mix(in srgb, var(--pink) 70%, var(--fg-3));
 }
 
+/* ---------- DLM 2005 strict-replication controls ---------- */
+/*
+ * Parallel block to .wang-only but tinted blue (the DLM paradigm's
+ * accent in the navbar). The treatment selector is a pair of radio
+ * buttons laid out side-by-side so they read as a two-option toggle,
+ * and the batch button spans the row underneath with a status line
+ * that fills in after the 10-session run.
+ */
+.dlm-only[open] {
+  border-color: var(--blue, #3b82f6);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue, #3b82f6) 28%, transparent),
+              var(--shadow-sm);
+}
+.dlm-only summary {
+  color: var(--blue, #3b82f6);
+}
+.dlm-treatment-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.dlm-treatment-opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg-1);
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.dlm-treatment-opt:hover {
+  border-color: var(--blue, #3b82f6);
+}
+.dlm-treatment-opt input[type="radio"] {
+  accent-color: var(--blue, #3b82f6);
+  margin: 0;
+}
+.dlm-treatment-opt:has(input:checked) {
+  border-color: var(--blue, #3b82f6);
+  background: color-mix(in srgb, var(--blue, #3b82f6) 10%, var(--bg-1));
+  color: var(--fg-0);
+}
+.btn-dlm-batch {
+  appearance: none;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--blue, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.18s var(--ease);
+}
+.btn-dlm-batch:hover {
+  background: color-mix(in srgb, var(--blue, #3b82f6) 85%, white);
+}
+.btn-dlm-batch:active {
+  background: color-mix(in srgb, var(--blue, #3b82f6) 75%, black);
+}
+.dlm-batch-status {
+  min-height: 14px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--blue, #3b82f6);
+}
+.dlm-batch-status:empty { display: none; }
+
+/* 10-session batch results: compact aggregate line + per-session row
+   table. Only populated after runDlmBatch finishes; empty otherwise
+   so the DLM psec stays tight on a fresh load. */
+.dlm-batch-results:empty { display: none; }
+.dlm-batch-results {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--blue, #3b82f6) 30%, transparent);
+}
+.dlm-batch-agg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.dlm-batch-agg-row { color: var(--fg-1); }
+.dlm-batch-agg-row .treat {
+  display: inline-block;
+  width: 22px;
+  font-weight: 700;
+  color: var(--blue, #3b82f6);
+}
+.dlm-batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.dlm-batch-table th,
+.dlm-batch-table td {
+  padding: 3px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.dlm-batch-table th {
+  color: var(--fg-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
+}
+.dlm-batch-table td.repl { text-align: left; color: var(--fg-2); }
+.dlm-batch-table tbody tr:hover { background: var(--bg-2); }
+
 /* ---------- Constant cards (Paper + Hidden) ---------- */
 /*
  * Two read-only psec sections nested inside Experiment settings,
@@ -1299,7 +1423,47 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 .agent-card.fundamentalist { border-left: 2px solid var(--accent); }
 .agent-card.trend          { border-left: 2px solid var(--bubble); }
 .agent-card.random         { border-left: 2px solid var(--fg-2); }
-.agent-card.experienced    { border-left: 2px solid var(--volume); }
+.agent-card.dlm            { border-left: 2px solid var(--blue); }
+
+/* DLM mode agent badges: endowment type (A or B), endogenous-experience
+   state (inexperienced vs experienced·nR), and a round-4 replacement
+   marker for the fresh traders spliced in between rounds 3 and 4. Only
+   rendered for agents with type === 'dlm', hidden entirely otherwise. */
+.agent-card .dlm-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+.agent-card .dlm-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.agent-card .dlm-badge-endow {
+  color: var(--blue);
+  background: var(--blue-bg);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+.agent-card .dlm-badge-novice {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+}
+.agent-card .dlm-badge-vet {
+  color: var(--green);
+  background: var(--green-bg);
+  border-color: color-mix(in srgb, var(--green) 30%, transparent);
+}
+.agent-card .dlm-badge-fresh {
+  color: var(--red);
+  background: var(--red-bg);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
 
 /* Agents-panel header: title + Resample button inline, stage label
    under the title. In preview mode the panel picks up an outline to

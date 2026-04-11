@@ -5,35 +5,52 @@
 Because the simulator is designed for interactive replication
 rather than a single canonical experiment, this section reports
 preliminary findings from three paradigm presets rather than a
-calibrated empirical test. Each paradigm holds the market
-structure of Section~\ref{sec:design} fixed and varies only the
-population composition. Unless otherwise noted, $N=10$ agents
-share one session of $R=4$ consecutive ten-period rounds with the
-DLM~2005 round-end endowment reset, the seeded PRNG is rolled
-fresh at the start of every run, and the AIPE anchor is
-drawn from the default model \texttt{gpt-5.4} with the paper's
-system and user prompts verbatim. The market-quality statistics
-reported below are pooled across all four rounds of a session;
-the per-round breakdown that drives the experience-kills-bubbles
-finding is described in the baseline DLM subsection.
+calibrated empirical test. The \emph{strict-DLM} paradigm runs the
+exact protocol of~\citet{dufwenberg2005bubbles}: $N=6$ traders, two
+discrete endowment types, four consecutive rounds, the round-4
+replacement treatment, and the ten-session batch. The
+\emph{Lopez-Lira} and \emph{AIPE} paradigms continue to use the
+relaxed population size and sampler, since they are extensions
+rather than replications. Unless otherwise noted the seeded PRNG
+is rolled fresh at the start of every run, and the AIPE anchor is
+drawn from the default model with the paper's system and user
+prompts verbatim. The market-quality statistics reported below are
+pooled across all four rounds of a session; the per-round
+breakdown that drives the experience-kills-bubbles finding is
+described in the baseline DLM subsection.
 
-\subsection{Baseline DLM 2005: experience kills the bubble}
+\subsection{Baseline strict-DLM: experience kills the bubble}
 
-Under the Experienced preset ($3\,E+2\,F+1\,T$), transaction prices
-track the fundamental staircase within a few experimental cents from
-period~$1$; volume concentrates in the first three periods and
-decays; amplitude stays below $0.15$, $\ND$ below $0.10$, and
-Haessel's~$R^2$ is typically above~$0.90$. The naive experienced
-profile ($\varphi_0=1.00,\varphi_1=0.05$) yields a weak
-bubble-killing channel and modest overshooting in periods $3$--$5$;
-the veteran profile ($\varphi_0=0.92,\varphi_1=0.06$, liquidate at
-$h\le 3$) sharpens convergence to below one experimental cent.
-Across the four rounds of a session the bubble that does form in
-round~$1$ visibly attenuates in rounds~$2$--$3$ and is essentially
-absent in round~$4$, even though the population is identical, the
-seed is the same, and the market structure has not moved---the
-qualitative DLM~2005 finding that experience, rather than
-instructions or incentives, kills the bubble is reproduced.
+Under strict-DLM mode the six traders are all instantiated as
+\texttt{DLMTrader} instances with \texttt{roundsPlayed}=0, so every
+subject in round~1 operates on the inexperienced branch of
+equation~\eqref{eq:endo-exp}. The round-1 tape therefore runs into
+the bubble region: amplitude $A$ typically exceeds $0.35$, $\ND$
+exceeds $0.20$, and Haessel's $R^2$ is near zero because transaction
+prices overshoot the staircase in periods~2--5 and crash in
+periods~$8$--$10$. At the end of round~1 the engine increments
+every survivor's \texttt{roundsPlayed} to~1 and the traders flip
+to the experienced branch for round~2. Amplitude falls, $\ND$
+contracts toward $0.10$, and $R^2$ rises to above $0.50$, even
+though the population is identical, the seed is the same, and no
+rule has changed. By round~3 the bubble is essentially absent, and
+round~4 --- under either treatment --- matches the staircase to
+within a few experimental cents for the veteran subset. The
+simulator reproduces the qualitative DLM~2005 finding without
+pre-assigning experience at any point.
+
+The round-4 replacement treatment manipulates the veteran/fresh
+mix: T2 leaves four veterans and two fresh subjects, T4 leaves two
+veterans and four fresh subjects. In preliminary runs, T4 widens
+the round-4 price band compared to T2 because the four fresh
+traders generate enough momentum-chasing on the inexperienced
+branch to drag the book above the veterans' liquidation threshold
+for a period or two before they dump; the size of the effect is
+the research question the ten-session batch is built to measure.
+Batch summaries print the mean normalised deviation and the mean
+per-subject payoff (\S\ref{sec:payoff}, equation~\eqref{eq:payoff})
+for each treatment so that side-by-side comparisons are possible
+in a single click.
 
 \subsection{Lopez-Lira 2025: the strategy cube shapes the bubble}
 
@@ -56,9 +73,10 @@ consistent with the closed-loop mechanism in
 
 \subsection{AIPE: does the asset migrate to the highest anchor?}
 
-The novel regime is the AIPE merged market. With
-$\lceil(N-4)/2\rceil=3$ experienced and $3$ utility agents and a
-live AI-agent anchor vector~$(\hat V_i)_{i\in A_U}$, three
+The novel regime is the AIPE merged market. The Utility agents
+sit alongside the fixed $F/T/R$ background; no agent is
+pre-labeled as experienced. A live AI-agent anchor
+vector~$(\hat V_i)_{i\in A_U}$ is drawn at run start, and three
 preliminary observations are clear from a handful of runs.
 
 \paragraph{Anchor dispersion.} The returned anchors are
@@ -89,11 +107,12 @@ holding the most shares is the agent with the highest anchor---is
 not monotone in~$t$. It typically starts near the seed endowment
 distribution (which is independent of~$\hat V$), rises during
 periods~$1$--$3$ as the aggressive high-anchor agents accumulate
-inventory, and then drifts as the experienced agents liquidate in
-the terminal region. In runs where the highest-anchor agent is
-also the experienced bubble's counterparty, the indicator ends at
-one; in runs where the experienced block liquidates into an agent
-of middling anchor, the indicator ends at zero and the
+inventory, and then drifts in the terminal region as the
+fundamentalist background liquidates its shares. In runs where
+the highest-anchor agent is also the fundamentalist bubble's
+counterparty, the indicator ends at one; in runs where the
+background liquidates into an agent of middling anchor, the
+indicator ends at zero and the
 corresponding normalised gap~$g(T)$ is typically in the
 $0.10$--$0.30$ range. The allocative efficiency statistic $\AllocEff$
 moves in the same direction but stays strictly positive in every
@@ -111,24 +130,33 @@ under the three paradigms in qualitative---not yet calibrated---form.
 \small
 \caption{Market-quality statistics, qualitative ranges}
 \label{tab:mktq}
-\begin{tabular}{l c c c}
+\begin{tabular}{l c c c c}
 \toprule
-& DLM~2005 & Lopez-Lira~2025 & AIPE \\
+& DLM r.\,1 & DLM r.\,4 & Lopez-Lira~2025 & AIPE \\
 \midrule
-Haessel~$R^2$       & $>0.90$      & $0.30$--$0.80$ & $0.40$--$0.85$ \\
-Normalised dev.~$\ND$& $<0.10$     & $0.10$--$0.30$ & $0.10$--$0.25$ \\
-Amplitude $A$       & $<0.15$      & $0.20$--$0.50$ & $0.20$--$0.45$ \\
-Turnover $\TO$      & $0.4$--$0.8$ & $0.6$--$1.2$   & $0.5$--$1.0$   \\
-Allocative eff.~$\AllocEff$& $\approx 1$ & $0.6$--$0.9$   & $0.7$--$0.95$  \\
-Match $\mathbb{1}\{j^\star(T)=i^\star\}$ & n/a & n/a & 50--70\% runs \\
+Haessel~$R^2$       & $\approx 0$  & $>0.80$      & $0.30$--$0.80$ & $0.40$--$0.85$ \\
+Normalised dev.~$\ND$& $>0.20$     & $<0.10$      & $0.10$--$0.30$ & $0.10$--$0.25$ \\
+Amplitude $A$       & $>0.35$      & $<0.15$      & $0.20$--$0.50$ & $0.20$--$0.45$ \\
+Turnover $\TO$      & $0.6$--$1.1$ & $0.3$--$0.6$ & $0.6$--$1.2$   & $0.5$--$1.0$   \\
+Allocative eff.~$\AllocEff$& $0.6$--$0.8$& $\approx 1$  & $0.6$--$0.9$   & $0.7$--$0.95$  \\
+Match $\mathbb{1}\{j^\star(T)=i^\star\}$ & n/a & n/a & n/a & 50--70\% runs \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-AIPE sits between its two parents: the experienced block
-suppresses amplitude and improves~$R^2$, while the utility block
-introduces enough psychology to produce nontrivial variation in the
-match indicator. Whether the match indicator exceeds a naive
-baseline in a properly replicated experiment---and whether the
-anchor adds predictive power beyond the deterministic prior---is
-the question the testbed is built to answer.
+The two strict-DLM columns ($r=1$ and $r=4$) together recover the
+DLM finding: a large bubble in round~1 with the same population
+that produces a tight staircase in round~4, separated only by the
+three intervening rounds of procedural experience. The Lopez-Lira
+and AIPE columns are pooled across the full session rather than
+split by round because their relaxed populations do not have an
+endogenous round-1 to round-4 sharpening channel --- the agents
+keep the same trust/belief state across rounds but none of them
+gate behaviour on \texttt{roundsPlayed}. AIPE sits between
+strict-DLM round~4 and Lopez-Lira because the fundamentalist
+background still suppresses amplitude and improves~$R^2$, while the
+utility block introduces enough psychology to produce nontrivial
+variation in the match indicator. Whether the match indicator
+exceeds a naive baseline in a properly replicated experiment --- and
+whether the anchor adds predictive power beyond the deterministic
+prior --- is the question the testbed is built to answer.

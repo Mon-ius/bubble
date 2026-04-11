@@ -1,31 +1,19 @@
 'use strict';
 
 /* =====================================================================
-   agents.js — Four trading strategies + population presets.
+   agents.js — Trading strategies + population presets.
 
-   How bubbles emerge in this model:
-
-     * Trend followers buy *because* the price is rising. Their aggression
-       pushes the price further up, which brings more trend followers in.
-       This positive feedback loop is what inflates the bubble.
-
-     * Fundamentalists provide a rational counterforce — they sell when
-       the price runs above FV and buy when it falls below. But with few
-       of them and many trend followers, they get overwhelmed during the
-       inflation phase.
-
-     * Random (ZI-style) agents add noise and liquidity. They have no view
-       and, like real retail, they can be the marginal buyer or seller
-       at any time.
-
-     * Experienced agents expect the bubble. They anchor their belief
-       below FV (pricing in bubble risk), refuse to chase into the peak,
-       and aggressively liquidate in the final three periods because they
-       know the asset is decaying toward zero. When they dominate the
-       population the bubble never really forms.
-
-   Try running the "inexperienced" preset and then "experienced" — the
-   price chart should visibly bubble in the first and hug FV in the second.
+   The simulator carries three strategy families for the non-DLM modes
+   (Lopez-Lira and AIPE) — Fundamentalist, TrendFollower, Random — plus
+   the UtilityAgent that drives those two paradigms. The strict DLM
+   2005 mode uses a single class, DLMTrader, whose behaviour is gated
+   on the *endogenous* roundsPlayed counter: a fresh trader (rounds = 0)
+   acts like a momentum/noise undergrad and produces the canonical SSW
+   bubble; once the round-end reset has incremented the counter
+   (rounds ≥ 1) the same agent switches to FV-anchoring with horizon
+   awareness, which is the channel by which DLM's "experience kills the
+   bubble" finding emerges. Crucially, no agent is ever pre-labelled
+   experienced — every trader becomes experienced only by playing.
    ===================================================================== */
 
 class Agent {
@@ -39,10 +27,16 @@ class Agent {
     this.initialInventory = inventory;
     this.lastAction       = 'hold';
     // DLM 2005 runs a session of four consecutive markets with the
-    // same subject pool — the Engine increments this counter at each
-    // round boundary so subclasses can condition behaviour on how
-    // many rounds of experience the agent has already accumulated.
+    // same subject pool. The Engine increments roundsPlayed at every
+    // round boundary so subclasses can condition behaviour on the
+    // *endogenous* experience an agent has accumulated through play.
+    // No agent is ever instantiated with roundsPlayed > 0 — the only
+    // way to become experienced is to participate in a prior round.
     this.roundsPlayed     = 0;
+    // True for round-4 replacement traders that were spliced into the
+    // population at the round-3 → round-4 transition. Used by the UI
+    // to render a "fresh" badge so the user can see the swap fired.
+    this.replacementFresh = false;
   }
   decide(_market, _rng) { return { type: 'hold', reasoning: { ruleUsed: 'noop' } }; }
   /**
@@ -273,78 +267,148 @@ class RandomAgent extends Agent {
   }
 }
 
-/* ---------- Experienced ----------------------------------------------- */
+/* ---------- DLMTrader (strict DLM 2005 mode) -------------------------- */
 /*
- * Knows the asset decays to zero. Discounts belief by remaining-horizon
- * fraction. Aggressively liquidates inventory in the final periods and
- * refuses to buy at inflated prices late in the game. When veteran-level
- * E agents dominate the population, the bubble never really forms.
+ * The single agent class used by strict DLM 2005 mode. Behaviour is
+ * gated on the endogenous `roundsPlayed` counter, which the Engine
+ * increments at every round boundary. There is no pre-assigned
+ * experience type and no constructor flag that lets a caller "force
+ * experience" — every trader instantiated with roundsPlayed = 0 acts
+ * like a fresh undergrad, and the only way to become experienced is
+ * to play a prior round of the same session. The two-state model
+ * matches DLM 2005's binary "experienced / inexperienced" framing
+ * (see §I, p. 1733): rounds 1–3 develop experience cumulatively, and
+ * round 4 swaps in fresh inexperienced subjects under one of the two
+ * treatments.
  *
- * The class is parameterized by an experienceLevel (one of 'naive',
- * 'once', 'veteran') that maps to a profile in EXPERIENCE_PROFILES.
- * The Experience-preference UI block distributes E slots across these
- * three levels, mirroring how the Risk-preference block distributes U
- * slots across loving/neutral/averse. Veteran preserves the original
- * magic numbers so the legacy zero-arg constructor is unchanged.
+ *   roundsPlayed === 0  → bubble-prone behaviour: trend-following on
+ *                         the in-round price history, weak FV anchor,
+ *                         no late-period liquidation. Six fresh agents
+ *                         in round 1 of every session reproduce the
+ *                         classic SSW bubble-and-crash.
+ *
+ *   roundsPlayed >= 1   → FV-anchoring veteran behaviour: discounts
+ *                         belief by horizon fraction, liquidates in
+ *                         the final three periods, refuses to overpay
+ *                         in the last four. This is the bubble-killing
+ *                         channel that drives DLM 2005's headline
+ *                         result that experience, not instructions or
+ *                         incentives, kills the bubble.
  */
-const EXPERIENCE_PROFILES = {
-  // Round-1 first-timer. Effectively no horizon discount, holds
-  // through the bubble, only liquidates in the very last period and
-  // happily buys above belief — fuels bubble inflation.
-  naive: {
-    discountFloor:        1.00,
-    discountSlope:        0.05,
-    liquidateRemaining:   1,
-    avoidOverpayRemaining: 2,
-    avoidOverpayMul:      1.00,
-    buyDiscountMul:       1.05,
-    sellPremiumMul:       1.20,
-  },
-  // Played one prior round. Partial horizon awareness; somewhere
-  // between naive and veteran on every dimension.
-  once: {
-    discountFloor:        0.96,
-    discountSlope:        0.04,
-    liquidateRemaining:   2,
-    avoidOverpayRemaining: 3,
-    avoidOverpayMul:      0.95,
-    buyDiscountMul:       0.95,
-    sellPremiumMul:       1.10,
-  },
-  // DLM 2005 round-4 fully-experienced trader: aware the asset
-  // decays, liquidates in the final three periods, refuses to
-  // overpay late. This profile preserves the original numbers.
-  veteran: {
-    discountFloor:        0.92,
-    discountSlope:        0.06,
-    liquidateRemaining:   3,
-    avoidOverpayRemaining: 4,
-    avoidOverpayMul:      0.9,
-    buyDiscountMul:       0.92,
-    sellPremiumMul:       1.05,
-  },
+const DLM_VETERAN = {
+  discountFloor:         0.92,
+  discountSlope:         0.06,
+  liquidateRemaining:    3,
+  avoidOverpayRemaining: 4,
+  avoidOverpayMul:       0.9,
+  buyDiscountMul:        0.92,
+  sellPremiumMul:        1.05,
 };
 
-class ExperiencedAgent extends Agent {
-  constructor(id, name, cash = 1000, inventory = 3, opts = {}) {
-    super(id, 'experienced', cash, inventory, name);
-    const level = opts.experienceLevel || 'veteran';
-    this.experienceLevel = EXPERIENCE_PROFILES[level] ? level : 'veteran';
-    this.profile = EXPERIENCE_PROFILES[this.experienceLevel];
+class DLMTrader extends Agent {
+  constructor(id, name, cash, inventory) {
+    super(id, 'dlm', cash, inventory, name);
   }
 
   decide(market, rng) {
-    const p                 = this.profile;
-    const fv                = market.fundamentalValue();
-    const remaining         = market.config.periods - market.period + 1;
-    const horizonFraction   = remaining / market.config.periods;
-    const belief            = fv * (p.discountFloor + horizonFraction * p.discountSlope);
-    const bid               = market.book.bestBid();
-    const ask               = market.book.bestAsk();
+    return this.roundsPlayed === 0
+      ? this._decideInexperienced(market, rng)
+      : this._decideExperienced(market, rng);
+  }
+
+  /* Round-1 fresh-undergrad behaviour: chase momentum, anchor weakly
+   * on FV, post noisy quotes. Filtered on the current round so the
+   * 6-tick slope window starts empty at every round boundary. */
+  _decideInexperienced(market, rng) {
+    const hist = market.priceHistory
+      .filter(h => h.price !== null && h.round === market.round)
+      .slice(-6);
+    const fv  = market.fundamentalValue();
+    const bid = market.book.bestBid();
+    const ask = market.book.bestAsk();
+
+    // Bootstrap: post a noisy bid near a slightly inflated FV (real
+    // undergrads bid above FV from the very first tick of round 1).
+    if (hist.length < 2) {
+      const target = fv * (1.02 + (rng() - 0.5) * 0.10);
+      if (this.cash >= target && rng() < 0.55) {
+        return order('bid', round2(target), 1, {
+          ruleUsed:         'dlm_fresh_bootstrap_bid',
+          estimatedValue:   fv,
+          expectedProfit:   0,
+          triggerCondition: 'no in-round price history yet',
+        });
+      }
+      return hold({ ruleUsed: 'dlm_fresh_wait', estimatedValue: fv, triggerCondition: 'priming round' });
+    }
+
+    const recent = hist[hist.length - 1].price;
+    const past   = hist[0].price;
+    const slope  = (recent - past) / Math.max(1, hist.length - 1);
+    const target = recent + slope * 3;
+
+    // Chase a positive trend aggressively. This is the main bubble
+    // inflation channel — it ignores FV in favour of pure momentum.
+    if (slope > 0 && this.cash >= recent) {
+      const p = round2(recent * (1 + 0.02 + rng() * 0.04));
+      return order('bid', p, 1, {
+        ruleUsed:         'dlm_fresh_chase',
+        estimatedValue:   target,
+        expectedProfit:   target - p,
+        triggerCondition: `slope +${slope.toFixed(2)}/tick → projected ${target.toFixed(2)}`,
+      });
+    }
+    // Flee a negative trend.
+    if (slope < 0 && this.inventory > 0) {
+      const p = round2(recent * (1 - 0.02 - rng() * 0.04));
+      return order('ask', p, 1, {
+        ruleUsed:         'dlm_fresh_flee',
+        estimatedValue:   target,
+        expectedProfit:   p - target,
+        triggerCondition: `slope ${slope.toFixed(2)}/tick → projected ${target.toFixed(2)}`,
+      });
+    }
+    // Flat slope: noisy ZI-style quote pinned to the recent price,
+    // not to FV — that's the simulator's analogue of an undergrad
+    // who has no horizon model.
+    if (rng() < 0.55) {
+      if (rng() < 0.5 && this.cash >= recent) {
+        const p = round2(recent * (0.95 + rng() * 0.10));
+        return order('bid', p, 1, {
+          ruleUsed:         'dlm_fresh_noise_bid',
+          estimatedValue:   recent,
+          expectedProfit:   0,
+          triggerCondition: 'flat slope noise quote',
+        });
+      } else if (this.inventory > 0) {
+        const p = round2(recent * (0.97 + rng() * 0.12));
+        return order('ask', p, 1, {
+          ruleUsed:         'dlm_fresh_noise_ask',
+          estimatedValue:   recent,
+          expectedProfit:   0,
+          triggerCondition: 'flat slope noise quote',
+        });
+      }
+    }
+    return hold({ ruleUsed: 'dlm_fresh_idle', estimatedValue: recent, triggerCondition: 'no clear edge' });
+  }
+
+  /* Veteran behaviour for roundsPlayed ≥ 1. Mirrors the bubble-
+   * suppression mechanism the legacy ExperiencedAgent encoded:
+   * horizon-discounted belief, liquidate late, refuse to overpay
+   * late, otherwise quote passively around belief. */
+  _decideExperienced(market, rng) {
+    const p               = DLM_VETERAN;
+    const fv              = market.fundamentalValue();
+    const remaining       = market.config.periods - market.period + 1;
+    const horizonFraction = remaining / market.config.periods;
+    const belief          = fv * (p.discountFloor + horizonFraction * p.discountSlope);
+    const bid             = market.book.bestBid();
+    const ask             = market.book.bestAsk();
 
     if (remaining <= p.liquidateRemaining && this.inventory > 0 && bid) {
       return order('ask', round2(bid.price), 1, {
-        ruleUsed:         'liquidate_end_of_horizon',
+        ruleUsed:         'dlm_veteran_liquidate',
         estimatedValue:   belief,
         expectedProfit:   bid.price - belief,
         triggerCondition: `remaining=${remaining} ≤ ${p.liquidateRemaining}; dumping into bid`,
@@ -352,14 +416,14 @@ class ExperiencedAgent extends Agent {
     }
     if (remaining <= p.avoidOverpayRemaining && ask && ask.price > belief * p.avoidOverpayMul) {
       return hold({
-        ruleUsed:         'avoid_overpaying_late',
+        ruleUsed:         'dlm_veteran_avoid_overpay',
         estimatedValue:   belief,
         triggerCondition: `remaining=${remaining}, ask ${ask.price.toFixed(2)} > ${p.avoidOverpayMul}×belief ${belief.toFixed(2)}`,
       });
     }
     if (ask && ask.price < belief * p.buyDiscountMul && this.cash >= ask.price) {
       return order('bid', round2(ask.price), 1, {
-        ruleUsed:         'experienced_buy_deep_discount',
+        ruleUsed:         'dlm_veteran_buy_discount',
         estimatedValue:   belief,
         expectedProfit:   belief - ask.price,
         triggerCondition: `ask ${ask.price.toFixed(2)} < ${p.buyDiscountMul} × belief ${belief.toFixed(2)}`,
@@ -367,35 +431,32 @@ class ExperiencedAgent extends Agent {
     }
     if (bid && bid.price > belief * p.sellPremiumMul && this.inventory > 0) {
       return order('ask', round2(bid.price), 1, {
-        ruleUsed:         'experienced_sell_premium',
+        ruleUsed:         'dlm_veteran_sell_premium',
         estimatedValue:   belief,
         expectedProfit:   bid.price - belief,
         triggerCondition: `bid ${bid.price.toFixed(2)} > ${p.sellPremiumMul} × belief ${belief.toFixed(2)}`,
       });
     }
-    // Passive probe so the book has quotes even in an experienced-only
-    // market. Ranges overlap at belief so two experienced agents can
-    // cross each other.
     if (rng() < 0.35) {
       if (rng() < 0.5 && this.cash >= belief) {
-        const p = round2(belief * (0.96 + rng() * 0.045));    // [0.960, 1.005]
-        return order('bid', p, 1, {
-          ruleUsed:         'experienced_passive_bid',
+        const px = round2(belief * (0.96 + rng() * 0.045));
+        return order('bid', px, 1, {
+          ruleUsed:         'dlm_veteran_passive_bid',
           estimatedValue:   belief,
-          expectedProfit:   belief - p,
+          expectedProfit:   belief - px,
           triggerCondition: 'probing 96–100.5% of belief',
         });
       } else if (this.inventory > 0) {
-        const p = round2(belief * (0.995 + rng() * 0.045));   // [0.995, 1.040]
-        return order('ask', p, 1, {
-          ruleUsed:         'experienced_passive_ask',
+        const px = round2(belief * (0.995 + rng() * 0.045));
+        return order('ask', px, 1, {
+          ruleUsed:         'dlm_veteran_passive_ask',
           estimatedValue:   belief,
-          expectedProfit:   p - belief,
+          expectedProfit:   px - belief,
           triggerCondition: 'probing 99.5–104% of belief',
         });
       }
     }
-    return hold({ ruleUsed: 'experienced_wait', estimatedValue: belief, triggerCondition: 'no clear edge' });
+    return hold({ ruleUsed: 'dlm_veteran_wait', estimatedValue: belief, triggerCondition: 'no clear edge' });
   }
 }
 
@@ -798,32 +859,7 @@ function hold(reasoning) {
 }
 function round2(x) { return Math.round(x * 100) / 100; }
 
-const POPULATIONS = {
-  inexperienced: [
-    { cls: Fundamentalist,   name: 'F1' },
-    { cls: TrendFollower,    name: 'T1' },
-    { cls: TrendFollower,    name: 'T2' },
-    { cls: RandomAgent,      name: 'R1' },
-    { cls: RandomAgent,      name: 'R2' },
-    { cls: ExperiencedAgent, name: 'E1' },
-  ],
-  experienced: [
-    { cls: Fundamentalist,   name: 'F1' },
-    { cls: Fundamentalist,   name: 'F2' },
-    { cls: TrendFollower,    name: 'T1' },
-    { cls: ExperiencedAgent, name: 'E1' },
-    { cls: ExperiencedAgent, name: 'E2' },
-    { cls: ExperiencedAgent, name: 'E3' },
-  ],
-  mixed: [
-    { cls: Fundamentalist,   name: 'F1' },
-    { cls: Fundamentalist,   name: 'F2' },
-    { cls: TrendFollower,    name: 'T1' },
-    { cls: RandomAgent,      name: 'R1' },
-    { cls: ExperiencedAgent, name: 'E1' },
-    { cls: ExperiencedAgent, name: 'E2' },
-  ],
-};
+const POPULATIONS = {};
 
 /* ---------- Utility (expected-utility) population ----------
  * Six agents span the full strategy cube (risk × bias × deception ×
@@ -848,7 +884,7 @@ const UTILITY_SLOTS = [
 POPULATIONS.utility = UTILITY_SLOTS.map(s => ({ cls: UtilityAgent, name: s.name, opts: s }));
 
 function buildAgents(populationKey, overrides = {}) {
-  const spec = POPULATIONS[populationKey] || POPULATIONS.inexperienced;
+  const spec = POPULATIONS[populationKey] || POPULATIONS.utility;
   const out = {};
   spec.forEach((s, i) => {
     const id = i + 1;
@@ -908,45 +944,6 @@ function distributeRiskPrefs(total, pct) {
   return seq;
 }
 
-/*
- * distributeExperienceLevels — mirror of distributeRiskPrefs for the
- * E-agent slot. Turns a {naive, once, veteran} percentage spec into a
- * length-`total` sequence of per-agent experience labels using the same
- * largest-remainder rounding scheme. Returned order is veteran → once →
- * naive so a high veteran share lands in the earliest E slots, putting
- * the bubble-suppressing agents at the front of the action timeline.
- */
-function distributeExperienceLevels(total, pct) {
-  if (total <= 0) return [];
-  const p = pct || { naive: 33, once: 34, veteran: 33 };
-  const sum = (p.naive || 0) + (p.once || 0) + (p.veteran || 0);
-  const norm = sum > 0 ? p : { naive: 33, once: 34, veteran: 33 };
-  const normSum = sum > 0 ? sum : 100;
-  const raw = {
-    naive:    total * (norm.naive    || 0) / normSum,
-    once:     total * (norm.once     || 0) / normSum,
-    veteran:  total * (norm.veteran  || 0) / normSum,
-  };
-  const base = {
-    naive:    Math.floor(raw.naive),
-    once:     Math.floor(raw.once),
-    veteran:  Math.floor(raw.veteran),
-  };
-  let assigned = base.naive + base.once + base.veteran;
-  const fracs = [
-    { k: 'naive',   f: raw.naive   - base.naive   },
-    { k: 'once',    f: raw.once    - base.once    },
-    { k: 'veteran', f: raw.veteran - base.veteran },
-  ].sort((a, b) => b.f - a.f);
-  let i = 0;
-  while (assigned < total) { base[fracs[i % 3].k]++; assigned++; i++; }
-  const seq = [];
-  for (let j = 0; j < base.veteran; j++) seq.push('veteran');
-  for (let j = 0; j < base.once;    j++) seq.push('once');
-  for (let j = 0; j < base.naive;   j++) seq.push('naive');
-  return seq;
-}
-
 /* =====================================================================
    Sampling stage — names + endowments
 
@@ -1001,27 +998,22 @@ function sampleEndowment(rng, dist) {
 }
 
 /**
- * sampleAgents — draw a list of per-agent specs from a population mix.
- * Each spec has:
- *   id, slot, type, typeLabel  — identity and strategy code
- *   name                       — random personal name
- *   cash, inventory            — sampled endowment (editable later)
- *   riskPref/biasMode/...      — utility-agent strategy fields (U only)
- *
- * options.riskMix       {loving, neutral, averse} — drives U-agent riskPref
- * options.experienceMix  {naive, once, veteran}    — drives E-agent experienceLevel
- * options.endowment     override ENDOWMENT_DEFAULT ({cashMin,cashMax,invMin,invMax})
+ * sampleAgents — draw a list of per-agent specs for the relaxed
+ * paradigms (Lopez-Lira and AIPE). DLM strict mode does NOT use this
+ * function — it uses dlmSampleAgents below, which pins N=6 and the
+ * two DLM endowment types and never instantiates a non-DLMTrader
+ * agent. This function deliberately drops the legacy E branch: no
+ * agent in any paradigm is ever instantiated with pre-assigned
+ * experience.
  */
 function sampleAgents(mix, rng, options = {}) {
   const dist = options.endowment || ENDOWMENT_DEFAULT;
   const uCount = mix.U || 0;
-  const eCount = mix.E || 0;
   const total =
-    (mix.F || 0) + (mix.T || 0) + (mix.R || 0) + eCount + uCount;
+    (mix.F || 0) + (mix.T || 0) + (mix.R || 0) + uCount;
 
   const names   = pickNames(total, rng);
   const riskSeq = distributeRiskPrefs(uCount, options.riskMix);
-  const expSeq  = distributeExperienceLevels(eCount, options.experienceMix);
   const specs = [];
   let id = 1;
   let nameIdx = 0;
@@ -1042,11 +1034,6 @@ function sampleAgents(mix, rng, options = {}) {
   for (let i = 0; i < (mix.F || 0); i++) pushBasic('fundamentalist', 'F', i + 1);
   for (let i = 0; i < (mix.T || 0); i++) pushBasic('trend',         'T', i + 1);
   for (let i = 0; i < (mix.R || 0); i++) pushBasic('random',        'R', i + 1);
-  for (let i = 0; i < eCount; i++) {
-    pushBasic('experienced', 'E', i + 1, {
-      experienceLevel: expSeq.length ? expSeq[i] : 'veteran',
-    });
-  }
 
   for (let i = 0; i < uCount; i++) {
     const slot  = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
@@ -1067,6 +1054,88 @@ function sampleAgents(mix, rng, options = {}) {
     id++;
   }
   return specs;
+}
+
+/* =====================================================================
+   dlmSampleAgents — strict DLM 2005 sampling stage.
+
+   Pins exactly six DLMTrader specs and assigns the two discrete
+   endowment types from DLM 2005 §I (p. 1733): "before a market
+   opened, half of the traders each started with a cash endowment
+   of 200 cents and six assets, while each of the other traders
+   started with 600 cents and two assets". Buy-and-hold value is
+   identical at 1000¢ for both types, exactly as in the paper. The
+   half-and-half split is enforced by construction; the random
+   shuffle controls *which* slot draws which type, not the count.
+   ===================================================================== */
+
+const DLM_ENDOWMENT_TYPES = [
+  { cash: 200, inventory: 6 },
+  { cash: 600, inventory: 2 },
+];
+const DLM_N = 6;
+
+function dlmSampleAgents(rng) {
+  const names = pickNames(DLM_N, rng);
+  // Assign three slots type A (200,6) and three slots type B (600,2)
+  // by Fisher-Yates shuffling a deterministic [A,A,A,B,B,B] sequence.
+  const types = [0, 0, 0, 1, 1, 1];
+  for (let i = types.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [types[i], types[j]] = [types[j], types[i]];
+  }
+  const specs = [];
+  for (let i = 0; i < DLM_N; i++) {
+    const e = DLM_ENDOWMENT_TYPES[types[i]];
+    specs.push({
+      id:        i + 1,
+      slot:      i + 1,
+      type:      'dlm',
+      typeLabel: `D${i + 1}`,
+      name:      names[i],
+      cash:      e.cash,
+      inventory: e.inventory,
+      // Both endowment types and the DLMTrader behaviour itself are
+      // round-end-reset to these values; recorded here so the engine
+      // can rewind cash + inventory between rounds.
+      endowmentType: types[i] === 0 ? 'A' : 'B',
+    });
+  }
+  return specs;
+}
+
+/**
+ * dlmSampleReplacementAgent — draw a single fresh DLMTrader spec for
+ * the round-4 replacement step. Used by Engine when one of the two
+ * treatments (T2 or T4) swaps experienced subjects out of the round-4
+ * market and replaces them with the same number of fresh, never-before-
+ * played subjects. Endowment is drawn from the same two-type pool.
+ *
+ * The `excludeNames` set lets the engine pass in names already used
+ * by surviving agents so a fresh draw never collides with an existing
+ * trader's display name (cosmetic only — keys are always the id).
+ */
+function dlmSampleReplacementAgent(id, rng, excludeNames = null) {
+  const pool = AGENT_NAMES.filter(n => !excludeNames || !excludeNames.has(n));
+  // Fisher-Yates on the remaining pool to pick a unique name.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const name = pool[0] || pickNames(1, rng)[0];
+  const t = rng() < 0.5 ? 0 : 1;
+  const e = DLM_ENDOWMENT_TYPES[t];
+  return {
+    id,
+    slot:          id,
+    type:          'dlm',
+    typeLabel:     `D${id}*`,
+    name,
+    cash:          e.cash,
+    inventory:     e.inventory,
+    endowmentType: t === 0 ? 'A' : 'B',
+    replacement:   true,
+  };
 }
 
 /**
@@ -1095,10 +1164,9 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
         agent = new TrendFollower(s.id, label, cash, inv);  break;
       case 'random':
         agent = new RandomAgent(s.id, label, cash, inv);    break;
-      case 'experienced':
-        agent = new ExperiencedAgent(s.id, label, cash, inv, {
-          experienceLevel: s.experienceLevel,
-        });
+      case 'dlm':
+        agent = new DLMTrader(s.id, label, cash, inv);
+        if (s.replacement) agent.replacementFresh = true;
         break;
       case 'utility': {
         const opts = {
@@ -1121,6 +1189,10 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
         continue;
     }
     agent.typeLabel = s.typeLabel;
+    // Carry DLM endowment-type (A/B) from spec onto the agent so the
+    // UI card can display it and the snapshotter can expose it to
+    // replay views without reaching back into agentSpecs.
+    if (s.endowmentType) agent.endowmentType = s.endowmentType;
     out[s.id] = agent;
   }
   return out;

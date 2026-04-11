@@ -3,13 +3,17 @@
 \label{sec:agents}
 
 This section gives the exact decision rule for each of the five
-agent types in the simulator. All rules read the top of the book
+agent classes in the simulator. All rules read the top of the book
 (best bid $b_t$ and best ask $a_t$), the current fundamental
 value~$\FV_t$, and a seeded pseudo-random draw $r\sim
 \text{Uniform}(0,1)$; the formulas below are the literal rules
 implemented in the source code, with constants exposed to the
 reader so that any experiment can be reconstructed from this page
-alone.
+alone. The \emph{DLM trader} class (\S\ref{sec:dlm-agent}) has two
+internal decision branches selected by the endogenous
+\texttt{roundsPlayed} counter described in
+\S\ref{sec:endogenous-experience}; every other class has a single
+branch.
 
 \subsection{Fundamentalist (F)}
 
@@ -72,45 +76,58 @@ in every run so that the book never goes fully empty. One slot of
 this type is part of the fixed background and is invisible to the
 population-composition sliders.
 
-\subsection{Experienced (E)}
+\subsection{DLM trader (D): endogenous experience}
+\label{sec:dlm-agent}
 
-The experienced agent carries the DLM~2005 horizon discount. Let
-$h=T-t+1$ be the number of periods remaining. Each experienced
-agent carries an experience profile $p\in\{\text{naive},
-\text{once-played},\text{veteran}\}$ with a corresponding pair
-$(\varphi_0^{(p)},\varphi_1^{(p)})$ of a discount floor and a
-discount slope, and its belief is
+The DLM trader is the \emph{only} agent class instantiated in
+strict-DLM mode and it implements the paper's endogenous-experience
+design exactly: there are no ``naive'', ``once-played'', or
+``veteran'' types to pick between at sampling time; there is one
+class whose \texttt{decide} method reads
+$\texttt{roundsPlayed}\in\{0,1,2,\ldots\}$ and branches.
+
+\paragraph{Inexperienced branch ($\texttt{roundsPlayed}=0$).}
+A newly-instantiated DLM trader has zero information about the
+fundamental horizon and no liquidation urge in the terminal
+periods of a round. The behaviour is deliberately bubble-prone:
+trend-chasing on the most recent trade price with zero-intelligence
+noise layered on top. Let $p_t$ be the most recent trade price
+(with $\FV_1$ used when the book is empty). On each tick the agent
+flips between a unit bid and a unit ask with equal probability; the
+bid is drawn from $\text{Uniform}[0.9\,p_t,\,1.15\,p_t]$ and the
+ask from $\text{Uniform}[0.9\,p_t,\,1.2\,p_t]$, clipped by cash and
+inventory respectively. It never refuses to overpay, never
+liquidates late in a round, and in particular never consults~$\FV_t$.
+
+\paragraph{Experienced branch ($\texttt{roundsPlayed}\ge 1$).}
+Once the engine has incremented the counter (which happens
+exactly at round boundaries in the session loop), the same
+instance switches to an FV-anchored rule. Let $h = T - t + 1$ be
+the number of periods remaining, and let
+$\varphi(h) = \varphi_0 + (h/T)\cdot\varphi_1$ be the horizon
+discount with $\varphi_0 = 0.92$ and $\varphi_1 = 0.06$ (the
+veteran calibration in DLM's terminology). The belief is
 \begin{equation}
-\beta_t^{(p)} \;=\; \FV_t\cdot\Bigl(\varphi_0^{(p)}+\frac{h}{T}\cdot\varphi_1^{(p)}\Bigr).
-\label{eq:exp_belief}
+\beta_t \;=\; \FV_t \cdot \varphi(h).
+\label{eq:dlm_belief}
 \end{equation}
-The three profiles are calibrated as in Table~\ref{tab:exp}.
+When $h \le 3$ the agent liquidates any remaining inventory into
+the best bid; when $h \le 4$ it refuses to cross any ask priced
+above $0.9\,\beta_t$. Outside the terminal region it behaves like
+a risk-tight fundamentalist: it crosses the ask with a unit bid
+at $a_t$ when $a_t < 0.92\,\beta_t$ and crosses the bid with a
+unit ask at $b_t$ when $b_t > 1.05\,\beta_t$, otherwise posting a
+passive quote near~$\beta_t$.
 
-\begin{table}[h]
-\centering
-\small
-\caption{Experienced profiles}
-\label{tab:exp}
-\begin{tabular}{l c c c c}
-\toprule
-Profile & $\varphi_0$ & $\varphi_1$ & liquidate $h\le$ & avoid overpay $h\le$ \\
-\midrule
-Naive        & 1.00 & 0.05 & 1 & 2 \\
-Once-played  & 0.96 & 0.04 & 2 & 3 \\
-Veteran      & 0.92 & 0.06 & 3 & 4 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-When $h$ falls below the profile's liquidation threshold, the agent
-dumps any remaining inventory into the best bid; when $h$ falls
-below the overpay threshold, it refuses any buy above
-$\beta_t^{(p)}$. Outside the terminal region it behaves like a
-risk-tight fundamentalist, buying below $\beta_t^{(p)}$ with a
-discount multiplier (\emph{e.g.\/}~0.92 for veterans) and selling
-above $\beta_t^{(p)}$ with a premium multiplier (\emph{e.g.\/}~1.05).
-The profile mix is user~adjustable, which allows the Experienced
-population to be dialled between the DLM~2005 subject groups.
+\paragraph{Instantiation.} Every DLM trader is born with
+$\texttt{roundsPlayed}=0$. There is no pre-assignment knob, no
+sampling distribution over experience, no ``round at which this
+agent became experienced'' field. The only way an agent ever
+reaches the experienced branch is by surviving a round-end
+transition in a live session, which is why the round-4 replacement
+step (Section~\ref{sec:round4}) works: the fresh traders spliced
+in at $r=4$ reset to the inexperienced branch while the survivors
+retain their branch flip from earlier in the session.
 
 \subsection{Utility (U)}
 

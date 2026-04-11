@@ -26,7 +26,7 @@ const UI = {
     fundamentalist: 'Fundamentalist',
     trend:          'Trend follower',
     random:         'Random (ZI)',
-    experienced:    'Experienced',
+    dlm:            'DLM trader',
     utility:        'Utility',
   },
   // Paper-symbol cross-reference for each utility-agent risk preference
@@ -50,7 +50,7 @@ const UI = {
     fundamentalist: 'inF',
     trend:          'inT',
     random:         'inR',
-    experienced:    'inE',
+    dlm:            'inE',
     utility:        'inU',
   },
 
@@ -177,6 +177,54 @@ const UI = {
     this.renderOwnershipChart(view, config);
     this.renderMetrics(view, config);
     this.renderTraces(view);
+    // DLM batch-results card (strict-DLM mode only). Reads from
+    // App.dlmConfig.batchResults and writes a compact summary table
+    // under the DLM replication psec. No-op when the panel is absent
+    // or there are no results yet.
+    this.renderDlmBatchResults();
+  },
+
+  /**
+   * Render the 10-session batch summary produced by runDlmBatch into
+   * the #dlm-batch-results div. Reads the results off App directly
+   * (not the view object) because the batch data is not per-tick and
+   * does not participate in replay slicing.
+   */
+  renderDlmBatchResults() {
+    const host = document.getElementById('dlm-batch-results');
+    if (!host) return;
+    const r = window.App && window.App.dlmConfig && window.App.dlmConfig.batchResults;
+    if (!r) { host.innerHTML = ''; return; }
+    const { sessions, aggregate } = r;
+    const rowsHtml = sessions.map(s => {
+      const rep = s.replacement && s.replacement.length
+        ? s.replacement.map(x => `#${x.id}`).join(' ')
+        : '—';
+      return `<tr>
+        <td>T${s.treatment}</td>
+        <td>${s.session}</td>
+        <td>${(s.meanDev * 100).toFixed(1)}%</td>
+        <td>${s.turnover.toFixed(2)}</td>
+        <td>${s.trades}</td>
+        <td>${(s.payoffTotal / 6).toFixed(0)}¢</td>
+        <td class="repl">${rep}</td>
+      </tr>`;
+    }).join('');
+    const agg = (t) => {
+      if (!t) return '—';
+      return `<strong>μ&nbsp;dev</strong> ${(t.meanDev * 100).toFixed(1)}% · <strong>μ&nbsp;turnover</strong> ${t.turnover.toFixed(2)} · <strong>μ&nbsp;payoff</strong> ${t.payoff.toFixed(0)}¢`;
+    };
+    host.innerHTML = `
+      <div class="dlm-batch-agg">
+        <div class="dlm-batch-agg-row"><span class="treat">T2</span> ${agg(aggregate.t2)}</div>
+        <div class="dlm-batch-agg-row"><span class="treat">T4</span> ${agg(aggregate.t4)}</div>
+      </div>
+      <table class="dlm-batch-table">
+        <thead>
+          <tr><th>Tx</th><th>#</th><th>dev</th><th>turn</th><th>trades</th><th>payoff</th><th>R4 swap</th></tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
   },
 
   /* -------- Stats row -------- */
@@ -266,6 +314,26 @@ const UI = {
       const subtitleSym = (subtitleKey && window.Sym) ? window.Sym[subtitleKey] : '';
       const sym = window.Sym || {};
       const displayName = a.name || ('A' + a.id);
+      // DLM mode badges: endowment type, endogenous experience state,
+      // and a marker for fresh traders spliced in by the round-4
+      // replacement step. All three fields are no-ops for non-DLM
+      // agents (they read undefined / 0 / false).
+      const isDLM = a.type === 'dlm';
+      const rp    = a.roundsPlayed | 0;
+      const expBadge = isDLM
+        ? (rp === 0
+            ? '<span class="dlm-badge dlm-badge-novice">inexperienced</span>'
+            : `<span class="dlm-badge dlm-badge-vet">experienced · ${rp}R</span>`)
+        : '';
+      const endowBadge = isDLM && a.endowmentType
+        ? `<span class="dlm-badge dlm-badge-endow">type&nbsp;${a.endowmentType}</span>`
+        : '';
+      const freshBadge = isDLM && a.replacementFresh
+        ? '<span class="dlm-badge dlm-badge-fresh">R4 replacement</span>'
+        : '';
+      const dlmBadgeRow = isDLM
+        ? `<div class="dlm-badges">${endowBadge}${expBadge}${freshBadge}</div>`
+        : '';
       // Live-updating numeric values plus the agent's exact welfare
       // functional. The utility row is pinned to the per-agent
       // riskPref via _riskFormula, so every U-agent card carries the
@@ -301,6 +369,7 @@ const UI = {
               <span class="sym action-sym">${sym.action || ''}</span>
             </div>
           </div>
+          ${dlmBadgeRow}
           <div class="metrics">
             <span class="metric">Cash <span class="sym">${sym.cash || ''}</span></span>    <span class="metric-val">${cashCell}</span>
             <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>

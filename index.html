@@ -51,7 +51,7 @@
     Agent toggle: a rounded bg-2 rail with an elevated active button.
   -->
   <div class="paradigm-switch" role="group" aria-label="Research paradigm">
-    <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — human-subject bubble experiment. Fills the population with Experienced agents.">DLM 2005</button>
+    <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — strict replication. Pins N = 6, draws the two discrete endowment types (200¢ + 6 shares vs 600¢ + 2 shares), runs 4 consecutive rounds, and applies the round-4 replacement treatment (T2 or T4). Experience is endogenous — no agent is pre-labeled as experienced; a trader only becomes experienced by playing prior rounds in the session.">DLM 2005</button>
     <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — AI-agent expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
     <button class="paradigm-btn" data-paradigm="wang" title="AI-Agent Prior Elicitation (AIPE) — merged DLM + Lopez-Lira experiment that seats Experienced and Utility agents in the same market and elicits each Utility agent's starting psychological valuation from an AI agent at run start. Research question: does the asset ultimately end up in the hands of the agent with the highest elicited valuation?">AIPE</button>
   </div>
@@ -88,20 +88,49 @@
       <details class="psec" open>
         <summary>Trade settings <span class="muted" id="mix-total">(total 10)</span></summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = N_fixed + N(E) + N(U), where N_fixed = N(F) + N(T) + N(R) = 4 is the pinned background of Fundamentalist, Trend follower, and Random (ZI) agents (see Hidden Constants). Moving this slider rescales only the user-controlled E and U slots: N(X)ⁿᵉʷ = ⌊N(X) · (Nⁿᵉʷ − N_fixed) / (Nᵒˡᵈ − N_fixed)⌋ for X ∈ {E, U}, with largest-remainder rounding so the integer counts sum exactly. From an all-zero E/U state, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. The slider cannot drop below N_fixed = 4.">
+          <div class="param-row" data-tip="N — total population size. In Lopez-Lira and AIPE mode N = N_fixed + N(U) where N_fixed = 4 is the pinned F/T/R background (see Hidden Constants); moving the slider rescales the U slot and re-samples on release. In strict-DLM mode the slider is pinned at 6 and disabled — DLM 2005 §I specifies exactly six traders per session.">
             <div class="param-head">
               <label for="p-total">Number of Agent <span data-sym="agentI"></span>(N)</label>
               <span class="pval" id="v-total">10</span>
             </div>
             <input type="range" id="p-total" min="4" max="30" step="1" value="10">
           </div>
-          <div class="param-row" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is DLM 2005's central finding. Constrained to E ≤ N − N_fixed; Utility (U) is derived as N − E − N_fixed and shown in the Trade settings summary.">
+        </div>
+      </details>
+
+      <!-- ============================================================
+           DLM 2005 strict-replication controls. Only visible when the
+           paradigm is DLM (gated by the .dlm-mode body class applied
+           in main.js). Experience is endogenous — there is no slider
+           that pre-labels any subject as experienced. The only knob is
+           the round-4 replacement treatment (T2 or T4) and the
+           multi-session batch runner that reproduces DLM's 10-session
+           design (5 T2 + 5 T4).
+           ============================================================ -->
+      <details class="psec dlm-only" open>
+        <summary>DLM 2005 replication</summary>
+        <div class="psec-body">
+          <div class="param-row" data-tip="Round-4 replacement treatment. DLM 2005 §I, p. 1733: after three rounds played by the same six subjects, the experimenter randomly selects either 2 or 4 of them, removes them, and replaces them with inexperienced subjects for the fourth round. T2 leaves four experienced traders + two inexperienced replacements; T4 leaves two experienced + four inexperienced. Experience is endogenous in this simulator — survivors become experienced only by playing rounds 1–3.">
             <div class="param-head">
-              <label for="p-mix-E">Experienced <span data-sym="nE"></span></label>
-              <span class="pval" id="v-mix-E">0</span>
+              <label>Treatment</label>
+              <span class="pval">round 4</span>
             </div>
-            <input type="range" id="p-mix-E" min="0" max="26" step="1" value="0">
+            <div class="dlm-treatment-row">
+              <label class="dlm-treatment-opt">
+                <input type="radio" name="dlm-treatment" value="2" checked>
+                <span>T2 — replace 2 of 6</span>
+              </label>
+              <label class="dlm-treatment-opt">
+                <input type="radio" name="dlm-treatment" value="4">
+                <span>T4 — replace 4 of 6</span>
+              </label>
+            </div>
           </div>
+          <div class="param-row" data-tip="Run the DLM 2005 10-session batch (5 sessions × T2, 5 sessions × T4) synchronously in the background. Each session is a fresh seed + fresh sample + fresh engine run to completion with no rendering. When the batch finishes, the Batch results card below fills with per-session payoffs, mean deviation from FV, turnover, and the round-4 replacement record.">
+            <button type="button" class="btn-dlm-batch" id="btn-dlm-batch">Run 10-session batch</button>
+            <div class="dlm-batch-status" id="dlm-batch-status" aria-live="polite"></div>
+          </div>
+          <div id="dlm-batch-results" class="dlm-batch-results"></div>
         </div>
       </details>
 
@@ -173,39 +202,6 @@
         </div>
       </details>
 
-      <details class="psec exp-only" open>
-        <summary>Experience preferences</summary>
-        <div class="psec-body">
-          <div class="param-row">
-            <div class="comp-bar" id="comp-bar-exp">
-              <div class="seg seg-naive"><span>0%</span></div>
-              <div class="seg seg-once"><span>0%</span></div>
-              <div class="seg seg-veteran"><span>100%</span></div>
-            </div>
-          </div>
-          <div class="param-row" data-tip="Fraction of Experienced agents instantiated as round-1 inexperienced first-timers. Belief is essentially undiscounted (≈100% of FV regardless of horizon), they only liquidate in the very last period, and they happily buy above belief — operationalizing the bubble-prone subjects from DLM 2005's round-1 inexperienced markets. A high naive share is the bubble fuel inside the E slot. Linked sliders always sum to 100%.">
-            <div class="param-head">
-              <label for="p-exp-naive">Naive (round 1)</label>
-              <span class="pval" id="v-exp-naive">0%</span>
-            </div>
-            <input type="range" id="p-exp-naive" min="0" max="100" step="1" value="0">
-          </div>
-          <div class="param-row" data-tip="Fraction of Experienced agents instantiated as the once-played intermediate. Partial horizon discount, moderate late-period liquidation, willing to overpay slightly — a smooth interpolation between the naive first-timer and the DLM round-4 veteran. Useful for sweeping the experience dimension without flipping straight from one extreme to the other.">
-            <div class="param-head">
-              <label for="p-exp-once">Once-played</label>
-              <span class="pval" id="v-exp-once">0%</span>
-            </div>
-            <input type="range" id="p-exp-once" min="0" max="100" step="1" value="0">
-          </div>
-          <div class="param-row" data-tip="Fraction of Experienced agents instantiated as the DLM 2005 round-4 fully-experienced trader. Discounts belief by horizon fraction, refuses to overpay in the last four periods, dumps inventory in the final three. This is the profile that operationalizes DLM's central finding: a high veteran share suppresses bubbles entirely.">
-            <div class="param-head">
-              <label for="p-exp-veteran">Veteran (3+ rounds)</label>
-              <span class="pval" id="v-exp-veteran">100%</span>
-            </div>
-            <input type="range" id="p-exp-veteran" min="0" max="100" step="1" value="100">
-          </div>
-        </div>
-      </details>
 
       <!-- ============================================================
            Paper constants — fixed-by-design values from Dufwenberg,
@@ -219,6 +215,11 @@
         <summary>Paper constants <span class="const-cite">Dufwenberg, Lindqvist &amp; Moore (2005), §I. Design</span></summary>
         <div class="psec-body">
           <dl class="const-list">
+            <div class="const-item">
+              <dt>N <span class="const-val">= 6</span></dt>
+              <dd class="const-label">Subjects per session</dd>
+              <dd class="const-note">&ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
             <div class="const-item">
               <dt>rounds / session <span class="const-val">= 4</span></dt>
               <dd class="const-label">Consecutive markets played by the same subjects</dd>
@@ -243,6 +244,31 @@
               <dt><span data-sym="fvDef"></span></dt>
               <dd class="const-label">Fundamental value, by backward induction</dd>
               <dd class="const-note">&ldquo;With k periods remaining, the fundamental value is k × 10 cents.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>endowment A <span class="const-val">200¢, 6 shares</span></dt>
+              <dd class="const-label">One of two discrete starting bundles</dd>
+              <dd class="const-note">&ldquo;Before a market opened, half of the traders started with 200 cents and six assets, while each of the other traders started with 600 cents and two assets.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>endowment B <span class="const-val">600¢, 2 shares</span></dt>
+              <dd class="const-label">The other discrete starting bundle</dd>
+              <dd class="const-note">Both bundles have an identical buy-and-hold value of 1,000¢ under the risk-neutral fundamental <span data-sym="fvDef"></span>; the two types differ only in inventory/cash mix, so the split is distributional, not value-creating.<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>round-4 replacement <span class="const-val">T2 or T4</span></dt>
+              <dd class="const-label">Two-treatment design</dd>
+              <dd class="const-note">&ldquo;In the fourth round, depending on treatment, two or four experienced subjects who had participated in the first three rounds were randomly selected, removed, and replaced by the same number of inexperienced subjects.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>sessions <span class="const-val">= 10</span></dt>
+              <dd class="const-label">Five per treatment (T2 and T4)</dd>
+              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design by sequencing 5 × T2 then 5 × T4 through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>payoff <span class="const-val">Σ final cash + 500¢</span></dt>
+              <dd class="const-label">Session payoff per subject</dd>
+              <dd class="const-note">&ldquo;Subjects were privately paid, in cash, the amount of their final cash holdings from each round. They were also paid a show-up fee of $5.&rdquo; All four rounds count; shares held at the end of a round are worth nothing (the asset&rsquo;s life span has ended).<span class="const-src">§I, p. 1735</span></dd>
             </div>
           </dl>
         </div>
