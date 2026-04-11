@@ -37,11 +37,22 @@ const App = {
     tickInterval:   340,
   },
 
-  // Population composition — driven by the Population section of the
-  // Experiment settings panel. The sampling stage in agents.js turns
-  // this into per-agent specs (names + endowments). Default to the
-  // Utility preset so the extended panels are visible on first load.
-  mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
+  // Population composition — feeds the sampling stage in agents.js,
+  // which turns each per-type count into a per-agent spec. Only the E
+  // and U slots are exposed as Population sliders; F/T/R are pinned
+  // by FIXED_BACKGROUND below to a "common SSW market" mix and are
+  // surfaced read-only in the Hidden Constants panel. Defaults pair
+  // the fixed background with the original Utility preset so the
+  // extended panels light up on first load.
+  mix: { F: 2, T: 1, R: 1, E: 0, U: 6 },
+
+  // Pinned counts for the F/T/R background. They are not adjustable
+  // from the UI: 2 Fundamentalists supply a rational anchor, 1 Trend
+  // follower carries momentum, 1 Random ZI provides liquidity/noise.
+  // Together they reproduce the non-experienced portion of the Mixed
+  // preset documented in CLAUDE.md and act as a stable scaffold for
+  // every run regardless of the user's E/U choices.
+  FIXED_BACKGROUND: { F: 2, T: 1, R: 1 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which
@@ -192,10 +203,8 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
-    // Population mix
-    'p-mix-F':       { target: 'mix.F',                         out: 'v-mix-F',       fmt: v => String(v | 0), int: true },
-    'p-mix-T':       { target: 'mix.T',                         out: 'v-mix-T',       fmt: v => String(v | 0), int: true },
-    'p-mix-R':       { target: 'mix.R',                         out: 'v-mix-R',       fmt: v => String(v | 0), int: true },
+    // Population mix — only the user-controlled slots. F/T/R are
+    // pinned by FIXED_BACKGROUND and have no sliders.
     'p-mix-E':       { target: 'mix.E',                         out: 'v-mix-E',       fmt: v => String(v | 0), int: true },
     'p-mix-U':       { target: 'mix.U',                         out: 'v-mix-U',       fmt: v => String(v | 0), int: true },
     // Risk preferences — three linked shares summing to 100
@@ -389,38 +398,46 @@ const App = {
   },
 
   /**
-   * Proportionally rescale the mix to a new total. Each type's share
-   * of the new total is its old share multiplied by the new size, with
-   * largest-remainder rounding so the integer counts sum exactly to
-   * newTotal. If every slot is currently zero, the new agents land in
-   * U so the extended panels become reachable from a blank slate.
+   * Rescale the mix to a new total population N. The F/T/R background
+   * is pinned by FIXED_BACKGROUND so only the E and U slots absorb the
+   * change; the user-controlled portion adjTarget = N − fixedSum is
+   * largest-remainder-rounded across E and U in proportion to their
+   * previous counts. If both adjustable slots are currently zero the
+   * new agents land in U so the extended panels light up from a cold
+   * start. N is clamped to ≥ fixedSum since the background cannot be
+   * shrunk away from the UI.
    */
   _rescaleMixToTotal(newTotal) {
-    const keys = ['F', 'T', 'R', 'E', 'U'];
-    const m = this.mix;
-    const oldTotal = keys.reduce((s, k) => s + (m[k] | 0), 0);
+    const FIXED    = this.FIXED_BACKGROUND;
+    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
+    const adjKeys  = ['E', 'U'];
+    const m        = this.mix;
+    const oldAdj   = adjKeys.reduce((s, k) => s + (m[k] | 0), 0);
 
-    if (newTotal <= 0) {
-      this.mix = { F: 0, T: 0, R: 0, E: 0, U: 0 };
+    newTotal = Math.max(newTotal | 0, fixedSum);
+    const adjTarget = newTotal - fixedSum;
+
+    if (adjTarget <= 0) {
+      this.mix = { ...FIXED, E: 0, U: 0 };
       return;
     }
-    if (oldTotal === 0) {
-      this.mix = { F: 0, T: 0, R: 0, E: 0, U: newTotal };
+    if (oldAdj === 0) {
+      this.mix = { ...FIXED, E: 0, U: adjTarget };
       return;
     }
 
-    const scale = newTotal / oldTotal;
-    const next  = { F: 0, T: 0, R: 0, E: 0, U: 0 };
+    const scale = adjTarget / oldAdj;
+    const next  = { ...FIXED, E: 0, U: 0 };
     const fracs = [];
     let assigned = 0;
-    for (const k of keys) {
+    for (const k of adjKeys) {
       const raw  = m[k] * scale;
       const base = Math.floor(raw);
       next[k]    = base;
       assigned  += base;
       fracs.push({ k, frac: raw - base });
     }
-    let remainder = newTotal - assigned;
+    let remainder = adjTarget - assigned;
     fracs.sort((a, b) => b.frac - a.frac);
     let idx = 0;
     while (remainder > 0) {

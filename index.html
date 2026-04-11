@@ -44,41 +44,20 @@
       <details class="psec" open>
         <summary>Trade settings</summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = Σ N(X) for X ∈ {F, T, R, E, U}, where N(F), N(T), N(R), N(E), N(U) are the counts of Fundamentalist, Trend follower, Random ZI, Experienced, and Utility EU-maximizer agents respectively. Moving this slider rescales each N(X) proportionally to satisfy the new N: N(X)ⁿᵉʷ = ⌊N(X) · Nⁿᵉʷ / Nᵒˡᵈ⌋, with the residual Nⁿᵉʷ − Σ ⌊·⌋ distributed via largest-remainder rounding so the integer counts sum to N exactly. From an all-zero mix, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. Editing any individual N(X) slider recomputes N automatically as the new sum.">
+          <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = N_fixed + N(E) + N(U), where N_fixed = N(F) + N(T) + N(R) = 4 is the pinned background of Fundamentalist, Trend follower, and Random (ZI) agents (see Hidden Constants). Moving this slider rescales only the user-controlled E and U slots: N(X)ⁿᵉʷ = ⌊N(X) · (Nⁿᵉʷ − N_fixed) / (Nᵒˡᵈ − N_fixed)⌋ for X ∈ {E, U}, with largest-remainder rounding so the integer counts sum exactly. From an all-zero E/U state, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. The slider cannot drop below N_fixed = 4.">
             <div class="param-head">
               <label for="p-total">Total <span data-sym="agentI"></span> (N)</label>
-              <span class="pval" id="v-total">6</span>
+              <span class="pval" id="v-total">10</span>
             </div>
-            <input type="range" id="p-total" min="0" max="30" step="1" value="6">
+            <input type="range" id="p-total" min="4" max="30" step="1" value="10">
           </div>
         </div>
       </details>
 
       <details class="psec" open>
-        <summary>Population <span class="muted" id="mix-total">(total 6)</span></summary>
+        <summary>Population <span class="muted" id="mix-total">(total 10)</span></summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="Trades around the theoretical fundamental value. Buys when the ask is more than 2% below FV, sells when the bid is more than 2% above FV, otherwise posts passive quotes near FV. These are the rational anchors — more F agents means stronger mean-reversion and weaker bubbles.">
-            <div class="param-head">
-              <label for="p-mix-F">Fundamentalist <span data-sym="nF"></span></label>
-              <span class="pval" id="v-mix-F">0</span>
-            </div>
-            <input type="range" id="p-mix-F" min="0" max="30" step="1" value="0">
-          </div>
-          <div class="param-row" data-tip="Detects momentum from the last 6 prices. Rising slope → aggressive bid above the recent print; falling slope → aggressive ask below it. When cash is exhausted and inventory has accumulated, it dumps. Positive-feedback loops from T agents are what inflate bubbles in the SSW design.">
-            <div class="param-head">
-              <label for="p-mix-T">Trend follower <span data-sym="nT"></span></label>
-              <span class="pval" id="v-mix-T">0</span>
-            </div>
-            <input type="range" id="p-mix-T" min="0" max="30" step="1" value="0">
-          </div>
-          <div class="param-row" data-tip="Gode–Sunder style zero-intelligence trader. Each tick flips a coin: bid drawn uniformly from [0.7·FV, 1.1·FV] or ask from [0.9·FV, 1.3·FV]. Provides noise and liquidity pinned to fundamentals — it does not reinforce bubbles the way trend followers do.">
-            <div class="param-head">
-              <label for="p-mix-R">Random (ZI) <span data-sym="nR"></span></label>
-              <span class="pval" id="v-mix-R">0</span>
-            </div>
-            <input type="range" id="p-mix-R" min="0" max="30" step="1" value="0">
-          </div>
-          <div class="param-row" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is the paper's central finding.">
+          <div class="param-row" data-tip="Knows the asset decays to zero. Discounts belief by a horizon fraction, refuses to buy at inflated prices in late periods, and aggressively liquidates in the final three periods. When experienced agents dominate the population, bubbles rarely form — this is DLM 2005's central finding.">
             <div class="param-head">
               <label for="p-mix-E">Experienced <span data-sym="nE"></span></label>
               <span class="pval" id="v-mix-E">0</span>
@@ -201,6 +180,21 @@
         <dt>ticks / period <span class="const-val">= 18</span></dt>
         <dd class="const-label">Agent decision rounds inside one period</dd>
         <dd class="const-note">DLM 2005 runs a continuous 2-minute z-Tree double auction per period; this simulator discretizes that window into 18 decision rounds (≈ one agent turn every 6.7 real-time seconds) so the engine loop can step deterministically. 18 is dense enough to reproduce the bubble-crash pattern while keeping the replay buffer compact.<span class="const-src">engine.js — period-boundary trigger</span></dd>
+      </div>
+      <div class="const-item">
+        <dt>N(F) Fundamentalist <span class="const-val">= 2</span></dt>
+        <dd class="const-label">Pinned rational-anchor background</dd>
+        <dd class="const-note">Two Fundamentalist agents are seeded into every run as the rational mean-reversion anchor. They buy when the ask is more than 2% below FV, sell when the bid is more than 2% above FV, and otherwise post passive quotes near FV. Not proposed by DLM 2005, which only studies human subjects, but borrowed from the Smith–Suchanek–Williams (1988) lineage that DLM replicates so the market always has an FV-aware counterparty.<span class="const-src">main.js — App.FIXED_BACKGROUND.F</span></dd>
+      </div>
+      <div class="const-item">
+        <dt>N(T) Trend follower <span class="const-val">= 1</span></dt>
+        <dd class="const-label">Pinned momentum / positive-feedback trader</dd>
+        <dd class="const-note">A single Trend follower carries momentum into every run, detecting slope from the last 6 prints and bidding above (or asking below) the last trade accordingly. Not in DLM 2005; drawn from the De Long–Shleifer–Summers–Waldmann (1990) positive-feedback literature that explains why SSW-style bubbles inflate. Provides the bubble-inflation channel without dominating the population.<span class="const-src">main.js — App.FIXED_BACKGROUND.T</span></dd>
+      </div>
+      <div class="const-item">
+        <dt>N(R) Random (ZI) <span class="const-val">= 1</span></dt>
+        <dd class="const-label">Pinned zero-intelligence liquidity floor</dd>
+        <dd class="const-note">A single Gode–Sunder (1993) zero-intelligence trader is seeded into every run to provide a thin but persistent liquidity floor: each tick it flips a coin and posts a uniform bid in [0.7·FV, 1.1·FV] or a uniform ask in [0.9·FV, 1.3·FV]. Not in DLM 2005; pinned at one slot so that books never go fully empty even when E and U agents abstain.<span class="const-src">main.js — App.FIXED_BACKGROUND.R</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>naive prior weight <span class="const-val">= 0.60</span></dt>
