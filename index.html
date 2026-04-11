@@ -42,7 +42,7 @@
     <div class="params-body">
 
       <details class="psec" open>
-        <summary>Population <span class="muted" id="mix-total">(total 6)</span></summary>
+        <summary>Trade settings</summary>
         <div class="psec-body">
           <div class="param-row" data-tip="N — total population size in the simulation. Defined as N = Σ N(X) for X ∈ {F, T, R, E, U}, where N(F), N(T), N(R), N(E), N(U) are the counts of Fundamentalist, Trend follower, Random ZI, Experienced, and Utility EU-maximizer agents respectively. Moving this slider rescales each N(X) proportionally to satisfy the new N: N(X)ⁿᵉʷ = ⌊N(X) · Nⁿᵉʷ / Nᵒˡᵈ⌋, with the residual Nⁿᵉʷ − Σ ⌊·⌋ distributed via largest-remainder rounding so the integer counts sum to N exactly. From an all-zero mix, raising N fills Utility agents by default so the extended panels (messaging, deception, trust) become reachable. Editing any individual N(X) slider recomputes N automatically as the new sum.">
             <div class="param-head">
@@ -51,6 +51,12 @@
             </div>
             <input type="range" id="p-total" min="0" max="30" step="1" value="6">
           </div>
+        </div>
+      </details>
+
+      <details class="psec" open>
+        <summary>Population <span class="muted" id="mix-total">(total 6)</span></summary>
+        <div class="psec-body">
           <div class="param-row" data-tip="Trades around the theoretical fundamental value. Buys when the ask is more than 2% below FV, sells when the bid is more than 2% above FV, otherwise posts passive quotes near FV. These are the rational anchors — more F agents means stronger mean-reversion and weaker bubbles.">
             <div class="param-head">
               <label for="p-mix-F">Fundamentalist <span data-sym="nF"></span></label>
