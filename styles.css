@@ -1830,7 +1830,7 @@ body:not(.wang-mode) .wang-only { display: none !important; }
    between the SVG and the card stack. */
 .arch-defs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 .arch-def-card {
