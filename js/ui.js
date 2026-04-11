@@ -527,9 +527,20 @@ const UI = {
     }
     Viz.line(ctx, rect, fvPoints, { xMin, xMax, yMin, yMax, color: this.theme.amber, width: 2, dashed: true });
 
-    // Observed price line P_t (null-aware breaks).
-    const pricePoints = v.priceHistory.map(p => ({ x: p.tick, y: p.price }));
-    Viz.line(ctx, rect, pricePoints, { xMin, xMax, yMin, yMax, color: this.theme.accent, width: 2 });
+    // Observed price line P_t. The priceHistory entries at the very
+    // start of each round (and any other tick with no trade yet) carry
+    // `price = null`, so a straight Viz.line draw would leave visible
+    // gaps wherever the book has not yet produced a first trade — most
+    // noticeably at the round-end → round-start boundary. We underlay
+    // a faint dashed connector through only the non-null points so the
+    // gap is visually bridged without claiming a trade occurred there,
+    // then overlay the real series with null-aware breaks on top. The
+    // bridge is 1px and 33% alpha so it disappears under the 2px solid
+    // line wherever trades exist and only shows through in the gap.
+    const pricePoints  = v.priceHistory.map(p => ({ x: p.tick, y: p.price }));
+    const bridgePoints = pricePoints.filter(p => p.y != null);
+    Viz.line(ctx, rect, bridgePoints, { xMin, xMax, yMin, yMax, color: this.theme.accent + '55', width: 1, dashed: true });
+    Viz.line(ctx, rect, pricePoints,  { xMin, xMax, yMin, yMax, color: this.theme.accent,        width: 2 });
 
     // Individual trade prints — one dot per executed trade.
     ctx.save();
