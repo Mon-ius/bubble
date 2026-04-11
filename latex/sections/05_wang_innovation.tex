@@ -1,0 +1,154 @@
+%% 05_wang_innovation.tex
+\section{The Wang 2026 Innovation}
+\label{sec:innovation}
+
+\subsection{Overview}
+
+The Wang~2026 paradigm adds exactly one new moving part to the
+replicated model of Section~\ref{sec:agents}: a private subjective
+valuation~$\hat{V}_i$, drawn from a ChatGPT call, that replaces the
+utility agent's deterministic prior on the very first decision
+tick. Everything downstream of the first tick---belief blending,
+trust updates, utility maximisation, order matching, dividend
+payments, and all of the market-quality instruments---is identical
+to the pure Lopez-Lira run. The anchor is therefore a \emph{minimal}
+perturbation of the decision model: the smallest change in
+behaviour that still lets the population's psychology influence
+its opening bids.
+
+Two design choices make this minimal. First, the call is placed
+once, in parallel across all utility agents, at run start, and the
+result is consumed on the first decision tick and then cleared.
+Second, the call never asks the language model for an \emph{order};
+it asks only for a \emph{number}---a valuation per share in
+experimental cents---which is routed through the same prior slot
+used by equation~\eqref{eq:util_prior}. The agent's action is still
+chosen by~\eqref{eq:eu}, using a wealth argument that the language
+model never~sees. This construction isolates the psychological
+channel from the trading channel; it also keeps the downstream
+replay deterministic, because after the first tick no agent in
+Wang~2026 depends on external~randomness of any kind.
+
+\subsection{The anchor call}
+
+Let $A_U$ be the set of utility agents in the current population.
+For each $i\in A_U$ the simulator constructs a short prompt
+$\pi_i$ that encodes three facts: the paper constants $(T,\E[d])$,
+the agent's risk preference $U_i\in\{\Uloving,\Uneutral,\Uaverse\}$
+and bias mode $b_i\in\{\text{over},\text{none},\text{under}\}$, and
+the fact that the market is shared with DLM~2005 experienced
+counterparties. The system prompt is fixed and instructs the model
+to return a single number with no explanation, currency symbol, or
+prose. Concretely, the user prompt template reads
+\begin{quote}\small
+Market: $T$ periods. Each share pays 0 or 20 cents with equal
+probability per period, expected dividend $\E[d]$. Risk-neutral
+fundamental value at run start is $\FV_0$ cents (declines by
+$\E[d]$ per period). You, agent $i$, are \emph{risk} and
+\emph{bias}. You share the market with Experienced agents
+(Dufwenberg, Lindqvist and Moore 2005) who know the asset decays
+to zero and refuse to overpay in late periods. What is your
+private subjective valuation per share right now, in cents?
+\end{quote}
+where $\text{risk}\in\{\text{risk-loving},\text{risk-neutral},
+\text{risk-averse}\}$ and $\text{bias}\in\{\text{persistently
+optimistic},\text{unbiased},\text{persistently pessimistic}\}$. All
+calls are fired in parallel as a single
+$\texttt{Promise.all}$~batch, so the network latency is one round
+trip rather than $|A_U|$ round trips.
+
+The raw reply is parsed for the first signed decimal, parsed as a
+float, and clamped to
+\begin{equation}
+\hat{V}_i\in[\,0.25\,\FV_0,\,1.75\,\FV_0\,]\;=\;[25,\,175],
+\label{eq:clamp}
+\end{equation}
+so that any out-of-range reply is bounded and cannot destabilise
+the downstream engine. A missing reply, a parse failure, or an HTTP
+error silently drops the anchor for that agent; its prior then
+defaults to equation~\eqref{eq:util_prior} on the first tick, and
+the run is otherwise unaffected. This deterministic fallback
+preserves the invariant that Wang~2026 produces a simulation with
+or without network connectivity---a requirement for the design to be
+reproducible and shareable.
+
+\subsection{Consumption on the first decision tick}
+
+On every utility agent's first call to \texttt{updateBelief} after
+the simulation starts, the ``psych anchor'' slot is consulted in a
+\emph{consume-and-clear} step:
+\begin{equation}
+V_i^{\text{prior}} \;=\; \begin{cases}
+\hat{V}_i\cdot(1+\varepsilon_i) & \text{if $\hat V_i\ne\emptyset$,}\\[4pt]
+\FV_t\cdot(1+b_i+\varepsilon_i) & \text{otherwise,}
+\end{cases}
+\qquad \text{then set }\hat V_i\leftarrow\emptyset.
+\label{eq:consume}
+\end{equation}
+The first branch overrides the deterministic prior with the
+language-model anchor and keeps the Lopez-Lira noise
+$\varepsilon_i\sim\text{Uniform}[-0.03,0.03]$ so that two utility
+agents assigned identical anchors still draw slightly different
+first quotes. The second branch is the pure Lopez-Lira prior, used
+on every tick after the first and on every tick when no anchor is
+available. The ``clear'' step ensures that a second call to
+\texttt{updateBelief} on the same tick, or the next decision tick
+in the same run, goes through the standard path, so that the
+language model's effect is felt at run~start and then decays
+through the belief-blend equation~\eqref{eq:blend} as normal
+messaging proceeds.
+
+\subsection{Research question and instrumentation}
+
+Let $i^\star=\arg\max_{i\in A_U}\hat{V}_i$ be the utility agent
+with the highest anchored valuation, and define the top holder at
+tick~$t$ as
+\begin{equation}
+j^\star(t)\;=\;\arg\max_{i\in A_U}\text{inventory}_i(t).
+\label{eq:top}
+\end{equation}
+The research question is simply whether $j^\star(t)\to i^\star$ by
+the end of the~run. The simulator reports, every tick, a boolean
+\emph{match} indicator $\mathbb{1}\{j^\star(t)=i^\star\}$ and a
+\emph{normalised gap}
+\begin{equation}
+g(t)\;=\;\frac{\hat{V}_{i^\star}-\hat{V}_{j^\star(t)}}{\hat{V}_{i^\star}}\;\in\;[0,1],
+\label{eq:gap}
+\end{equation}
+together with the identities of the two agents and their
+valuations. The gap collapses to zero when the asset has reached
+the psychologically-maximal holder; it stays near~one when the
+asset has migrated to an agent whose anchor is much lower than
+the~maximum. Figure placeholders in the \texttt{figures/} directory
+will host time-series plots of $g(t)$ and the match indicator for
+each of the three paradigms.
+
+The match indicator is related, but not identical, to the
+allocative efficiency statistic
+\begin{equation}
+\AllocEff\;=\;\frac{\sum_i \hat{V}_i\cdot\text{inventory}_i(T)}
+{\max_i\hat{V}_i\cdot Q},
+\label{eq:ae}
+\end{equation}
+in which the numerator is the realised cross-agent utility weighted
+by each agent's anchored valuation and the denominator is the
+best-possible allocation in which every share is held by the
+maximum-valuation agent. When $\AllocEff=1$ the asset has migrated to
+$i^\star$ and the match indicator is true; but $\AllocEff$ can be close to
+one even when the match indicator is false, for example when the
+top holder is different from $i^\star$ but has a nearly-maximal
+anchor. Reporting both statistics together is therefore
+informative: the match indicator captures the identity of the
+eventual owner, while $\AllocEff$ captures the continuous loss relative
+to the psychological~optimum.
+
+\subsection{Determinism, cost, and caching}
+
+A single Wang~2026 run consumes $|A_U|$ chat completions as one
+parallel batch and runs closed-form thereafter. With $|A_U|\le 6$
+in the default preset, network cost is a handful of round trips on
+the first frame and zero afterwards; no caching or retry layer is
+needed because a missing anchor silently degrades to the
+deterministic prior. The seeded PRNG makes identical anchor vectors
+reproduce identical trajectories, so within-model replay is trivial
+and across-model comparisons reduce to toggling the paradigm button.

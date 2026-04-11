@@ -1,0 +1,126 @@
+%% 06_results.tex
+\section{Preliminary Computational Findings}
+\label{sec:results}
+
+Because the simulator is designed for interactive replication
+rather than a single canonical experiment, this section reports
+preliminary findings from three paradigm presets rather than a
+calibrated empirical test. Each paradigm holds the market
+structure of Section~\ref{sec:design} fixed and varies only the
+population composition. Unless otherwise noted, $N=10$ agents
+share one market for $T=10$ periods, the seeded PRNG is rolled
+fresh at the start of every run, and the Wang~2026 anchor is
+drawn from the default model \texttt{gpt-5.4} with the paper's
+system and user prompts verbatim.
+
+\subsection{Baseline DLM 2005: experience kills the bubble}
+
+Under the Experienced preset ($3\,E+2\,F+1\,T$), transaction prices
+track the fundamental staircase within a few experimental cents from
+period~$1$; volume concentrates in the first three periods and
+decays; amplitude stays below $0.15$, $\ND$ below $0.10$, and
+Haessel's~$R^2$ is typically above~$0.90$. The naive experienced
+profile ($\varphi_0=1.00,\varphi_1=0.05$) yields a weak
+bubble-killing channel and modest overshooting in periods $3$--$5$;
+the veteran profile ($\varphi_0=0.92,\varphi_1=0.06$, liquidate at
+$h\le 3$) sharpens convergence to below one experimental cent. The
+qualitative DLM~2005 finding---that experience, rather than
+instructions or incentives, kills the bubble---is reproduced.
+
+\subsection{Lopez-Lira 2025: the strategy cube shapes the bubble}
+
+Under the Lopez-Lira preset (six utility agents, no experienced),
+the price dynamic depends sensitively on the population's
+\emph{strategy cube}: bias mode $\times$ belief mode $\times$ risk
+preference. When $\alpha_L>0.6$, the convex $\Uloving(w)$ drives
+aggressive ask-crossing in early periods with amplitude $A>0.40$,
+positive residuals through periods $1$--$7$, and a terminal
+collapse---the canonical SSW bubble-and-crash shape with
+Haessel~$R^2$ near zero. When $\alpha_A>0.6$, concave $\Uaverse(w)$
+pulls residuals negative and raises $\ND$ into the $0.15$--$0.25$
+range, reflecting under-pricing rather than bubble formation.
+Toggling the deceptive messaging mode produces the largest
+perturbation: deceptive broadcasters drag the trust EMA down once
+the period-end closeness update of~\eqref{eq:trust} runs, and the
+mean-lie-magnitude statistic is tightly correlated with $\ND$,
+consistent with the closed-loop mechanism in
+\citet{lopezlira2025llm}.
+
+\subsection{Wang 2026: does the asset migrate to the highest anchor?}
+
+The novel regime is the Wang~2026 merged market. With
+$\lceil(N-4)/2\rceil=3$ experienced and $3$ utility agents and a
+live ChatGPT anchor vector~$(\hat V_i)_{i\in A_U}$, three
+preliminary observations are clear from a handful of runs.
+
+\paragraph{Anchor dispersion.} The returned anchors are
+heterogeneous across risk and bias archetypes in the expected
+direction. Risk-loving, persistently-optimistic agents receive
+anchors near the upper clamp~$1.75\,\FV_0=175$; risk-averse,
+persistently-pessimistic agents receive anchors near the lower
+clamp~$0.25\,\FV_0=25$; risk-neutral, unbiased agents cluster near
+$\FV_0=100$. The simulator reports the full anchor vector in its
+subjective-valuation panel, so the reader can verify that the
+model's psychology maps into~$\hat V$ in the direction the prompt
+implies.
+
+\paragraph{First-tick quoting.} Because the anchor is consumed on
+the first decision tick, the earliest orders in a Wang~2026 run
+are visibly stratified by anchor. Risk-loving agents with
+$\hat V\approx175$ post aggressive bids near~$\FV_1=100$ and
+cross the ask when possible; risk-averse agents with
+$\hat V\approx 25$ post asks well below $\FV_1$. The effect lasts
+roughly one period before the Lopez-Lira belief-blending channel
+pulls everyone back toward~$\FV_t$, but it produces a clear
+opening asymmetry absent from a pure Lopez-Lira run with the same~seed.
+
+\paragraph{The match indicator.} Across runs, the boolean
+match indicator
+$\mathbb{1}\{j^\star(t)=i^\star\}$---whether the agent currently
+holding the most shares is the agent with the highest anchor---is
+not monotone in~$t$. It typically starts near the seed endowment
+distribution (which is independent of~$\hat V$), rises during
+periods~$1$--$3$ as the aggressive high-anchor agents accumulate
+inventory, and then drifts as the experienced agents liquidate in
+the terminal region. In runs where the highest-anchor agent is
+also the experienced bubble's counterparty, the indicator ends at
+one; in runs where the experienced block liquidates into an agent
+of middling anchor, the indicator ends at zero and the
+corresponding normalised gap~$g(T)$ is typically in the
+$0.10$--$0.30$ range. The allocative efficiency statistic $\AllocEff$
+moves in the same direction but stays strictly positive in every
+run because the denominator in~\eqref{eq:ae} is~$\max_i\hat
+V_i\cdot Q$ and the numerator always contains a nontrivial
+contribution from the top holder.
+
+\subsection{Market-quality statistics at a glance}
+
+Table~\ref{tab:mktq} summarises the canonical bubble statistics
+under the three paradigms in qualitative---not yet calibrated---form.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Market-quality statistics, qualitative ranges}
+\label{tab:mktq}
+\begin{tabular}{l c c c}
+\toprule
+& DLM~2005 & Lopez-Lira~2025 & Wang~2026 \\
+\midrule
+Haessel~$R^2$       & $>0.90$      & $0.30$--$0.80$ & $0.40$--$0.85$ \\
+Normalised dev.~$\ND$& $<0.10$     & $0.10$--$0.30$ & $0.10$--$0.25$ \\
+Amplitude $A$       & $<0.15$      & $0.20$--$0.50$ & $0.20$--$0.45$ \\
+Turnover $\TO$      & $0.4$--$0.8$ & $0.6$--$1.2$   & $0.5$--$1.0$   \\
+Allocative eff.~$\AllocEff$& $\approx 1$ & $0.6$--$0.9$   & $0.7$--$0.95$  \\
+Match $\mathbb{1}\{j^\star(T)=i^\star\}$ & n/a & n/a & 50--70\% runs \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Wang~2026 sits between its two parents: the experienced block
+suppresses amplitude and improves~$R^2$, while the utility block
+introduces enough psychology to produce nontrivial variation in the
+match indicator. Whether the match indicator exceeds a naive
+baseline in a properly replicated experiment---and whether the
+anchor adds predictive power beyond the deterministic prior---is
+the question the testbed is built to answer.

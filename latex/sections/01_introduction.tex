@@ -1,0 +1,97 @@
+%% 01_introduction.tex
+\section{Introduction}
+\label{sec:intro}
+
+Experimental asset markets in the tradition of
+\citet{smith1988bubbles} have produced one of the most replicated
+departures from rational-expectations pricing in all of economics:
+even when subjects know, in closed form, that the fundamental value
+of a finite-lived asset declines deterministically with the
+remaining dividend stream, transaction prices systematically
+overshoot the fundamental before collapsing near the terminal
+period. \citet{dufwenberg2005bubbles}---hereafter
+DLM~2005---established a by now canonical result in this literature:
+when two-thirds or more of the subject pool consists of traders who
+have played the game before, the bubble~disappears. Experience, rather
+than cognition or incentives, is what eventually kills the bubble.
+
+A parallel and much more recent literature replaces the human
+subjects with large language models. \citet{lopezlira2025llm}
+proposes an expected-utility framework in which each LLM-flavoured
+agent carries a persistent valuation bias $b_i$, a risk preference
+over wealth $U\in\{\Uloving,\Uneutral,\Uaverse\}$, and a belief-blending
+channel that lets agents exchange private valuations and update a
+trust score for each sender by exponential moving average. Lopez-Lira's
+agents optimise expected utility over a small action set---hold,
+cross the bid, cross the ask, post passively---and the resulting
+population can be dialled between skeptical and naive, truthful and
+deceptive, risk-averse and risk-loving by simple categorical knobs.
+The Lopez-Lira design is a natural vehicle for studying~how a
+heterogeneous LLM population prices a DLM asset, but it leaves open a
+psychological question the original DLM protocol never asked: if one
+replaces the deterministic prior~$\FV_t\cdot(1+b_i+\varepsilon)$ with
+a private subjective valuation drawn from a language model that is
+told who the agent is and what the market looks like, does the asset
+then migrate, over the course of the run, into the hands of the
+agent with the highest such valuation?
+
+This paper contributes a computational testbed in which the two
+designs share one continuous double-auction market, and a new
+paradigm---which I label \emph{Wang~2026}---that seeds each utility
+agent's prior with exactly one ChatGPT call at run~start. Concretely,
+when the user selects Wang~2026 and supplies an API key, the
+simulator fires one chat completion per utility agent in parallel,
+using a prompt that encodes the agent's risk preference, bias mode,
+and the presence of DLM experienced counterparties in the same
+market. The returned number, clamped to
+$[0.25\,\FV_0,\,1.75\,\FV_0]$, is written to the agent's
+\texttt{psychAnchor} slot and consumed on the first decision tick in
+place of the deterministic prior; subsequent ticks revert to the
+Lopez-Lira prior plus belief~blending. In the notation of the
+replicated model,
+\begin{equation}
+\hat{V}_i \;\leftarrow\; \mathrm{ChatGPT}(\text{agent}_i),
+\qquad
+\mathrm{prior}_{t=0}^{(i)} \;=\; \hat{V}_i\cdot(1+\varepsilon_i),
+\qquad \hat{V}_i\in[0.25\,\FV_0,\,1.75\,\FV_0].
+\label{eq:anchor}
+\end{equation}
+The deterministic fallback---used when no key is supplied or the
+network call fails---drops equation~\eqref{eq:anchor} and resumes the
+Lopez-Lira prior $\FV_t\cdot(1+b_i+\varepsilon)$ unchanged. Because
+the run then proceeds through a deterministic seeded PRNG, every
+simulation can be replayed identically with or without the anchor
+channel.
+
+The research question is easy to instrument. Let
+$i^\star=\arg\max_{i\in U}\hat{V}_i$ be the utility agent with the
+highest anchored valuation and
+$j^\star(t)=\arg\max_i\text{inventory}_i(t)$ the top holder at
+tick~$t$; a \emph{match} at~$t$ is
+$\mathbb{1}\{j^\star(t)=i^\star\}$ and the \emph{normalised gap} is
+$g(t)=(\hat V_{i^\star}-\hat V_{j^\star(t)})/\hat V_{i^\star}$.
+Both quantities are reported every tick alongside Haessel~$R^2$,
+normalised deviation, amplitude, turnover, and allocative
+efficiency, so classical bubble statistics stay visible beside the
+new Wang metric block.
+
+Two features distinguish the Wang~2026 paradigm from a na\"ive
+``LLM-as-trader'' pipeline. First, the language model is consulted
+exactly once at run~start; after the anchor is absorbed, the agent is
+again a pure expected-utility maximiser and the mulberry32 RNG alone
+controls the downstream dynamics. Second, the anchor is a
+\emph{valuation} and not an order: the agent's quoting rule, fill
+probability, and utility function are unchanged, and only its starting
+prior is moved. These two choices isolate the specific question
+``does psychology predict ownership'' from the adjacent question
+``does an LLM trade~well.''
+
+Section~\ref{sec:lit} places the simulator in the literature on
+experimental asset markets and LLM-based agents.
+Section~\ref{sec:design} documents the market structure and the
+sampling stage. Section~\ref{sec:agents} gives the precise decision
+rule for each agent type. Section~\ref{sec:innovation} presents the
+Wang~2026 extension: the anchor call, the clamp, the consumption
+path, and the research-question instrumentation.
+Section~\ref{sec:results} reports preliminary findings, and
+Section~\ref{sec:conclusion} concludes.

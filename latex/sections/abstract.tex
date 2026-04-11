@@ -1,0 +1,38 @@
+%% abstract.tex
+\begin{center}
+\begin{minipage}{0.88\textwidth}
+\small
+\noindent\textbf{Abstract.} I replicate the finite-horizon experimental
+asset market of \citet{dufwenberg2005bubbles} inside a deterministic
+browser-based simulator and extend it with the expected-utility
+messaging population of \citet{lopezlira2025llm}. I then introduce a
+new paradigm---\emph{Wang~2026}---in which each Lopez-Lira utility
+agent's starting subjective valuation is drawn, once per run, from a
+live ChatGPT call whose prompt encodes the agent's risk preference,
+bias mode, and the presence of experienced counterparties. The returned
+psychological anchor~$\hat{V}_i$ is clamped to
+$[0.25\,\FV_0,\,1.75\,\FV_0]$, seeds the agent's prior on its first
+decision tick, and then yields to the standard Lopez-Lira
+belief-blending channel. The research question is whether the asset
+ultimately ends up in the hands of the agent with the highest anchored
+valuation. The testbed reports per-tick matching, a normalised
+valuation gap, Haessel~$R^2$, normalised deviation, amplitude, turnover
+and allocative efficiency; the merged Experienced-plus-Utility
+population is split as $\lceil (N{-}N_{\text{fixed}})/2\rceil$
+experienced and the remainder utility. The simulator preserves
+reproducibility through a seeded mulberry32 PRNG and a deterministic
+fallback when the language-model call fails, so every finding can be
+replayed without network access. This paper documents the replication,
+the new anchor channel, and the market-quality instruments used to
+answer the allocation question.
+
+\medskip
+\noindent\textbf{Keywords:} experimental asset markets, bubbles,
+expected utility, large language models, ChatGPT, allocative
+efficiency.
+
+\smallskip
+\noindent\textbf{JEL Codes:} C92, D84, G12, G41.
+\end{minipage}
+\end{center}
+\bigskip

@@ -1,0 +1,189 @@
+%% 04_agent_model.tex
+\section{Agent Model}
+\label{sec:agents}
+
+This section gives the exact decision rule for each of the five
+agent types in the simulator. All rules read the top of the book
+(best bid $b_t$ and best ask $a_t$), the current fundamental
+value~$\FV_t$, and a seeded pseudo-random draw $r\sim
+\text{Uniform}(0,1)$; the formulas below are the literal rules
+implemented in the source code, with constants exposed to the
+reader so that any experiment can be reconstructed from this page
+alone.
+
+\subsection{Fundamentalist (F)}
+
+The fundamentalist is a rational mean-reversion anchor inspired by
+\citet{smith1988bubbles}. Its belief is
+$\beta_t=\FV_t\cdot\bigl(1+0.02\,(r-0.5)\cdot 2\bigr)$---a
+$\pm2\%$ symmetric noise about the fundamental---and its action
+rule is
+\begin{equation}
+\label{eq:fund}
+\begin{cases}
+\text{cross the ask with a unit bid at }a_t, & \text{if }a_t<0.98\,\beta_t\text{ and cash}\ge a_t,\\
+\text{cross the bid with a unit ask at }b_t, & \text{if }b_t>1.02\,\beta_t\text{ and inventory}>0,\\
+\text{post passive with probability }0.45, & \text{otherwise,}\\
+\text{hold}, & \text{otherwise.}
+\end{cases}
+\end{equation}
+Passive quotes bid in $[0.970,\,1.005]\cdot\beta_t$ and ask in
+$[0.995,\,1.030]\cdot\beta_t$, so the fundamentalist never posts a
+cross on its own initiative. It supplies a narrow two-sided book
+near the fundamental whenever neither side of the market is
+aggressive and anchors mispricing back to $\FV_t$ through unit
+crosses when either side drifts by more than~$2\%$.
+
+\subsection{Trend follower (T)}
+
+The trend follower estimates a short-horizon slope from the last
+six non-null trade prices and projects three ticks forward,
+\begin{equation}
+\text{slope}_t\;=\;\frac{p_{t}-p_{t-h+1}}{\max(1,h-1)},\qquad
+\text{target}_t\;=\;p_t+3\cdot\text{slope}_t,
+\label{eq:trend}
+\end{equation}
+where $h=6$ is the slope window and $p_t$ is the most recent trade
+price. When $\text{slope}_t>0$ and it has cash, the trend agent
+chases up with a unit bid at $p_t\cdot(1+0.015+0.03\,r)$; when
+$\text{slope}_t<0$ and it has inventory, it flees with a unit ask
+at $p_t\cdot(1-0.015-0.03\,r)$. Two corner cases protect the agent
+from stranding. First, if cash has dropped below the most recent
+trade price but inventory still exceeds the initial endowment, the
+agent dumps shares into the best bid at the aggressive price.
+Second, in a flat-slope regime with excess inventory, the agent
+liquidates with probability $\min(0.85,\,0.3+0.25\,e)$, where $e$
+is the excess-inventory rate. The trend rule is the positive-feedback
+channel \citep{delong1990positive} and is the primary amplifier of
+bubble~formation in the simulator.
+
+\subsection{Random zero-intelligence (R)}
+
+The zero-intelligence trader posts uniform bids and asks on
+fundamentally-scaled support, following
+\citet{gode1993allocative}. Explicitly,
+\begin{equation}
+\text{bid}_t\sim\text{Uniform}[\,0.7\,\FV_t,\,1.1\,\FV_t\,],\qquad
+\text{ask}_t\sim\text{Uniform}[\,0.9\,\FV_t,\,1.3\,\FV_t\,].
+\label{eq:random}
+\end{equation}
+It never reads the order book, never tracks profit, and is pinned
+in every run so that the book never goes fully empty. One slot of
+this type is part of the fixed background and is invisible to the
+population-composition sliders.
+
+\subsection{Experienced (E)}
+
+The experienced agent carries the DLM~2005 horizon discount. Let
+$h=T-t+1$ be the number of periods remaining. Each experienced
+agent carries an experience profile $p\in\{\text{naive},
+\text{once-played},\text{veteran}\}$ with a corresponding pair
+$(\varphi_0^{(p)},\varphi_1^{(p)})$ of a discount floor and a
+discount slope, and its belief is
+\begin{equation}
+\beta_t^{(p)} \;=\; \FV_t\cdot\Bigl(\varphi_0^{(p)}+\frac{h}{T}\cdot\varphi_1^{(p)}\Bigr).
+\label{eq:exp_belief}
+\end{equation}
+The three profiles are calibrated as in Table~\ref{tab:exp}.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Experienced profiles}
+\label{tab:exp}
+\begin{tabular}{l c c c c}
+\toprule
+Profile & $\varphi_0$ & $\varphi_1$ & liquidate $h\le$ & avoid overpay $h\le$ \\
+\midrule
+Naive        & 1.00 & 0.05 & 1 & 2 \\
+Once-played  & 0.96 & 0.04 & 2 & 3 \\
+Veteran      & 0.92 & 0.06 & 3 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+When $h$ falls below the profile's liquidation threshold, the agent
+dumps any remaining inventory into the best bid; when $h$ falls
+below the overpay threshold, it refuses any buy above
+$\beta_t^{(p)}$. Outside the terminal region it behaves like a
+risk-tight fundamentalist, buying below $\beta_t^{(p)}$ with a
+discount multiplier (\emph{e.g.\/}~0.92 for veterans) and selling
+above $\beta_t^{(p)}$ with a premium multiplier (\emph{e.g.\/}~1.05).
+The profile mix is user~adjustable, which allows the Experienced
+population to be dialled between the DLM~2005 subject groups.
+
+\subsection{Utility (U)}
+
+The utility agent follows \citet{lopezlira2025llm}. Its prior at
+every decision tick is
+\begin{equation}
+V_i^{\text{prior}}\;=\;\FV_t\cdot\bigl(1+b_i+\varepsilon_{i,t}\bigr),\qquad
+b_i\in\{-0.15,\,0,\,+0.15\},\qquad
+\varepsilon_{i,t}\sim\text{Uniform}[-0.03,\,0.03].
+\label{eq:util_prior}
+\end{equation}
+The persistent bias $b_i$ is the ``persistently
+optimistic/pessimistic/unbiased'' archetype and is assigned at
+sampling time. The per-tick noise $\varepsilon$ keeps the agent's
+quoting out of lockstep with other agents of the same~type.
+
+The prior is then blended with incoming messages from peers. If
+$\mathcal{M}_i$ denotes the set of claimed valuations received
+during the current period, and $w\in(0,1)$ is a weight, the
+posterior is
+\begin{equation}
+V_i^{\text{post}} \;=\; w\cdot V_i^{\text{prior}}
+\;+\;(1-w)\cdot\frac{1}{|\mathcal{M}_i|}\sum_{m\in\mathcal{M}_i}\hat v_m.
+\label{eq:blend}
+\end{equation}
+Three archetypes determine~$w$: \emph{naive} trusts peers and
+uses $w=0.60$; \emph{skeptical} barely moves and uses $w=0.90$;
+\emph{adaptive} scales $w$ by per-sender trust and caps the move at
+$0.50$, with pairwise trust updated every trade by
+\begin{equation}
+\tau_{r\to s}\;\leftarrow\;(1-\alpha)\,\tau_{r\to s}
+\;+\;\alpha\cdot\max\!\Bigl(0,\,1-\tfrac{|\hat v_s-\VWAP_t|}{\VWAP_t}\Bigr),\qquad
+\alpha=0.30.
+\label{eq:trust}
+\end{equation}
+Receiver~$r$'s trust in sender~$s$ is reinforced whenever $s$'s
+claim is close to the period VWAP and attenuated~otherwise.
+
+Given the posterior valuation $V_i^{\text{post}}$, the agent scores
+each available action $a\in\{\text{hold},\text{cross bid},\text{cross ask},
+\text{passive bid},\text{passive ask}\}$ by its expected utility
+\begin{equation}
+\EU(a)\;=\;p_{\text{fill}}\cdot U(w_1)\,+\,(1-p_{\text{fill}})\cdot U(w_0),
+\qquad a^\star=\arg\max_{a}\EU(a),
+\label{eq:eu}
+\end{equation}
+where $w_0$ and $w_1$ are the agent's wealth under non-fill and
+fill respectively, and $p_{\text{fill}}=0.30$ is a constant passive
+fill-probability inherited from the original Lopez-Lira design. The
+risk-preference functional $U\in\{\Uloving,\Uneutral,\Uaverse\}$ is
+assigned at sampling time and drawn from
+\begin{equation}
+\Uloving(w)=(w/w_0)^{2},\qquad
+\Uneutral(w)=w/w_0,\qquad
+\Uaverse(w)=\sqrt{w/w_0}.
+\label{eq:risk}
+\end{equation}
+
+A deceptive variant of the utility rule is available for the
+messaging channel. When enabled, an asset-poor agent (inventory
+below its initial endowment) broadcasts a valuation equal to
+$0.82\cdot V_i^{\text{true}}$, while an asset-rich agent broadcasts
+$1.18\cdot V_i^{\text{true}}$. The lie-gap magnitude
+$|\hat v^{\text{report}}-V^{\text{true}}|$ drives the period-end
+trust update in~\eqref{eq:trust}, which produces the closed-loop
+feedback described in \citet{lopezlira2025llm}.
+
+Equations~\eqref{eq:fund}--\eqref{eq:risk} constitute the complete
+decision model. The market aggregates these orders through a
+price--time-priority order book, mutates cash and inventory on
+every trade, credits dividends per \eqref{eq:dividend} at period
+end, and records every state in append-only history arrays so the
+replay system can reconstruct past ticks without re-running the
+agents. No agent in this model consults a language model. The
+next section adds the first such consultation as the Wang~2026
+innovation.
