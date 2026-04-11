@@ -75,6 +75,17 @@ const App = {
     biasAmount:           0.15,
   },
 
+  // Research paradigm tag — surfaced in the navbar as a segmented
+  // switch between 'dlm' (Dufwenberg, Lindqvist & Moore 2005, human
+  // subjects, E-heavy population) and 'lll' (Lopez-Lira 2025, LLM
+  // EU-maximizer with messaging/trust, U-heavy population). Purely
+  // a preset applier: clicking a paradigm button fills the user-
+  // controlled slots with the matching agent type, but individual
+  // sliders remain fully editable afterwards. Default 'lll' matches
+  // the default mix above (E=0, U=6) so extended panels light up on
+  // first load.
+  paradigm: 'lll',
+
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
   // instantiated with in the sampling stage.
@@ -282,6 +293,7 @@ const App = {
         this._pushStateToSliders();
         this._refreshMixTotal();
         this._updateSliderPct(e.target);
+        this._syncParadigmButtons();
       });
       totalSlider.addEventListener('change', () => this.reset());
     }
@@ -298,6 +310,67 @@ const App = {
     if (head && panel) {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
+
+    // Paradigm switch — two-button segmented control in the header.
+    // Each button applies a population preset via _setParadigm; no
+    // dragging, no per-tick wiring. The .active class is set here for
+    // the initial default and maintained by _setParadigm on click.
+    document.querySelectorAll('.paradigm-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._setParadigm(btn.dataset.paradigm));
+    });
+    this._syncParadigmButtons();
+  },
+
+  /**
+   * Apply a paradigm preset to the population. 'dlm' fills the user
+   * slots with Experienced agents (E = N − N_fixed, U = 0); 'lll'
+   * fills them with Utility agents (U = N − N_fixed, E = 0). Also
+   * updates the Experienced slider + readout, the body classes that
+   * gate the ext-only / exp-only panels, and the active button, then
+   * rebuilds the current draw so the change is visible immediately.
+   */
+  _setParadigm(paradigm) {
+    if (paradigm !== 'dlm' && paradigm !== 'lll') return;
+    this.paradigm = paradigm;
+    const FIXED    = this.FIXED_BACKGROUND;
+    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
+    const totalSlider = document.getElementById('p-total');
+    const N        = totalSlider
+      ? Math.max(fixedSum, Number(totalSlider.value) | 0)
+      : (fixedSum + (this.mix.E | 0) + (this.mix.U | 0));
+    const capacity = Math.max(0, N - fixedSum);
+    if (paradigm === 'dlm') {
+      this.mix.E = capacity;
+      this.mix.U = 0;
+    } else {
+      this.mix.E = 0;
+      this.mix.U = capacity;
+    }
+    // Sync the Experienced slider UI with the new preset.
+    const eInput = document.getElementById('p-mix-E');
+    if (eInput) {
+      eInput.value = String(this.mix.E);
+      this._updateSliderPct(eInput);
+    }
+    const eOut = document.getElementById('v-mix-E');
+    if (eOut) eOut.textContent = String(this.mix.E);
+    this._syncParadigmButtons();
+    this.rebuild();
+  },
+
+  /**
+   * Reflect App.paradigm on the navbar buttons. Called on init and
+   * after any paradigm-changing action so the segmented control stays
+   * in sync when users come in via a slider (E > 0 = dlm, U > 0 = lll).
+   */
+  _syncParadigmButtons() {
+    const active = (this.mix.E | 0) > 0 && (this.mix.U | 0) === 0 ? 'dlm'
+                 : (this.mix.U | 0) > 0 && (this.mix.E | 0) === 0 ? 'lll'
+                 : this.paradigm;
+    this.paradigm = active;
+    document.querySelectorAll('.paradigm-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.paradigm === active);
+    });
   },
 
   /**
@@ -492,6 +565,7 @@ const App = {
     }
     this.mix.U = N - fixedSum - E;
     document.body.classList.toggle('has-experienced', E > 0);
+    this._syncParadigmButtons();
   },
 
   _getByPath(path) {

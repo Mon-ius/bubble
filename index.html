@@ -5,12 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <header class="app-header">
   <div class="title">
     <h1>Virtual Trading Platform</h1>
+  </div>
+  <!--
+    Paradigm switch — segmented control between the two research
+    paradigms this simulator replicates. DLM 2005 is the classic
+    human-subject bubble experiment (E-heavy, U = 0); Lopez-Lira 2025
+    is the LLM-EU-maximizer extension with messaging, trust and
+    deception (U-heavy, E = 0). Clicking a paradigm applies a
+    population preset that fills the user-controllable slots with
+    the matching agent type; individual sliders can still be edited
+    afterwards. Visual style follows the lying project's Math / AI
+    Agent toggle: a rounded bg-2 rail with an elevated active button.
+  -->
+  <div class="paradigm-switch" role="group" aria-label="Research paradigm">
+    <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — human-subject bubble experiment. Fills the population with Experienced agents.">DLM 2005</button>
+    <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — LLM expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
   </div>
   <div class="controls">
     <label>Speed
