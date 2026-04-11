@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <header class="app-header">
@@ -131,9 +131,11 @@
           <p class="ai-config-note">
             When the paradigm is set to Wang 2026 and an API key is present, each Utility
             agent calls ChatGPT once at the start of the run to anchor its private
-            subjective valuation. Fields are read fresh from the DOM on every run
-            (no localStorage) and no call is made if the key field is empty —
-            the simulation falls back to the deterministic Lopez-Lira belief model.
+            subjective valuation. Provider list and endpoint match the lying project's
+            GPT provider (<code>PROVIDERS.gpt</code> in <code>lying/js/ai-agent.js</code>).
+            Fields are read fresh from the DOM on every run (no localStorage) and no
+            call is made if the key field is empty — the simulation falls back to the
+            deterministic Lopez-Lira belief model.
           </p>
           <div class="param-row">
             <div class="param-head">
@@ -145,13 +147,13 @@
             <div class="param-head">
               <label for="ai-endpoint">Endpoint (optional)</label>
             </div>
-            <input type="text" id="ai-endpoint" class="input-text input-endpoint" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+            <input type="text" id="ai-endpoint" class="input-text input-endpoint" placeholder="https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions" autocomplete="off" spellcheck="false">
           </div>
           <div class="param-row">
             <div class="param-head">
               <label for="ai-model">Model</label>
             </div>
-            <input type="text" id="ai-model" class="input-text input-model" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" value="gpt-4o-mini">
+            <select id="ai-model" class="input-text input-model"></select>
           </div>
           <div class="ai-status" id="ai-status" aria-live="polite"></div>
         </div>
@@ -790,17 +792,17 @@
   </div>
 </section>
 
-<script data-cfasync="false" src="js/mathml.js?v=9"></script>
-<script data-cfasync="false" src="js/utility.js?v=9"></script>
-<script data-cfasync="false" src="js/messaging.js?v=9"></script>
-<script data-cfasync="false" src="js/market.js?v=9"></script>
-<script data-cfasync="false" src="js/agents.js?v=9"></script>
-<script data-cfasync="false" src="js/logger.js?v=9"></script>
-<script data-cfasync="false" src="js/viz.js?v=9"></script>
-<script data-cfasync="false" src="js/engine.js?v=9"></script>
-<script data-cfasync="false" src="js/ai.js?v=9"></script>
-<script data-cfasync="false" src="js/ui.js?v=9"></script>
-<script data-cfasync="false" src="js/replay.js?v=9"></script>
-<script data-cfasync="false" src="js/main.js?v=9"></script>
+<script data-cfasync="false" src="js/mathml.js?v=10"></script>
+<script data-cfasync="false" src="js/utility.js?v=10"></script>
+<script data-cfasync="false" src="js/messaging.js?v=10"></script>
+<script data-cfasync="false" src="js/market.js?v=10"></script>
+<script data-cfasync="false" src="js/agents.js?v=10"></script>
+<script data-cfasync="false" src="js/logger.js?v=10"></script>
+<script data-cfasync="false" src="js/viz.js?v=10"></script>
+<script data-cfasync="false" src="js/engine.js?v=10"></script>
+<script data-cfasync="false" src="js/ai.js?v=10"></script>
+<script data-cfasync="false" src="js/ui.js?v=10"></script>
+<script data-cfasync="false" src="js/replay.js?v=10"></script>
+<script data-cfasync="false" src="js/main.js?v=10"></script>
 </body>
 </html>

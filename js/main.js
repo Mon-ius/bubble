@@ -88,12 +88,14 @@ const App = {
   paradigm: 'lll',
 
   // Wang 2026 AI endpoint state. Populated from the #ai-key /
-  // #ai-endpoint / #ai-model inputs on every input event and
+  // #ai-endpoint / #ai-model inputs on every change event and
   // consumed by start() when paradigm === 'wang'. Nothing is
   // persisted to localStorage, matching the lying project's
   // deliberately forgetful design — the key must be re-entered
-  // after a page reload.
-  aiConfig: { apiKey: '', endpoint: '', model: 'gpt-4o-mini' },
+  // after a page reload. The initial model value is overwritten
+  // on init from AI.DEFAULT_MODEL so a future edit in ai.js
+  // propagates without touching main.js.
+  aiConfig: { apiKey: '', endpoint: '', model: '' },
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
@@ -332,9 +334,19 @@ const App = {
     // Wang 2026 — AI endpoint inputs. Kept in App.aiConfig live so
     // start() can read it synchronously without another DOM lookup.
     // Nothing is persisted; a page reload clears the key deliberately.
+    // The #ai-model element is a <select> populated from AI.MODELS
+    // (which mirrors the lying project's PROVIDERS.gpt.models list),
+    // so the set of allowed model ids is single-sourced in ai.js.
     const aiKey      = document.getElementById('ai-key');
     const aiEndpoint = document.getElementById('ai-endpoint');
     const aiModel    = document.getElementById('ai-model');
+    if (aiModel && typeof AI !== 'undefined') {
+      aiModel.innerHTML = AI.MODELS
+        .map(m => `<option value="${m.id}">${m.label}</option>`)
+        .join('');
+      aiModel.value        = AI.DEFAULT_MODEL;
+      this.aiConfig.model  = AI.DEFAULT_MODEL;
+    }
     if (aiKey) {
       aiKey.addEventListener('input', e => {
         this.aiConfig.apiKey = (e.target.value || '').trim();
@@ -346,8 +358,8 @@ const App = {
       });
     }
     if (aiModel) {
-      aiModel.addEventListener('input', e => {
-        this.aiConfig.model = (e.target.value || '').trim() || 'gpt-4o-mini';
+      aiModel.addEventListener('change', e => {
+        this.aiConfig.model = (e.target.value || '').trim() || AI.DEFAULT_MODEL;
       });
     }
 
