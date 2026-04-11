@@ -38,6 +38,14 @@ const UI = {
     neutral: 'uNeutral',
     averse:  'uAverse',
   },
+  // Exact normalized utility functionals — keyed into Sym so each
+  // Utility agent card can render its per-agent welfare function
+  // in the same MathML source of truth as every other symbol.
+  _riskFormula: {
+    loving:  'uLovingNorm',
+    neutral: 'uNeutralNorm',
+    averse:  'uAverseNorm',
+  },
   _typeSym: {
     fundamentalist: 'inF',
     trend:          'inT',
@@ -251,10 +259,15 @@ const UI = {
       const subtitleSym = (subtitleKey && window.Sym) ? window.Sym[subtitleKey] : '';
       const sym = window.Sym || {};
       const displayName = a.name || ('A' + a.id);
-      // Only the live-updating numeric values. The agent's risk label
-      // already sits in the subtitle, so repeating it in the metrics
-      // block would look inconsistent with the single-label rule.
+      // Live-updating numeric values plus the agent's exact welfare
+      // functional. The utility row is pinned to the per-agent
+      // riskPref via _riskFormula, so every U-agent card carries the
+      // same equation the decision engine actually evaluates in
+      // computeUtility() (js/utility.js).
+      const formulaKey = isUtil ? UI._riskFormula[a.riskPref] : '';
+      const formulaSym = (formulaKey && window.Sym) ? window.Sym[formulaKey] : '';
       const extraRows = isUtil ? `
+          <span class="metric">Utility</span> <span class="metric-val"><span class="sym util-fn">${formulaSym}</span></span>
           <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 

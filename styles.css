@@ -1279,6 +1279,12 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   align-items: baseline;
 }
 .agent-card .sym math { font-size: 11px; }
+/* Exact welfare functional rendered on each Utility agent card.
+   The formula sits in the metric-val column so it reads as the
+   value for the "Utility" label; bumping it to the foreground
+   weight keeps it on-key with the other numeric values. */
+.agent-card .sym.util-fn { color: var(--fg-0); }
+.agent-card .sym.util-fn math { font-size: 11px; }
 .agent-card .action-sym { }
 .agent-card .action-sym math { font-size: 10px; }
 .agent-card .last-action {

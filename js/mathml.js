@@ -106,7 +106,8 @@ const Sym = {
   bigQ:      _wrap(_mi('Q')),                                                 // Q
   volT:      _wrap(_sub(_mi('V'), _mi('t'))),                                 // V_t
 
-  /* Utility functionals */
+  /* Utility functionals — compact form used by slider labels and the
+     agent-card subtitle where horizontal space is tight. */
   uLoving:   _wrap(_row(
     _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
     _sup(_mi('w'), _mn('2')),
@@ -117,6 +118,23 @@ const Sym = {
   uAverse:   _wrap(_row(
     _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
     _sqrt(_mi('w')),
+  )),
+  /* Exact normalized utility functions — match computeUtility() in
+     js/utility.js, which evaluates U on r = w / w₀ so every agent
+     starts at U(w₀) = 1 regardless of initial wealth. Rendered on
+     the utility agent cards as a dedicated row so each U-agent
+     carries its own precise welfare functional. */
+  uLovingNorm:  _wrap(_row(
+    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+    _sup(_row(_mo('('), _frac(_mi('w'), _sub(_mi('w'), _mn('0'))), _mo(')')), _mn('2')),
+  )),
+  uNeutralNorm: _wrap(_row(
+    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+    _frac(_mi('w'), _sub(_mi('w'), _mn('0'))),
+  )),
+  uAverseNorm:  _wrap(_row(
+    _mi('U'), _mo('('), _mi('w'), _mo(')'), _mo('='),
+    _sqrt(_frac(_mi('w'), _sub(_mi('w'), _mn('0')))),
   )),
   uOfW:      _wrap(_row(_sub(_mi('U'), _mi('i')), _mo('('), _mi('w'), _mo(')'))),   // U_i(w)
   uDef:      _wrap(_row(                                                            // u_{i,t} = U_i(w_{i,t}) / U_i(w_{i,0})
