@@ -613,8 +613,17 @@ const UI = {
       xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
       yFmt: y => y.toFixed(0),
     });
-    Viz.area(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
-    Viz.line(ctx, rect, pts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
+    // Absolute mispricing |P_t − FV_t| inherits the same null-aware
+    // breaks as Figure 1 (the y is null wherever the underlying price
+    // is null), so the stroke drops out at every round boundary until
+    // the new round's first trade lands. Underlay a faint dashed
+    // connector through the non-null points so the line reads as one
+    // series across the whole session without claiming a trade in the
+    // gap; the area fill already spans gaps via Viz.area's continue.
+    const bridgePts = pts.filter(p => p.y != null);
+    Viz.area(ctx, rect, pts,       { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '30' });
+    Viz.line(ctx, rect, bridgePts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '55', width: 1, dashed: true });
+    Viz.line(ctx, rect, pts,       { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
 
     if (rounds > 1) {
       ctx.save();
