@@ -672,6 +672,12 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   flex-direction: column;
   gap: 16px;
 }
+/* Native <details> collapse: the UA default hides non-summary children
+   on :not([open]), but our .psec .psec-body rule above sets display:flex
+   with higher specificity and wins — so without this explicit override
+   the body stays visible and clicking the summary only toggles the
+   chevron. Force display: none when the section is closed. */
+.psec:not([open]) > .psec-body { display: none; }
 
 .param-row {
   display: flex;
