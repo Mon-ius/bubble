@@ -5,12 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 <header class="app-header">
   <div class="title">
     <h1>Virtual Trading Platform</h1>
+  </div>
+  <!--
+    Nav tabs — top-level view selector modelled on the lying project's
+    nav-tabs. Each button flips which <section class="tab-pane"> is
+    visible below. Default tab is the live Experiment dashboard;
+    "Architecture" swaps in a static pipeline diagram describing how
+    the simulator's modules interact. Active state is maintained by
+    main.js on click and the underline is drawn with a 2px bottom
+    border reserved on every tab so activation does not shift layout.
+  -->
+  <div class="nav-tabs" role="tablist">
+    <button class="nav-tab active" data-tab="experiment" role="tab">Experiment</button>
+    <button class="nav-tab"        data-tab="architecture" role="tab">Architecture</button>
   </div>
   <!--
     Paradigm switch — segmented control between the two research
@@ -38,6 +51,7 @@
   </div>
 </header>
 
+<section class="tab-pane active" id="tab-experiment">
 <main class="grid">
   <!-- ============================================================
        Experiment settings — every simulator-invented knob that
@@ -552,6 +566,181 @@
     </div>
   </section>
 </main>
+</section>
+
+<!--
+  Architecture tab — static pipeline diagram of the simulator's ten
+  modules. Hand-coded SVG with one node per file, grouped by role
+  using the shared colour palette (purple = orchestrator, blue =
+  core loop, green = simulation, amber = extended-mode overlay,
+  teal = persistence + replay, red = rendering). Arrowheads use a
+  single shared marker and inherit the current foreground colour so
+  the diagram theme-swaps cleanly between light and dark. Below the
+  diagram is a responsive grid of cards describing each module's
+  role, drawn from the architecture comment block in CLAUDE.md so
+  the Architecture tab stays in sync with the authoritative docs.
+-->
+<section class="tab-pane" id="tab-architecture">
+  <div class="arch-wrap">
+    <div class="arch-header">
+      <h2>Pipeline Architecture</h2>
+      <span class="arch-subtitle">Ten modules; dataflow from simulation core to rendering</span>
+    </div>
+
+    <div class="arch-svg-container arch-diagram">
+      <svg viewBox="0 0 980 780" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulator pipeline diagram">
+        <defs>
+          <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- Dashed overlay for the extended-mode cluster (messaging + utility) -->
+        <g class="ext-group">
+          <rect x="740" y="278" width="220" height="140" rx="10" ry="10"/>
+          <text x="850" y="270" class="ext-label">Extended mode</text>
+        </g>
+
+        <!-- main.js -->
+        <g class="n n-main" transform="translate(380 20)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">main.js</text>
+          <text class="s" x="110" y="46">App state · render scheduling</text>
+        </g>
+
+        <!-- engine.js -->
+        <g class="n n-engine" transform="translate(380 120)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">engine.js</text>
+          <text class="s" x="110" y="46">Sim loop · seeded PRNG</text>
+        </g>
+
+        <!-- market.js -->
+        <g class="n n-sim" transform="translate(60 230)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">market.js</text>
+          <text class="s" x="110" y="46">Order · Trade · OrderBook</text>
+        </g>
+
+        <!-- agents.js -->
+        <g class="n n-sim" transform="translate(500 230)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">agents.js</text>
+          <text class="s" x="110" y="46">F · T · R · E · U strategies</text>
+        </g>
+
+        <!-- messaging.js -->
+        <g class="n n-ext" transform="translate(760 298)">
+          <rect width="180" height="44" rx="8" ry="8"/>
+          <text class="t" x="90" y="20">messaging.js</text>
+          <text class="s" x="90" y="35">Bus · trust tracker</text>
+        </g>
+
+        <!-- utility.js -->
+        <g class="n n-ext" transform="translate(760 356)">
+          <rect width="180" height="44" rx="8" ry="8"/>
+          <text class="t" x="90" y="20">utility.js</text>
+          <text class="s" x="90" y="35">Utility belief model</text>
+        </g>
+
+        <!-- logger.js -->
+        <g class="n n-store" transform="translate(380 450)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">logger.js</text>
+          <text class="s" x="110" y="46">Append-only trace · events</text>
+        </g>
+
+        <!-- replay.js -->
+        <g class="n n-store" transform="translate(380 550)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">replay.js</text>
+          <text class="s" x="110" y="46">Build view objects</text>
+        </g>
+
+        <!-- viz.js -->
+        <g class="n n-view" transform="translate(60 660)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">viz.js</text>
+          <text class="s" x="110" y="46">HiDPI canvas primitives</text>
+        </g>
+
+        <!-- ui.js -->
+        <g class="n n-view" transform="translate(700 660)">
+          <rect width="220" height="60" rx="8" ry="8"/>
+          <text class="t" x="110" y="28">ui.js</text>
+          <text class="s" x="110" y="46">DOM · canvas rendering</text>
+        </g>
+
+        <!-- Connectors (core flow) -->
+        <path class="link" d="M 490 80 L 490 120"/>
+        <path class="link" d="M 430 180 L 430 210 L 170 210 L 170 230"/>
+        <path class="link" d="M 550 180 L 550 210 L 610 210 L 610 230"/>
+        <path class="link" d="M 170 290 L 170 430 L 430 430 L 430 450"/>
+        <path class="link" d="M 610 290 L 610 430 L 550 430 L 550 450"/>
+        <path class="link" d="M 490 510 L 490 550"/>
+        <path class="link" d="M 430 610 L 430 640 L 170 640 L 170 660"/>
+        <path class="link" d="M 550 610 L 550 640 L 810 640 L 810 660"/>
+
+        <!-- Connectors (extended-mode overlay) -->
+        <path class="link link-ext" d="M 720 270 L 760 320"/>
+        <path class="link link-ext" d="M 720 290 L 760 378"/>
+      </svg>
+    </div>
+
+    <div class="arch-defs">
+      <div class="arch-def-card card-main">
+        <h4>main.js</h4>
+        <p class="role">Orchestrator</p>
+        <p class="body">Holds App state, wires every control, and schedules rendering via rAF-coalesced redraws. Every user interaction — sliders, paradigm switch, tab tabs — lands here first.</p>
+      </div>
+      <div class="arch-def-card card-engine">
+        <h4>engine.js</h4>
+        <p class="role">Core loop</p>
+        <p class="body">Drives the discrete simulation loop, owns the seeded mulberry32 PRNG, and draws per-period dividends. All randomness in the sim flows through this one RNG so <code>(population, seed)</code> pairs reproduce exactly.</p>
+      </div>
+      <div class="arch-def-card card-sim">
+        <h4>market.js</h4>
+        <p class="role">Market core</p>
+        <p class="body">Implements <code>Order</code>, <code>Trade</code>, the price-time-priority <code>OrderBook</code>, and the top-level <code>Market</code> that routes agent orders into trades and keeps the append-only price/volume histories.</p>
+      </div>
+      <div class="arch-def-card card-sim">
+        <h4>agents.js</h4>
+        <p class="role">Strategies + sampling</p>
+        <p class="body">Base <code>Agent</code> class plus Fundamentalist, Trend, Random (ZI), Experienced, and Utility subclasses, population presets, and the sampling stage that turns the mix into a flat per-agent spec list.</p>
+      </div>
+      <div class="arch-def-card card-ext">
+        <h4>messaging.js</h4>
+        <p class="role">Extended · comms</p>
+        <p class="body">Message bus plus pairwise trust tracker. Only consumed by Utility agents — other strategies ignore it. Dormant when <code>mix.U = 0</code>, lit up for every round of the Lopez-Lira 2025 extension.</p>
+      </div>
+      <div class="arch-def-card card-ext">
+        <h4>utility.js</h4>
+        <p class="role">Extended · valuation</p>
+        <p class="body">Belief + valuation model for the Utility agent: blends prior, bias, noise, and trust-weighted peer messages into a subjective per-share value. Exposes <code>UTILITY_DEFAULTS</code> for the Hidden Constants panel.</p>
+      </div>
+      <div class="arch-def-card card-store">
+        <h4>logger.js</h4>
+        <p class="role">Persistence</p>
+        <p class="body">Append-only trace, per-tick snapshot store, and event log. Entries are never mutated or removed — the replay system depends on being able to slice to a recorded length to reconstruct any past tick.</p>
+      </div>
+      <div class="arch-def-card card-store">
+        <h4>replay.js</h4>
+        <p class="role">View builder</p>
+        <p class="body">Assembles &ldquo;view&rdquo; objects consumed by ui.js, either live (<code>buildLiveView</code>) or historical (<code>buildViewAt(tick)</code>). Live and replay rendering flow through identical code paths by construction.</p>
+      </div>
+      <div class="arch-def-card card-view">
+        <h4>viz.js</h4>
+        <p class="role">Canvas primitives</p>
+        <p class="body">HiDPI-aware canvas drawing helpers. No state of its own — every call takes an explicit view object and a canvas element and draws one layer of the dashboard.</p>
+      </div>
+      <div class="arch-def-card card-view">
+        <h4>ui.js</h4>
+        <p class="role">Render layer</p>
+        <p class="body">Turns view objects into DOM + canvas output. Never reaches into Market, Engine, or Agent state directly — it is strictly downstream of replay.js, which is how the same renderer serves live runs and historical scrubs.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <script data-cfasync="false" src="js/mathml.js"></script>
 <script data-cfasync="false" src="js/utility.js"></script>

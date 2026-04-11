@@ -319,6 +319,18 @@ const App = {
       btn.addEventListener('click', () => this._setParadigm(btn.dataset.paradigm));
     });
     this._syncParadigmButtons();
+
+    // Nav-tab click handler — swaps which .tab-pane is visible and
+    // mirrors the active state onto the tab button. Kept deliberately
+    // small: no animations, no lifecycle, just a class flip. Matches
+    // the lying project's tab-switching pattern in app.js.
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.tab;
+        document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + key));
+      });
+    });
   },
 
   /**

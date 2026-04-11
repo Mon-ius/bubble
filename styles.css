@@ -146,6 +146,51 @@ math[display="inline"] { white-space: nowrap; }
 }
 
 /*
+ * Nav tabs — top-level view selector sitting between .title and the
+ * paradigm switch. Modelled on the lying project's .nav-tab pattern:
+ * text-only buttons that turn accent-coloured when active, with a
+ * 2px bottom border used as the active indicator. The non-active
+ * bottom border is transparent but reserved so tab activation does
+ * not shift the header baseline. main.js toggles .active on click
+ * and on .tab-pane at the same time.
+ */
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+.nav-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px 7px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  cursor: pointer;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.nav-tab:hover { color: var(--fg-0); }
+.nav-tab.active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+.nav-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light);
+  border-radius: 2px;
+}
+
+/* Tab panes — only the .active pane is rendered. Each pane is a
+   top-level section below the header and owns its own layout. */
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/*
  * Paradigm switch — segmented two-button control between .title and
  * .controls. Adopts the visual language of the lying project's
  * Math / AI Agent toggle: a rounded bg-2 rail with 2px inner padding,
@@ -1524,6 +1569,190 @@ body:not(.has-experienced) .exp-only { display: none !important; }
   .chart-valuation, .panel-metrics, .chart-utility,
   .chart-ownership, .chart-messages, .chart-trust { grid-column: span 1; }
 }
+
+/* ---------- Architecture tab ---------- */
+/*
+ * Static pipeline diagram rendered in-page (not loaded from the
+ * drawio source). Every module is a programmatic SVG group with a
+ * .n-* class that maps to a CSS custom-property pair (--nc = node
+ * accent colour, --nb = node background). The diagram theme-swaps
+ * automatically because every colour resolves to a :root CSS var
+ * from the existing palette. Below the diagram, .arch-defs renders
+ * ten responsive cards describing each module's role — the cards
+ * reuse the same colour keys so scan-reading the SVG and the cards
+ * gives the same information in two encodings.
+ */
+.arch-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+}
+.arch-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.arch-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-0);
+}
+.arch-header .arch-subtitle {
+  font-size: 11px;
+  color: var(--fg-2);
+  font-style: italic;
+}
+.arch-svg-container {
+  width: 100%;
+  padding: 8px 0 28px;
+  overflow-x: auto;
+}
+.arch-svg-container svg {
+  width: 100%;
+  max-width: 980px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  color: var(--fg-3);
+}
+
+/* Node colour keys — each .n-* class binds --nc (accent/stroke) and
+   --nb (soft background). Add a new category by defining both vars
+   and then the shared .n rect / .n text.t rules below do the work. */
+.arch-diagram .n-main   { --nc: var(--purple); --nb: var(--purple-bg); }
+.arch-diagram .n-engine { --nc: var(--blue);   --nb: var(--blue-bg); }
+.arch-diagram .n-sim    { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-ext    { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-store  { --nc: var(--teal);   --nb: var(--teal-bg); }
+.arch-diagram .n-view   { --nc: var(--red);    --nb: var(--red-bg); }
+
+.arch-diagram .n rect {
+  fill: var(--nb);
+  stroke: var(--nc);
+  stroke-width: 1.6;
+}
+.arch-diagram .n text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.arch-diagram .n text.t {
+  fill: var(--nc);
+  font: 600 13px var(--font-ui);
+  letter-spacing: 0.01em;
+}
+.arch-diagram .n text.s {
+  fill: var(--fg-2);
+  font: 10px var(--font-ui);
+}
+
+/* Small extended-node boxes get slightly tighter typography. */
+.arch-diagram .n-ext text.t { font-size: 11px; }
+.arch-diagram .n-ext text.s { font-size: 9px; }
+
+/* Core dataflow connectors. color is inherited from the svg element
+   (var(--fg-3)) so light / dark switches sweep the whole diagram in
+   a single variable resolution. */
+.arch-diagram .link {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  marker-end: url(#arch-arrow);
+}
+/* Overlay connectors (agents.js → messaging / utility). Dashed to
+   signal they only fire when mix.U > 0. */
+.arch-diagram .link-ext {
+  stroke: var(--amber);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.3;
+}
+
+/* Dashed "Extended mode" group around messaging + utility */
+.arch-diagram .ext-group rect {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  opacity: 0.55;
+}
+.arch-diagram .ext-group .ext-label {
+  text-anchor: middle;
+  fill: var(--amber);
+  font: 600 9px var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* Definition cards below the diagram. Responsive 3-col grid that
+   collapses at the 1100 / 700 breakpoints. Each card reuses the
+   node colour key so the colour-encoded module group is consistent
+   between the SVG and the card stack. */
+.arch-defs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.arch-def-card {
+  padding: 14px 16px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--fg-3);
+  border-radius: 8px;
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.arch-def-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+.arch-def-card h4 {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg-0);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.arch-def-card .role {
+  margin: 0 0 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+.arch-def-card .body {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-1);
+}
+.arch-def-card .body code {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+}
+.arch-def-card.card-main   { border-left-color: var(--purple); }
+.arch-def-card.card-main   h4 { color: var(--purple); }
+.arch-def-card.card-engine { border-left-color: var(--blue); }
+.arch-def-card.card-engine h4 { color: var(--blue); }
+.arch-def-card.card-sim    { border-left-color: var(--green); }
+.arch-def-card.card-sim    h4 { color: var(--green); }
+.arch-def-card.card-ext    { border-left-color: var(--amber); }
+.arch-def-card.card-ext    h4 { color: var(--amber); }
+.arch-def-card.card-store  { border-left-color: var(--teal); }
+.arch-def-card.card-store  h4 { color: var(--teal); }
+.arch-def-card.card-view   { border-left-color: var(--red); }
+.arch-def-card.card-view   h4 { color: var(--red); }
 
 /* ---------- Scrollbars ---------- */
 *::-webkit-scrollbar { width: 8px; height: 8px; }
