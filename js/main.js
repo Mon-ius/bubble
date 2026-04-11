@@ -364,16 +364,170 @@ const App = {
     }
 
     // Nav-tab click handler — swaps which .tab-pane is visible and
-    // mirrors the active state onto the tab button. Kept deliberately
-    // small: no animations, no lifecycle, just a class flip. Matches
-    // the lying project's tab-switching pattern in app.js.
+    // mirrors the active state onto the tab button. Re-runs KaTeX
+    // on the newly-activated pane so formulas inside a previously
+    // hidden tab render the moment the user navigates to it.
     document.querySelectorAll('.nav-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.tab;
         document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b === btn));
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + key));
+        const active = document.getElementById('tab-' + key);
+        this._renderMath(active);
+        if (key === 'slides') this._syncSlide();
       });
     });
+
+    // "Edit in draw.io" — open architecture.drawio in the public
+    // app.diagrams.net editor. The URL is constructed at runtime so
+    // GitHub Pages, a local file:// serve, and a localhost dev server
+    // all resolve to the correct absolute URL of the source file.
+    // app.diagrams.net#U<encoded-url> loads the file read/write from
+    // the given HTTPS origin; file:// origins are ignored gracefully.
+    const drawioBtn = document.getElementById('btn-drawio');
+    if (drawioBtn) {
+      const origin = window.location.origin;
+      if (origin && /^https?:/.test(origin)) {
+        const path    = window.location.pathname.replace(/[^/]*$/, '');
+        const srcUrl  = origin + path + 'architecture.drawio';
+        drawioBtn.href = 'https://app.diagrams.net/#U' + encodeURIComponent(srcUrl);
+      } else {
+        drawioBtn.href   = 'https://app.diagrams.net/';
+        drawioBtn.title  = 'Open app.diagrams.net (source file only resolvable over https://)';
+      }
+    }
+
+    // Slides tab wiring — prev/next, fullscreen, reading-mode, keyboard.
+    this._wireSlides();
+
+    // Initial KaTeX pass — covers formulas baked into the default
+    // (Experiment) pane. Each tab switch above will re-render its
+    // own pane on demand.
+    this._renderMath(document.body);
+  },
+
+  /**
+   * Run KaTeX auto-render on an element subtree. Matches the lying
+   * project's delimiter config (`$$…$$` display, `$…$` inline). A
+   * missing global is tolerated so the page still works if the CDN
+   * is unavailable — the math simply shows as raw source.
+   */
+  _renderMath(el) {
+    if (!el || typeof renderMathInElement !== 'function') return;
+    try {
+      renderMathInElement(el, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true  },
+          { left: '$',  right: '$',  display: false },
+        ],
+        throwOnError: false,
+      });
+    } catch (_) { /* ignored — math left as source */ }
+  },
+
+  /* -------- Slides -------- */
+
+  // Current slide index (1-based) and a one-time `.active` lock onto
+  // the first slide in _wireSlides(). The toolbar prev/next buttons,
+  // the global keyboard handler, and every slide-toggle path go
+  // through _gotoSlide() so the counter, button disabled-state, and
+  // `.active` class stay in lockstep.
+  _curSlide: 1,
+
+  _wireSlides() {
+    const viewport = document.getElementById('slides-viewport');
+    if (!viewport) return;
+    const slides = viewport.querySelectorAll('.slide');
+    const total  = slides.length;
+    const totEl  = document.getElementById('slide-tot');
+    if (totEl) totEl.textContent = String(total);
+
+    const prev = document.getElementById('slide-prev');
+    const next = document.getElementById('slide-next');
+    const fs   = document.getElementById('slide-fs');
+    const read = document.getElementById('slide-read');
+
+    if (prev) prev.addEventListener('click', () => this._gotoSlide(this._curSlide - 1));
+    if (next) next.addEventListener('click', () => this._gotoSlide(this._curSlide + 1));
+    if (fs)   fs.addEventListener('click',   () => this._toggleFullscreen());
+    if (read) read.addEventListener('click', () => this._toggleReadingMode());
+
+    // Global keyboard — only fires when the Slides tab is active and
+    // focus is not on an interactive form element (otherwise ←/→
+    // would hijack number-input adjustment). Esc exits fullscreen.
+    document.addEventListener('keydown', (e) => {
+      const slidesTab = document.getElementById('tab-slides');
+      if (!slidesTab || !slidesTab.classList.contains('active')) return;
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); this._gotoSlide(this._curSlide - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); this._gotoSlide(this._curSlide + 1); }
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); this._toggleFullscreen(); }
+      if (e.key === 'Escape') {
+        const vp = document.getElementById('slides-viewport');
+        if (vp && vp.classList.contains('fullscreen')) this._toggleFullscreen();
+      }
+    });
+
+    this._syncSlide();
+  },
+
+  _gotoSlide(n) {
+    const viewport = document.getElementById('slides-viewport');
+    if (!viewport) return;
+    const total = viewport.querySelectorAll('.slide').length;
+    if (total === 0) return;
+    if (n < 1)     n = 1;
+    if (n > total) n = total;
+    this._curSlide = n;
+    this._syncSlide();
+  },
+
+  _syncSlide() {
+    const viewport = document.getElementById('slides-viewport');
+    if (!viewport) return;
+    const slides = viewport.querySelectorAll('.slide');
+    slides.forEach((slide) => {
+      const idx = Number(slide.dataset.slide) || 0;
+      slide.classList.toggle('active', idx === this._curSlide);
+    });
+    const cur  = document.getElementById('slide-cur');
+    if (cur) cur.textContent = String(this._curSlide);
+    const prev = document.getElementById('slide-prev');
+    const next = document.getElementById('slide-next');
+    if (prev) prev.disabled = this._curSlide <= 1;
+    if (next) next.disabled = this._curSlide >= slides.length;
+  },
+
+  _toggleFullscreen() {
+    const viewport = document.getElementById('slides-viewport');
+    if (!viewport) return;
+    const willEnter = !viewport.classList.contains('fullscreen');
+    viewport.classList.toggle('fullscreen', willEnter);
+    let backdrop = document.getElementById('slides-fs-backdrop');
+    if (willEnter) {
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'slides-fs-backdrop';
+        backdrop.className = 'slides-fs-backdrop';
+        backdrop.addEventListener('click', () => this._toggleFullscreen());
+        document.body.appendChild(backdrop);
+      }
+      const fsBtn = document.getElementById('slide-fs');
+      if (fsBtn) fsBtn.classList.add('active');
+    } else {
+      if (backdrop) backdrop.remove();
+      const fsBtn = document.getElementById('slide-fs');
+      if (fsBtn) fsBtn.classList.remove('active');
+    }
+  },
+
+  _toggleReadingMode() {
+    const viewport = document.getElementById('slides-viewport');
+    if (!viewport) return;
+    viewport.classList.toggle('reading-mode');
+    const btn = document.getElementById('slide-read');
+    if (btn) btn.classList.toggle('active', viewport.classList.contains('reading-mode'));
   },
 
   /**

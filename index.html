@@ -5,7 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=13">
+<!--
+  KaTeX — client-side math rendering for the Architecture, Glossary,
+  and Slides tabs. Mirrors the lying project's setup (same version,
+  same auto-render contrib, same `$…$` / `$$…$$` delimiters). Loaded
+  from jsDelivr with `defer` so the rest of the page layout is not
+  blocked; main.js calls renderMathInElement() once on DOMContentLoaded
+  and again every time the active tab changes, so formulas inside a
+  hidden pane render the moment the user navigates to it.
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 </head>
 <body>
 <header class="app-header">
@@ -22,8 +34,10 @@
     border reserved on every tab so activation does not shift layout.
   -->
   <div class="nav-tabs" role="tablist">
-    <button class="nav-tab active" data-tab="experiment" role="tab">Experiment</button>
+    <button class="nav-tab active" data-tab="experiment"   role="tab">Experiment</button>
     <button class="nav-tab"        data-tab="architecture" role="tab">Architecture</button>
+    <button class="nav-tab"        data-tab="glossary"     role="tab">Glossary</button>
+    <button class="nav-tab"        data-tab="slides"       role="tab">Slides</button>
   </div>
   <!--
     Paradigm switch — segmented control between the two research
@@ -604,205 +618,585 @@
 </section>
 
 <!--
-  Architecture tab — static pipeline diagram of the simulator's ten
-  modules. Hand-coded SVG with one node per file, grouped by role
-  using the shared colour palette (purple = orchestrator, blue =
-  core loop, green = simulation, amber = extended-mode overlay,
-  teal = persistence + replay, red = rendering). Arrowheads use a
-  single shared marker and inherit the current foreground colour so
-  the diagram theme-swaps cleanly between light and dark. Below the
-  diagram is a responsive grid of cards describing each module's
-  role, drawn from the architecture comment block in CLAUDE.md so
-  the Architecture tab stays in sync with the authoritative docs.
+  Architecture tab — math-focused snapshot of the three paradigms this
+  simulator replicates. Follows the lying project's arch pattern: a
+  header with the title and an "Edit in draw.io" shortcut, a
+  hand-coded SVG flow diagram whose nodes carry inline equations, and
+  a responsive grid of cards, each introducing one equation block
+  from the DLM 2005 / Lopez-Lira 2025 / Wang 2026 stack. KaTeX is
+  called on this pane by main.js._renderMath() whenever the user
+  activates the tab, so every `$…$` span below becomes a rendered
+  formula at that point. The `.drawio` source lives at
+  `architecture.drawio` in the repo root and is opened in app.
+  diagrams.net via the header button — same contract as lying's
+  btn-drawio.
 -->
 <section class="tab-pane" id="tab-architecture">
   <div class="arch-wrap">
     <div class="arch-header">
-      <h2>Pipeline Architecture</h2>
-      <span class="arch-subtitle">Ten modules; dataflow from simulation core to rendering</span>
+      <div class="arch-title-block">
+        <h2>Mathematical Architecture</h2>
+        <p class="arch-desc">DLM 2005 · Lopez-Lira 2025 · Wang 2026 — the equations that drive every tick.</p>
+      </div>
+      <a class="btn-drawio" id="btn-drawio" href="#" target="_blank" rel="noopener" title="Open architecture.drawio in app.diagrams.net">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/>
+        </svg>
+        <span>Edit in draw.io</span>
+      </a>
     </div>
 
-    <div class="arch-svg-container arch-diagram">
-      <svg viewBox="0 0 980 780" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simulator pipeline diagram">
+    <div class="arch-svg-container arch-diagram" id="arch-math">
+      <svg viewBox="0 0 980 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mathematical pipeline diagram">
         <defs>
           <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
           </marker>
         </defs>
 
-        <!-- Dashed overlay for the extended-mode cluster (messaging + utility) -->
-        <g class="ext-group">
-          <rect x="740" y="278" width="220" height="140" rx="10" ry="10"/>
-          <text x="850" y="270" class="ext-label">Extended mode</text>
+        <!-- Group 1 — Paper constants (DLM 2005) -->
+        <g class="arch-group g-paper">
+          <rect x="30" y="20" width="320" height="180" rx="10" ry="10"/>
+          <text x="190" y="44" class="g-label">Paper constants · DLM 2005</text>
+        </g>
+        <g class="n n-paper" transform="translate(60 60)">
+          <rect width="260" height="46" rx="6" ry="6"/>
+          <text class="t" x="130" y="20">T = 10 periods</text>
+          <text class="s" x="130" y="36">d ∈ {0, 20}¢   E[d] = 10¢</text>
+        </g>
+        <g class="n n-paper n-eq" transform="translate(60 122)">
+          <rect width="260" height="62" rx="6" ry="6"/>
+          <text class="t" x="130" y="26">FV_t = E[d] · (T − t + 1)</text>
+          <text class="s" x="130" y="46">Risk-neutral fundamental value</text>
         </g>
 
-        <!-- main.js -->
-        <g class="n n-main" transform="translate(380 20)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">main.js</text>
-          <text class="s" x="110" y="46">App state · render scheduling</text>
+        <!-- Group 2 — Strategies -->
+        <g class="arch-group g-strat">
+          <rect x="380" y="20" width="570" height="380" rx="10" ry="10"/>
+          <text x="665" y="44" class="g-label">Agent strategies</text>
         </g>
 
-        <!-- engine.js -->
-        <g class="n n-engine" transform="translate(380 120)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">engine.js</text>
-          <text class="s" x="110" y="46">Sim loop · seeded PRNG</text>
+        <g class="n n-fund" transform="translate(400 60)">
+          <rect width="260" height="68" rx="6" ry="6"/>
+          <text class="t" x="130" y="22">Fundamentalist</text>
+          <text class="s" x="130" y="40">ask &lt; 0.98 · FV_t ⇒ buy</text>
+          <text class="s" x="130" y="56">bid &gt; 1.02 · FV_t ⇒ sell</text>
+        </g>
+        <g class="n n-trend" transform="translate(680 60)">
+          <rect width="250" height="68" rx="6" ry="6"/>
+          <text class="t" x="125" y="22">Trend follower</text>
+          <text class="s" x="125" y="40">slope = Σ Δp over last 6</text>
+          <text class="s" x="125" y="56">bid_1 = p + k·slope</text>
+        </g>
+        <g class="n n-zi" transform="translate(400 142)">
+          <rect width="260" height="68" rx="6" ry="6"/>
+          <text class="t" x="130" y="22">Random (ZI)</text>
+          <text class="s" x="130" y="40">bid ∼ U[0.7·FV, 1.1·FV]</text>
+          <text class="s" x="130" y="56">ask ∼ U[0.9·FV, 1.3·FV]</text>
+        </g>
+        <g class="n n-exp" transform="translate(680 142)">
+          <rect width="250" height="68" rx="6" ry="6"/>
+          <text class="t" x="125" y="22">Experienced (DLM)</text>
+          <text class="s" x="125" y="40">prior = φ(h) · FV_t</text>
+          <text class="s" x="125" y="56">refuses overpay in late h</text>
+        </g>
+        <g class="n n-util" transform="translate(400 224)">
+          <rect width="260" height="72" rx="6" ry="6"/>
+          <text class="t" x="130" y="22">Utility (Lopez-Lira 2025)</text>
+          <text class="s" x="130" y="40">prior = FV_t·(1 + b + ε)</text>
+          <text class="s" x="130" y="58">risk U_L (convex) / U_N / U_A</text>
+        </g>
+        <g class="n n-eu" transform="translate(680 224)">
+          <rect width="250" height="72" rx="6" ry="6"/>
+          <text class="t" x="125" y="22">Expected-utility score</text>
+          <text class="s" x="125" y="40">EU = p · U(w₁) + (1−p) · U(w₀)</text>
+          <text class="s" x="125" y="58">a* = argmax EU</text>
+        </g>
+        <g class="n n-msg" transform="translate(400 310)">
+          <rect width="260" height="68" rx="6" ry="6"/>
+          <text class="t" x="130" y="22">Belief blending</text>
+          <text class="s" x="130" y="40">post = w · prior +</text>
+          <text class="s" x="130" y="56">(1−w) · avg(msgs)</text>
+        </g>
+        <g class="n n-trust" transform="translate(680 310)">
+          <rect width="250" height="68" rx="6" ry="6"/>
+          <text class="t" x="125" y="22">Trust EMA</text>
+          <text class="s" x="125" y="40">τ_s ← (1−α)·τ_s +</text>
+          <text class="s" x="125" y="56">α · (1 − |claim−VWAP|/VWAP)</text>
         </g>
 
-        <!-- market.js -->
-        <g class="n n-sim" transform="translate(60 230)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">market.js</text>
-          <text class="s" x="110" y="46">Order · Trade · OrderBook</text>
+        <!-- Group 3 — Wang 2026 overlay -->
+        <g class="arch-group g-wang">
+          <rect x="30" y="240" width="320" height="160" rx="10" ry="10"/>
+          <text x="190" y="262" class="g-label">Wang 2026 · ChatGPT anchor</text>
+        </g>
+        <g class="n n-wang n-eq" transform="translate(60 278)">
+          <rect width="260" height="56" rx="6" ry="6"/>
+          <text class="t" x="130" y="24">V̂_i ← ChatGPT(agent_i)</text>
+          <text class="s" x="130" y="42">V̂_i ∈ [0.25·FV₀, 1.75·FV₀]</text>
+        </g>
+        <g class="n n-wang" transform="translate(60 348)">
+          <rect width="260" height="40" rx="6" ry="6"/>
+          <text class="t" x="130" y="24">Q: asset → argmax V̂_i ?</text>
         </g>
 
-        <!-- agents.js -->
-        <g class="n n-sim" transform="translate(500 230)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">agents.js</text>
-          <text class="s" x="110" y="46">F · T · R · E · U strategies</text>
+        <!-- Group 4 — Market matching + metrics -->
+        <g class="arch-group g-market">
+          <rect x="30" y="430" width="920" height="210" rx="10" ry="10"/>
+          <text x="490" y="454" class="g-label">Market matching + quality metrics</text>
+        </g>
+        <g class="n n-book" transform="translate(60 472)">
+          <rect width="400" height="52" rx="6" ry="6"/>
+          <text class="t" x="200" y="22">Order book (price–time priority)</text>
+          <text class="s" x="200" y="40">bid ≥ ask ⇒ trade at resting price</text>
+        </g>
+        <g class="n n-metric" transform="translate(490 472)">
+          <rect width="200" height="52" rx="6" ry="6"/>
+          <text class="t" x="100" y="22">Haessel R²</text>
+          <text class="s" x="100" y="40">fit of p̄_t to FV_t</text>
+        </g>
+        <g class="n n-metric" transform="translate(710 472)">
+          <rect width="210" height="52" rx="6" ry="6"/>
+          <text class="t" x="105" y="22">Amplitude</text>
+          <text class="s" x="105" y="40">(max−min residual) / FV₀</text>
+        </g>
+        <g class="n n-metric" transform="translate(60 546)">
+          <rect width="400" height="52" rx="6" ry="6"/>
+          <text class="t" x="200" y="22">Normalized deviation</text>
+          <text class="s" x="200" y="40">ND = Σ |p_t − FV_t| / (T · FV₀ · Q)</text>
+        </g>
+        <g class="n n-metric" transform="translate(490 546)">
+          <rect width="430" height="52" rx="6" ry="6"/>
+          <text class="t" x="215" y="22">Turnover · Allocative efficiency</text>
+          <text class="s" x="215" y="40">TO = Σ qty / Q    AE = U_realized / U_max</text>
         </g>
 
-        <!-- messaging.js -->
-        <g class="n n-ext" transform="translate(760 298)">
-          <rect width="180" height="44" rx="8" ry="8"/>
-          <text class="t" x="90" y="20">messaging.js</text>
-          <text class="s" x="90" y="35">Bus · trust tracker</text>
-        </g>
-
-        <!-- utility.js -->
-        <g class="n n-ext" transform="translate(760 356)">
-          <rect width="180" height="44" rx="8" ry="8"/>
-          <text class="t" x="90" y="20">utility.js</text>
-          <text class="s" x="90" y="35">Utility belief model</text>
-        </g>
-
-        <!-- ai.js (Wang 2026 only) -->
-        <g class="n n-wang" transform="translate(60 370)">
-          <rect width="220" height="52" rx="8" ry="8"/>
-          <text class="t" x="110" y="22">ai.js</text>
-          <text class="s" x="110" y="38">ChatGPT anchor · Wang 2026</text>
-        </g>
-
-        <!-- logger.js -->
-        <g class="n n-store" transform="translate(380 450)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">logger.js</text>
-          <text class="s" x="110" y="46">Append-only trace · events</text>
-        </g>
-
-        <!-- replay.js -->
-        <g class="n n-store" transform="translate(380 550)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">replay.js</text>
-          <text class="s" x="110" y="46">Build view objects</text>
-        </g>
-
-        <!-- viz.js -->
-        <g class="n n-view" transform="translate(60 660)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">viz.js</text>
-          <text class="s" x="110" y="46">HiDPI canvas primitives</text>
-        </g>
-
-        <!-- ui.js -->
-        <g class="n n-view" transform="translate(700 660)">
-          <rect width="220" height="60" rx="8" ry="8"/>
-          <text class="t" x="110" y="28">ui.js</text>
-          <text class="s" x="110" y="46">DOM · canvas rendering</text>
-        </g>
-
-        <!-- Connectors (core flow) -->
-        <path class="link" d="M 490 80 L 490 120"/>
-        <path class="link" d="M 430 180 L 430 210 L 170 210 L 170 230"/>
-        <path class="link" d="M 550 180 L 550 210 L 610 210 L 610 230"/>
-        <path class="link" d="M 170 290 L 170 430 L 430 430 L 430 450"/>
-        <path class="link" d="M 610 290 L 610 430 L 550 430 L 550 450"/>
-        <path class="link" d="M 490 510 L 490 550"/>
-        <path class="link" d="M 430 610 L 430 640 L 170 640 L 170 660"/>
-        <path class="link" d="M 550 610 L 550 640 L 810 640 L 810 660"/>
-
-        <!-- Connectors (extended-mode overlay) -->
-        <path class="link link-ext" d="M 720 270 L 760 320"/>
-        <path class="link link-ext" d="M 720 290 L 760 378"/>
-
-        <!-- Wang 2026 overlay: ai.js → agents.js (psychological anchor) -->
-        <path class="link link-wang" d="M 280 396 L 500 280"/>
+        <!-- Connectors -->
+        <path class="link"      d="M 320 152 L 400 94"/>
+        <path class="link"      d="M 320 152 L 400 176"/>
+        <path class="link"      d="M 320 152 L 400 260"/>
+        <path class="link"      d="M 660 260 L 680 260"/>
+        <path class="link"      d="M 530 296 L 530 310"/>
+        <path class="link"      d="M 805 296 L 805 310"/>
+        <path class="link link-wang" d="M 320 306 L 400 260"/>
+        <path class="link"      d="M 530 378 L 530 430"/>
+        <path class="link"      d="M 805 378 L 805 430"/>
       </svg>
     </div>
 
     <div class="arch-defs">
-      <div class="arch-def-card card-main">
-        <h4>main.js</h4>
-        <p class="role">Orchestrator</p>
-        <p class="body">Holds App state, wires every control, and schedules rendering via rAF-coalesced redraws. Every user interaction — sliders, paradigm switch, tab tabs — lands here first.</p>
+      <div class="arch-def-card card-paper">
+        <h4>Fundamental value · DLM 2005</h4>
+        <p class="role">Paper constant</p>
+        <div class="formula">$$ \mathrm{FV}_t \;=\; \mathbb{E}[d] \cdot (T - t + 1), \qquad \mathbb{E}[d] = \tfrac{1}{2}(0) + \tfrac{1}{2}(20) = 10 $$</div>
+        <p class="body">Risk-neutral price of one share at the start of period $t$ with $T = 10$ periods of remaining life and i.i.d. dividend draws. Every strategy in the simulator reads $\mathrm{FV}_t$ from <code>market.fundamentalValue()</code>.</p>
       </div>
-      <div class="arch-def-card card-engine">
-        <h4>engine.js</h4>
-        <p class="role">Core loop</p>
-        <p class="body">Drives the discrete simulation loop, owns the seeded mulberry32 PRNG, and draws per-period dividends. All randomness in the sim flows through this one RNG so <code>(population, seed)</code> pairs reproduce exactly.</p>
+
+      <div class="arch-def-card card-strat">
+        <h4>Fundamentalist · mean-reversion</h4>
+        <p class="role">Strategy</p>
+        <div class="formula">$$ \text{buy if } \text{ask}_t < 0.98 \cdot \mathrm{FV}_t, \quad \text{sell if } \text{bid}_t > 1.02 \cdot \mathrm{FV}_t $$</div>
+        <p class="body">Rational anchor — borrowed from the Smith–Suchanek–Williams lineage. Posts passive quotes near $\mathrm{FV}_t$ when neither side is aggressive.</p>
       </div>
-      <div class="arch-def-card card-sim">
-        <h4>market.js</h4>
-        <p class="role">Market core</p>
-        <p class="body">Implements <code>Order</code>, <code>Trade</code>, the price-time-priority <code>OrderBook</code>, and the top-level <code>Market</code> that routes agent orders into trades and keeps the append-only price/volume histories.</p>
+
+      <div class="arch-def-card card-strat">
+        <h4>Trend follower · momentum</h4>
+        <p class="role">Strategy</p>
+        <div class="formula">$$ \text{slope}_t \;=\; \sum_{k=1}^{6} (p_{t-k+1} - p_{t-k}), \qquad \text{bid}_1 \;=\; p_t + k \cdot \text{slope}_t $$</div>
+        <p class="body">De Long–Shleifer–Summers–Waldmann positive-feedback trader. Drives bubble inflation when the trend is up.</p>
       </div>
-      <div class="arch-def-card card-sim">
-        <h4>agents.js</h4>
-        <p class="role">Strategies + sampling</p>
-        <p class="body">Base <code>Agent</code> class plus Fundamentalist, Trend, Random (ZI), Experienced, and Utility subclasses, population presets, and the sampling stage that turns the mix into a flat per-agent spec list.</p>
+
+      <div class="arch-def-card card-strat">
+        <h4>Random · zero-intelligence</h4>
+        <p class="role">Strategy</p>
+        <div class="formula">$$ \text{bid}_t \sim \mathcal{U}[0.7\,\mathrm{FV}_t,\,1.1\,\mathrm{FV}_t], \qquad \text{ask}_t \sim \mathcal{U}[0.9\,\mathrm{FV}_t,\,1.3\,\mathrm{FV}_t] $$</div>
+        <p class="body">Gode–Sunder (1993) liquidity floor. One slot is pinned in every run so the book never goes fully empty.</p>
       </div>
-      <div class="arch-def-card card-ext">
-        <h4>messaging.js</h4>
-        <p class="role">Extended · comms</p>
-        <p class="body">Message bus plus pairwise trust tracker. Only consumed by Utility agents — other strategies ignore it. Dormant when <code>mix.U = 0</code>, lit up for every round of the Lopez-Lira 2025 extension.</p>
+
+      <div class="arch-def-card card-strat">
+        <h4>Experienced · DLM horizon discount</h4>
+        <p class="role">Strategy</p>
+        <div class="formula">$$ \text{prior}_t \;=\; \varphi(h) \cdot \mathrm{FV}_t, \qquad h = T - t + 1 $$</div>
+        <p class="body">$\varphi$ is the experience-level horizon discount: naive ≈ 1, veteran ramps to zero in the last three periods. This is DLM 2005's bubble-suppressing channel.</p>
       </div>
-      <div class="arch-def-card card-ext">
-        <h4>utility.js</h4>
-        <p class="role">Extended · valuation</p>
-        <p class="body">Belief + valuation model for the Utility agent: blends prior, bias, noise, and trust-weighted peer messages into a subjective per-share value. Exposes <code>UTILITY_DEFAULTS</code> for the Hidden Constants panel.</p>
+
+      <div class="arch-def-card card-ll">
+        <h4>Utility prior · Lopez-Lira 2025</h4>
+        <p class="role">Extended</p>
+        <div class="formula">$$ \text{prior}_t \;=\; \mathrm{FV}_t \cdot \bigl(1 + b_i + \varepsilon\bigr), \quad b_i \in \{-0.15,\,0,\,+0.15\}, \quad \varepsilon \sim \mathcal{U}[-0.03,\,0.03] $$</div>
+        <p class="body">Persistent per-agent bias $b_i$ and per-tick noise $\varepsilon$, drawn fresh each decision. Feeds the belief-blending stage below.</p>
       </div>
+
+      <div class="arch-def-card card-ll">
+        <h4>Expected-utility scoring</h4>
+        <p class="role">Extended</p>
+        <div class="formula">$$ \mathrm{EU}(a) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad a^\star = \arg\max_a \mathrm{EU}(a) $$</div>
+        <div class="formula">$$ U_L(w) = (w/w_0)^2,\qquad U_N(w) = w/w_0,\qquad U_A(w) = \sqrt{w/w_0} $$</div>
+        <p class="body">Each Utility agent argmaxes the EU functional over {hold, cross bid, cross ask, passive bid, passive ask}. Risk-loving / neutral / averse pick one of $U_L,U_N,U_A$.</p>
+      </div>
+
+      <div class="arch-def-card card-ll">
+        <h4>Belief blending with peer messages</h4>
+        <p class="role">Extended</p>
+        <div class="formula">$$ V_i^{\text{post}} \;=\; w \cdot V_i^{\text{prior}} \;+\; (1 - w) \cdot \tfrac{1}{|M|}\sum_{m \in M} \hat v_m $$</div>
+        <p class="body">Naive blends at $w = 0.60$, skeptical at $w = 0.90$, adaptive scales $w$ by pairwise trust. Messages from the agent itself are excluded.</p>
+      </div>
+
+      <div class="arch-def-card card-ll">
+        <h4>Pairwise trust EMA</h4>
+        <p class="role">Extended</p>
+        <div class="formula">$$ \tau_{r \to s} \;\leftarrow\; (1 - \alpha)\, \tau_{r \to s} \;+\; \alpha \cdot \max\!\Bigl(0,\,1 - \tfrac{|\hat v_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr), \quad \alpha = 0.30 $$</div>
+        <p class="body">Receiver $r$'s trust in sender $s$ is reinforced when $s$'s claimed valuation tracks the period's VWAP. Powers the adaptive belief-blend above.</p>
+      </div>
+
       <div class="arch-def-card card-wang">
-        <h4>ai.js</h4>
-        <p class="role">Wang 2026 · anchor</p>
-        <p class="body">OpenAI-compatible fetch wrapper (ChatGPT-only). On each run start, if the Wang 2026 paradigm is active and an API key is supplied, <code>getPsychAnchors</code> queries the model once per Utility agent for a psychological valuation anchor that seeds <code>subjectiveValue</code>. Reuses the <code>{endpoint, apiKey, model}</code> shape from the lying project's agent roster.</p>
+        <h4>Wang 2026 · psychological anchor</h4>
+        <p class="role">Merged paradigm</p>
+        <div class="formula">$$ \hat V_i \;\leftarrow\; \text{ChatGPT}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$</div>
+        <p class="body">At run start, one chat-completion call per Utility agent asks ChatGPT for a private subjective valuation. The returned number is clamped and seeds $\text{prior}_0$ so the model's psychology shows up in the very first order.</p>
       </div>
-      <div class="arch-def-card card-store">
-        <h4>logger.js</h4>
-        <p class="role">Persistence</p>
-        <p class="body">Append-only trace, per-tick snapshot store, and event log. Entries are never mutated or removed — the replay system depends on being able to slice to a recorded length to reconstruct any past tick.</p>
+
+      <div class="arch-def-card card-metric">
+        <h4>Market quality · mispricing</h4>
+        <p class="role">Metric</p>
+        <div class="formula">$$ R^2_{\text{Haessel}} \;=\; 1 - \frac{\sum_t (\bar p_t - \mathrm{FV}_t)^2}{\sum_t (\mathrm{FV}_t - \overline{\mathrm{FV}})^2}, \qquad \mathrm{ND} = \frac{\sum_t |p_t - \mathrm{FV}_t|}{T \cdot \mathrm{FV}_0 \cdot Q} $$</div>
+        <p class="body">Haessel $R^2$ measures how closely per-period mean price fits the fundamental staircase; ND normalizes total mispricing by total shares outstanding.</p>
       </div>
-      <div class="arch-def-card card-store">
-        <h4>replay.js</h4>
-        <p class="role">View builder</p>
-        <p class="body">Assembles &ldquo;view&rdquo; objects consumed by ui.js, either live (<code>buildLiveView</code>) or historical (<code>buildViewAt(tick)</code>). Live and replay rendering flow through identical code paths by construction.</p>
-      </div>
-      <div class="arch-def-card card-view">
-        <h4>viz.js</h4>
-        <p class="role">Canvas primitives</p>
-        <p class="body">HiDPI-aware canvas drawing helpers. No state of its own — every call takes an explicit view object and a canvas element and draws one layer of the dashboard.</p>
-      </div>
-      <div class="arch-def-card card-view">
-        <h4>ui.js</h4>
-        <p class="role">Render layer</p>
-        <p class="body">Turns view objects into DOM + canvas output. Never reaches into Market, Engine, or Agent state directly — it is strictly downstream of replay.js, which is how the same renderer serves live runs and historical scrubs.</p>
+
+      <div class="arch-def-card card-metric">
+        <h4>Market quality · amplitude &amp; turnover</h4>
+        <p class="role">Metric</p>
+        <div class="formula">$$ A \;=\; \frac{\max_t (\bar p_t - \mathrm{FV}_t) - \min_t (\bar p_t - \mathrm{FV}_t)}{\mathrm{FV}_0}, \qquad \mathrm{TO} \;=\; \frac{\sum_t q_t}{Q} $$</div>
+        <p class="body">Amplitude captures the peak-to-trough excursion of the mean-price residual; turnover is total shares traded divided by total shares outstanding. Both are reported in the Experimental Market-Quality Statistics panel.</p>
       </div>
     </div>
   </div>
 </section>
 
-<script data-cfasync="false" src="js/mathml.js?v=11"></script>
-<script data-cfasync="false" src="js/utility.js?v=11"></script>
-<script data-cfasync="false" src="js/messaging.js?v=11"></script>
-<script data-cfasync="false" src="js/market.js?v=11"></script>
-<script data-cfasync="false" src="js/agents.js?v=11"></script>
-<script data-cfasync="false" src="js/logger.js?v=11"></script>
-<script data-cfasync="false" src="js/viz.js?v=11"></script>
-<script data-cfasync="false" src="js/engine.js?v=11"></script>
-<script data-cfasync="false" src="js/ai.js?v=11"></script>
-<script data-cfasync="false" src="js/ui.js?v=11"></script>
-<script data-cfasync="false" src="js/replay.js?v=11"></script>
-<script data-cfasync="false" src="js/main.js?v=11"></script>
+<!--
+  Glossary tab — definitions of every abbreviation, symbol, figure,
+  and source paper used in the simulator. Two tables (abbreviations
+  and mathematical notation) plus a list of plot descriptions plus a
+  source-papers list. Rendered via KaTeX in main.js._renderMath().
+-->
+<section class="tab-pane" id="tab-glossary">
+  <div class="glossary-wrap">
+    <h2>Glossary &amp; Reference</h2>
+
+    <div class="gloss-section">
+      <h3>Abbreviations &amp; indices</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Human-subject bubble experiment; paper constants and the Experienced agent come from here.</td></tr>
+          <tr><td class="term">LL</td><td>Lopez-Lira (2025)</td><td>LLM expected-utility extension adding messaging, trust, and deception on top of DLM's market.</td></tr>
+          <tr><td class="term">Wang</td><td>Wang (2026)</td><td>Merged DLM + Lopez-Lira paradigm in which ChatGPT seeds each Utility agent's private psychological valuation at run start.</td></tr>
+          <tr><td class="term">F</td><td>Fundamentalist</td><td>Rational mean-reversion agent anchored on $\mathrm{FV}_t$; the pinned rational background.</td></tr>
+          <tr><td class="term">T</td><td>Trend follower</td><td>Positive-feedback / momentum trader estimating slope from the last six prints.</td></tr>
+          <tr><td class="term">R</td><td>Random (ZI)</td><td>Gode–Sunder zero-intelligence trader that posts uniform bids/asks.</td></tr>
+          <tr><td class="term">E</td><td>Experienced</td><td>DLM horizon-aware agent; discounts belief by a factor $\varphi(h)$ that decays in late periods.</td></tr>
+          <tr><td class="term">U</td><td>Utility</td><td>Lopez-Lira 2025 EU-maximizer agent with messaging/trust/deception.</td></tr>
+          <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
+          <tr><td class="term">EU</td><td>Expected utility</td><td>$\mathrm{EU}(a) = p \cdot U(w_1) + (1-p)\cdot U(w_0)$ — the Utility agent's scoring functional.</td></tr>
+          <tr><td class="term">VWAP</td><td>Volume-weighted average price</td><td>Per-period average trade price weighted by quantity; baseline for the trust EMA update.</td></tr>
+          <tr><td class="term">ND</td><td>Normalized deviation</td><td>Total absolute mispricing, scaled by $T\cdot\mathrm{FV}_0 \cdot Q$ so runs with different N are comparable.</td></tr>
+          <tr><td class="term">R²</td><td>Haessel R²</td><td>Coefficient of determination of mean price against fundamental value.</td></tr>
+          <tr><td class="term">TO</td><td>Turnover</td><td>Total shares traded divided by total shares outstanding — reports speculative intensity.</td></tr>
+          <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized utility divided by the theoretical maximum utility given final endowments.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Mathematical notation</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Symbol</th><th>Definition</th><th>Where it appears</th></tr></thead>
+        <tbody>
+          <tr><td class="term math">$\mathrm{FV}_t$</td><td>Fundamental value at the start of period $t$</td><td>DLM 2005 — drives every strategy's prior</td></tr>
+          <tr><td class="term math">$U_L, U_N, U_A$</td><td>Risk-typed utility families: $(w/w_0)^2$, $w/w_0$, $\sqrt{w/w_0}$</td><td>Lopez-Lira 2025 — EU scoring</td></tr>
+          <tr><td class="term math">$\varphi(h)$</td><td>Experience horizon-discount function with $h = T - t + 1$</td><td>DLM Experienced agent prior</td></tr>
+          <tr><td class="term math">$b_i \in \{-0.15, 0, +0.15\}$</td><td>Persistent per-agent valuation bias</td><td>Lopez-Lira Utility agent prior</td></tr>
+          <tr><td class="term math">$\varepsilon \sim \mathcal{U}[-0.03, 0.03]$</td><td>Per-tick valuation noise</td><td>Lopez-Lira prior jitter</td></tr>
+          <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$, updated by EMA with $\alpha = 0.30$</td><td>Lopez-Lira adaptive belief blend</td></tr>
+          <tr><td class="term math">$\hat V_i$</td><td>Agent $i$'s private subjective valuation; anchored by ChatGPT in Wang 2026</td><td>Wang 2026 psychological anchor</td></tr>
+          <tr><td class="term math">$p_{\text{fill}} = 0.30$</td><td>Assumed fill probability for a non-crossing (passive) quote</td><td>Lopez-Lira EU scoring</td></tr>
+          <tr><td class="term math">$Q$</td><td>Total shares outstanding (conserved across time)</td><td>Normalized deviation, turnover</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Figures</h3>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--amber);">1</div>
+        <div class="plot-info"><h4>Transaction Price Trajectory vs Fundamental Value</h4><p>Tick-level price plotted against the deterministic step function $\mathrm{FV}_t$. Persistent excursions above the staircase mark the bubble; the final-period collapse is the crash.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--red);">2</div>
+        <div class="plot-info"><h4>Mispricing Magnitude</h4><p>Absolute departure $|p_t - \mathrm{FV}_t|$ filled as a red area; equivalent to Lopez-Lira's price-to-fundamental ratio $\rho_t$.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--green);">3</div>
+        <div class="plot-info"><h4>Trade Volume per Period</h4><p>Bar chart of per-period share quantity exchanged. A volume peak in the inflation phase followed by a cliff near $T$ is the SSW signature.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--blue);">4</div>
+        <div class="plot-info"><h4>Transaction Density Heatmap</h4><p>Two-dimensional trade histogram over (price, period). Warm cells concentrate liquidity; compared against the $\mathrm{FV}_t$ staircase reveals rational vs speculative regimes.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--purple);">5</div>
+        <div class="plot-info"><h4>Agent Action Timeline</h4><p>One row per agent, one cell per decision. Encodes {bid, ask, hold} and whether the submitted order was filled on the same tick.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--teal);">6</div>
+        <div class="plot-info"><h4>Subjective Valuation · True vs Reported</h4><p>Each Utility agent's private belief $V_i^{\text{true}}$ with broadcast dots marking deceptive reports (ringed red).</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--pink);">7</div>
+        <div class="plot-info"><h4>Pairwise Trust Matrix</h4><p>Heatmap of $\tau_{r \to s}$ on $[0, 1]$ with the diagonal masked. Warm columns identify agents whose claims the population finds credible.</p></div>
+      </div>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Source papers</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Tag</th><th>Citation</th><th>Role in this simulator</th></tr></thead>
+        <tbody>
+          <tr><td class="term">DLM 2005</td><td>Dufwenberg, Lindqvist &amp; Moore, <em>Bubbles and Experience: An Experiment</em>, AER 95(5), 1731–1737</td><td>Asset life, dividend shape, fundamental value, Experienced agent</td></tr>
+          <tr><td class="term">LL 2025</td><td>Lopez-Lira, <em>LLM Expected-Utility Market Makers</em> (working paper)</td><td>Utility agent, messaging, trust EMA, deception</td></tr>
+          <tr><td class="term">Wang 2026</td><td>Wang, <em>Merged DLM + LLM Psychological Asset Allocation</em> (current)</td><td>Combined E+U population with ChatGPT psychological anchor</td></tr>
+          <tr><td class="term">SSW 1988</td><td>Smith, Suchanek &amp; Williams, <em>Bubbles, Crashes and Endogenous Expectations in Experimental Spot Asset Markets</em>, Econometrica 56(5)</td><td>Fundamentalist rational-anchor lineage</td></tr>
+          <tr><td class="term">DSSW 1990</td><td>De Long, Shleifer, Summers &amp; Waldmann, <em>Positive-Feedback Investment Strategies</em>, JF 45(2)</td><td>Trend-follower momentum lineage</td></tr>
+          <tr><td class="term">GS 1993</td><td>Gode &amp; Sunder, <em>Allocative Efficiency of Markets with Zero-Intelligence Traders</em>, JPE 101(1)</td><td>Zero-intelligence liquidity floor</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!--
+  Slides tab — one responsive flex viewport with N hidden slides; the
+  active slide has `.slide.active` set by App._syncSlide(). Prev/next
+  buttons, a counter, fullscreen, and reading-mode for print. Page
+  size is intentionally responsive (no fixed 16:9 frame) so the
+  viewport adapts to the host window; fullscreen just bumps padding.
+-->
+<section class="tab-pane" id="tab-slides">
+  <div class="slides-wrap">
+    <div class="slides-toolbar">
+      <span class="slides-counter"><span id="slide-cur">1</span> / <span id="slide-tot">14</span></span>
+      <div class="slides-nav">
+        <button class="slides-btn" id="slide-prev" title="Previous slide (←)">←</button>
+        <button class="slides-btn" id="slide-next" title="Next slide (→)">→</button>
+        <button class="slides-btn" id="slide-fs"   title="Toggle fullscreen (F)">⛶</button>
+        <button class="slides-btn" id="slide-read" title="Reading / print mode">≡</button>
+      </div>
+    </div>
+
+    <div class="slides-viewport" id="slides-viewport">
+
+      <div class="slide active" data-slide="1">
+        <div class="slide-body slide-center">
+          <h1 class="slide-title">Bubbles, Utility, and Psychology</h1>
+          <p class="slide-subtitle">Three paradigms, one continuous double auction</p>
+          <div class="slide-env-row">
+            <span class="slide-env-badge slide-dlm">DLM 2005</span>
+            <span class="slide-env-badge slide-ll">Lopez-Lira 2025</span>
+            <span class="slide-env-badge slide-wang">Wang 2026</span>
+          </div>
+          <p class="slide-note-sm">Browser-based replication · vanilla JS · no build</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="2">
+        <div class="slide-body">
+          <h2 class="slide-heading">The paper: DLM 2005</h2>
+          <p class="slide-text">Dufwenberg, Lindqvist &amp; Moore ran a finite-horizon experimental asset market with human subjects and showed that <strong>experience</strong> kills bubbles — round-4 veterans trade at fundamental value while round-1 novices inflate the price and crash.</p>
+          <div class="slide-formula-card">
+            $$ \mathrm{FV}_t \;=\; \mathbb{E}[d] \cdot (T - t + 1), \qquad T = 10,\;\; \mathbb{E}[d] = 10\text{¢} $$
+          </div>
+          <p class="slide-note-sm">Source: AER 95(5), 1731–1737</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="3">
+        <div class="slide-body">
+          <h2 class="slide-heading">Background agents (F · T · R)</h2>
+          <div class="slide-three-col">
+            <div class="slide-card">
+              <h4>F · Fundamentalist</h4>
+              <div class="slide-formula">$\text{buy if ask} < 0.98\,\mathrm{FV}_t$</div>
+              <p class="slide-sm">Rational mean-reversion anchor</p>
+            </div>
+            <div class="slide-card">
+              <h4>T · Trend</h4>
+              <div class="slide-formula">$\text{bid}_1 = p + k\cdot\text{slope}$</div>
+              <p class="slide-sm">Positive-feedback / momentum</p>
+            </div>
+            <div class="slide-card">
+              <h4>R · Random (ZI)</h4>
+              <div class="slide-formula">$\text{bid} \sim \mathcal{U}[0.7,\,1.1]\,\mathrm{FV}$</div>
+              <p class="slide-sm">Gode–Sunder liquidity floor</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="4">
+        <div class="slide-body">
+          <h2 class="slide-heading">Experienced · the DLM bubble-killer</h2>
+          <div class="slide-formula-card">$$ \text{prior}_t \;=\; \varphi(h)\cdot \mathrm{FV}_t, \qquad h = T - t + 1 $$</div>
+          <p class="slide-text">$\varphi$ is the horizon-discount function: naive first-timers keep $\varphi \approx 1$, once-played intermediates ramp down gradually, and veterans drive $\varphi \to 0$ in the last three periods — forcing them to refuse any buy above the shrinking $\mathrm{FV}_t$.</p>
+          <p class="slide-note-sm">Dial the naive / once-played / veteran split in the Experience preferences panel.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="5">
+        <div class="slide-body">
+          <h2 class="slide-heading">Lopez-Lira 2025 · the Utility agent</h2>
+          <div class="slide-formula-card">
+            $$ \text{prior}_t \;=\; \mathrm{FV}_t \cdot (1 + b_i + \varepsilon), \quad b_i \in \{-0.15,\,0,\,+0.15\}, \quad \varepsilon \sim \mathcal{U}[-0.03,\,0.03] $$
+          </div>
+          <p class="slide-text">A persistent bias $b_i$ models "persistently optimistic / pessimistic / unbiased" archetypes; the per-tick noise $\varepsilon$ keeps decisions out of lockstep.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="6">
+        <div class="slide-body">
+          <h2 class="slide-heading">Expected-utility scoring</h2>
+          <div class="slide-formula-card">
+            $$ \mathrm{EU}(a) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad a^\star = \arg\max_a \mathrm{EU}(a) $$
+          </div>
+          <div class="slide-three-col">
+            <div class="slide-card"><h4>Risk-loving</h4><div class="slide-formula">$U_L(w) = (w/w_0)^2$</div><p class="slide-sm">Convex — enjoys upside</p></div>
+            <div class="slide-card"><h4>Risk-neutral</h4><div class="slide-formula">$U_N(w) = w/w_0$</div><p class="slide-sm">Linear — prices at EV</p></div>
+            <div class="slide-card"><h4>Risk-averse</h4><div class="slide-formula">$U_A(w) = \sqrt{w/w_0}$</div><p class="slide-sm">Concave — fears downside</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="7">
+        <div class="slide-body">
+          <h2 class="slide-heading">Belief blending with peer messages</h2>
+          <div class="slide-formula-card">
+            $$ V_i^{\text{post}} \;=\; w \cdot V_i^{\text{prior}} \;+\; (1 - w) \cdot \tfrac{1}{|M|}\sum_{m \in M} \hat v_m $$
+          </div>
+          <div class="slide-three-col">
+            <div class="slide-card"><h4>Naive</h4><div class="slide-formula">$w = 0.60$</div><p class="slide-sm">Listens freely</p></div>
+            <div class="slide-card"><h4>Skeptical</h4><div class="slide-formula">$w = 0.90$</div><p class="slide-sm">Barely moves</p></div>
+            <div class="slide-card"><h4>Adaptive</h4><div class="slide-formula">$w \leftarrow \tau\text{-weighted}$</div><p class="slide-sm">Per-sender trust</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="8">
+        <div class="slide-body">
+          <h2 class="slide-heading">Trust EMA</h2>
+          <div class="slide-formula-card">
+            $$ \tau_{r \to s} \;\leftarrow\; (1 - \alpha)\,\tau_{r \to s} \;+\; \alpha \cdot \max\!\Bigl(0,\,1 - \tfrac{|\hat v_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr), \quad \alpha = 0.30 $$
+          </div>
+          <p class="slide-text">Receiver $r$'s trust in sender $s$ is reinforced when $s$'s broadcast valuation tracks the period's volume-weighted average trade price. Closeness is clamped to $[0, 1]$.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="9">
+        <div class="slide-body">
+          <h2 class="slide-heading">Deception</h2>
+          <p class="slide-text">Under a deceptive strategy the Utility agent broadcasts a claim that differs from its private belief:</p>
+          <div class="slide-formula-card">$$ \hat v_s^{\text{report}} \neq V_s^{\text{true}}, \qquad \text{lie gap} = |\hat v_s^{\text{report}} - V_s^{\text{true}}| $$</div>
+          <p class="slide-text">The lie-gap magnitude drives the trust EMA above and feeds the mean-lie-magnitude statistic in the Experimental Market-Quality Statistics table.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="10">
+        <div class="slide-body">
+          <h2 class="slide-heading">Wang 2026 · merged market</h2>
+          <p class="slide-text">Seat DLM's <strong>Experienced</strong> agents alongside Lopez-Lira's <strong>Utility</strong> agents in the same continuous double auction. The question: where does the asset settle when half the population knows the fundamental staircase and the other half is driven by private psychological valuations?</p>
+          <div class="slide-class-grid">
+            <div class="slide-card slide-highlight"><h4>E · Experienced</h4><p class="slide-sm">Bubble-suppressing, horizon-aware.</p></div>
+            <div class="slide-card slide-highlight"><h4>U · Utility</h4><p class="slide-sm">Bias, noise, messaging, deception.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="11">
+        <div class="slide-body">
+          <h2 class="slide-heading">ChatGPT psychological anchor</h2>
+          <div class="slide-formula-card">
+            $$ \hat V_i \;\leftarrow\; \text{ChatGPT}(\text{agent}_i), \qquad \hat V_i \in [\,0.25\,\mathrm{FV}_0,\;1.75\,\mathrm{FV}_0\,] $$
+          </div>
+          <p class="slide-text">One parallel chat-completion per Utility agent at run start. The prompt encodes the agent's risk preference and bias mode; the returned number is clamped and used as the prior on the first decide tick, then the Lopez-Lira belief model takes over.</p>
+          <p class="slide-note-sm">Provider list + endpoint match the lying project's GPT roster.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="12">
+        <div class="slide-body">
+          <h2 class="slide-heading">Research question</h2>
+          <div class="slide-big slide-center">
+            Does the asset ultimately end up in the hands of the agent with the highest psychological valuation?
+          </div>
+          <div class="slide-formula-card">$$ i^\star = \arg\max_{i \in U} \hat V_i \quad \stackrel{?}{\Longleftrightarrow} \quad \text{argmax}_i\; \text{inventory}_i(T) $$</div>
+          <p class="slide-text">The Wang 2026 metric block reports top-holder vs max-$\hat V$ match / miss and the normalized valuation gap each tick so the answer is visible live.</p>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="13">
+        <div class="slide-body">
+          <h2 class="slide-heading">Market-quality statistics</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Haessel R²</h4>
+              <div class="slide-formula">$R^2 = 1 - \tfrac{\sum (\bar p_t - \mathrm{FV}_t)^2}{\sum (\mathrm{FV}_t - \overline{\mathrm{FV}})^2}$</div>
+              <p class="slide-sm">Fit of mean price to fundamental staircase.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Normalized deviation</h4>
+              <div class="slide-formula">$\mathrm{ND} = \tfrac{\sum |p_t - \mathrm{FV}_t|}{T\cdot \mathrm{FV}_0 \cdot Q}$</div>
+              <p class="slide-sm">Total mispricing per share outstanding.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Amplitude</h4>
+              <div class="slide-formula">$A = \tfrac{\max_t r_t - \min_t r_t}{\mathrm{FV}_0}$</div>
+              <p class="slide-sm">Peak-to-trough residual range.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Turnover</h4>
+              <div class="slide-formula">$\mathrm{TO} = \tfrac{\sum q_t}{Q}$</div>
+              <p class="slide-sm">Speculative intensity.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide" data-slide="14">
+        <div class="slide-body slide-center">
+          <h2 class="slide-heading">Try it</h2>
+          <p class="slide-text">Switch paradigms in the navbar. Dial the population in Experiment settings. For Wang 2026, paste a GPT key into the AI endpoint card and press Start — the status line reports how many agents got an anchor.</p>
+          <div class="slide-env-row">
+            <span class="slide-env-badge slide-dlm">DLM 2005</span>
+            <span class="slide-env-badge slide-ll">Lopez-Lira 2025</span>
+            <span class="slide-env-badge slide-wang">Wang 2026</span>
+          </div>
+          <p class="slide-note-sm">Keyboard: ← / → to navigate slides · F for fullscreen · Esc to exit</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script data-cfasync="false" src="js/mathml.js?v=13"></script>
+<script data-cfasync="false" src="js/utility.js?v=13"></script>
+<script data-cfasync="false" src="js/messaging.js?v=13"></script>
+<script data-cfasync="false" src="js/market.js?v=13"></script>
+<script data-cfasync="false" src="js/agents.js?v=13"></script>
+<script data-cfasync="false" src="js/logger.js?v=13"></script>
+<script data-cfasync="false" src="js/viz.js?v=13"></script>
+<script data-cfasync="false" src="js/engine.js?v=13"></script>
+<script data-cfasync="false" src="js/ai.js?v=13"></script>
+<script data-cfasync="false" src="js/ui.js?v=13"></script>
+<script data-cfasync="false" src="js/replay.js?v=13"></script>
+<script data-cfasync="false" src="js/main.js?v=13"></script>
 </body>
 </html>

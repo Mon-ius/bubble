@@ -1664,17 +1664,15 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   .chart-ownership, .chart-messages, .chart-trust { grid-column: span 1; }
 }
 
-/* ---------- Architecture tab ---------- */
+/* ---------- Architecture tab (math-focused) ---------- */
 /*
- * Static pipeline diagram rendered in-page (not loaded from the
- * drawio source). Every module is a programmatic SVG group with a
- * .n-* class that maps to a CSS custom-property pair (--nc = node
- * accent colour, --nb = node background). The diagram theme-swaps
- * automatically because every colour resolves to a :root CSS var
- * from the existing palette. Below the diagram, .arch-defs renders
- * ten responsive cards describing each module's role — the cards
- * reuse the same colour keys so scan-reading the SVG and the cards
- * gives the same information in two encodings.
+ * Snapshot of the three paradigms' equation pipeline. The SVG nodes
+ * carry inline equations (no KaTeX; KaTeX lives in .arch-def-card
+ * .formula blocks below). Every node class has a CSS custom-property
+ * pair (--nc = accent/stroke, --nb = soft fill) so the theme-swap is
+ * free. The "Edit in draw.io" button opens architecture.drawio in the
+ * public app.diagrams.net editor — href is filled in at runtime by
+ * main.js so the URL always reflects the live GitHub Pages path.
  */
 .arch-wrap {
   max-width: 1200px;
@@ -1683,27 +1681,48 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 }
 .arch-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 18px;
   flex-wrap: wrap;
-  margin-bottom: 22px;
-  padding-bottom: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
 }
+.arch-title-block { display: flex; flex-direction: column; gap: 4px; }
 .arch-header h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--fg-0);
 }
-.arch-header .arch-subtitle {
-  font-size: 11px;
+.arch-desc {
+  margin: 0;
+  font-size: 12px;
   color: var(--fg-2);
   font-style: italic;
 }
+.btn-drawio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-1);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.btn-drawio:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-drawio svg { width: 16px; height: 16px; display: block; }
 .arch-svg-container {
   width: 100%;
   padding: 8px 0 28px;
@@ -1721,13 +1740,18 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 /* Node colour keys — each .n-* class binds --nc (accent/stroke) and
    --nb (soft background). Add a new category by defining both vars
    and then the shared .n rect / .n text.t rules below do the work. */
-.arch-diagram .n-main   { --nc: var(--purple); --nb: var(--purple-bg); }
-.arch-diagram .n-engine { --nc: var(--blue);   --nb: var(--blue-bg); }
-.arch-diagram .n-sim    { --nc: var(--green);  --nb: var(--green-bg); }
-.arch-diagram .n-ext    { --nc: var(--amber);  --nb: var(--amber-bg); }
-.arch-diagram .n-store  { --nc: var(--teal);   --nb: var(--teal-bg); }
-.arch-diagram .n-view   { --nc: var(--red);    --nb: var(--red-bg); }
+.arch-diagram .n-paper  { --nc: var(--blue);   --nb: var(--blue-bg); }
+.arch-diagram .n-fund   { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-trend  { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-zi     { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-exp    { --nc: var(--teal);   --nb: var(--teal-bg); }
+.arch-diagram .n-util   { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-eu     { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-msg    { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-trust  { --nc: var(--amber);  --nb: var(--amber-bg); }
 .arch-diagram .n-wang   { --nc: var(--pink);   --nb: var(--pink-bg); }
+.arch-diagram .n-book   { --nc: var(--purple); --nb: var(--purple-bg); }
+.arch-diagram .n-metric { --nc: var(--red);    --nb: var(--red-bg); }
 
 .arch-diagram .n rect {
   fill: var(--nb);
@@ -1740,17 +1764,47 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 }
 .arch-diagram .n text.t {
   fill: var(--nc);
-  font: 600 13px var(--font-ui);
+  font: 600 12px var(--font-ui);
   letter-spacing: 0.01em;
 }
 .arch-diagram .n text.s {
   fill: var(--fg-2);
   font: 10px var(--font-ui);
 }
+/* Equation nodes — slightly tighter, mono-ish */
+.arch-diagram .n-eq text.t {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-ui);
+  font-size: 11px;
+}
+.arch-diagram .n-eq text.s {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-ui);
+  font-size: 10px;
+}
 
-/* Small extended-node boxes get slightly tighter typography. */
-.arch-diagram .n-ext text.t { font-size: 11px; }
-.arch-diagram .n-ext text.s { font-size: 9px; }
+/* Paradigm group frames — soft rectangles behind each cluster of nodes.
+   Paper constants (blue) / strategies (green) / Wang overlay (pink, dashed)
+   / market (amber). The Wang overlay is dashed to signal "optional". */
+.arch-diagram .arch-group rect {
+  fill: none;
+  stroke-width: 1.2;
+  stroke-dasharray: 0;
+  opacity: 0.85;
+}
+.arch-diagram .arch-group.g-paper  rect { stroke: var(--blue);  fill: color-mix(in srgb, var(--blue-bg)  45%, transparent); }
+.arch-diagram .arch-group.g-strat  rect { stroke: var(--green); fill: color-mix(in srgb, var(--green-bg) 30%, transparent); }
+.arch-diagram .arch-group.g-wang   rect { stroke: var(--pink);  fill: color-mix(in srgb, var(--pink-bg)  45%, transparent); stroke-dasharray: 5 4; }
+.arch-diagram .arch-group.g-market rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber-bg) 35%, transparent); }
+.arch-diagram .arch-group .g-label {
+  text-anchor: middle;
+  font: 700 10px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.arch-diagram .arch-group.g-paper  .g-label { fill: var(--blue); }
+.arch-diagram .arch-group.g-strat  .g-label { fill: var(--green); }
+.arch-diagram .arch-group.g-wang   .g-label { fill: var(--pink); }
+.arch-diagram .arch-group.g-market .g-label { fill: var(--amber); }
 
 /* Core dataflow connectors. color is inherited from the svg element
    (var(--fg-3)) so light / dark switches sweep the whole diagram in
@@ -1761,36 +1815,13 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   stroke-width: 1.4;
   marker-end: url(#arch-arrow);
 }
-/* Overlay connectors (agents.js → messaging / utility). Dashed to
-   signal they only fire when mix.U > 0. */
-.arch-diagram .link-ext {
-  stroke: var(--amber);
-  stroke-dasharray: 4 3;
-  stroke-width: 1.3;
-}
-/* Wang 2026 overlay (ai.js → agents.js). Dashed to signal that it
-   only fires when paradigm === 'wang' and an API key is provided. */
+/* Wang 2026 overlay connector (ai.js → Utility prior). Dashed + pink to
+   signal that it only fires when paradigm === 'wang' and an API key is
+   provided, and that it overrides the deterministic prior block. */
 .arch-diagram .link-wang {
   stroke: var(--pink);
   stroke-dasharray: 4 3;
-  stroke-width: 1.3;
-}
-
-/* Dashed "Extended mode" group around messaging + utility */
-.arch-diagram .ext-group rect {
-  fill: none;
-  stroke: var(--amber);
-  stroke-width: 1.2;
-  stroke-dasharray: 5 4;
-  opacity: 0.55;
-}
-.arch-diagram .ext-group .ext-label {
-  text-anchor: middle;
-  fill: var(--amber);
-  font: 600 9px var(--font-ui);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.85;
+  stroke-width: 1.5;
 }
 
 /* Definition cards below the diagram. Responsive 3-col grid that
@@ -1843,20 +1874,454 @@ body:not(.wang-mode) .wang-only { display: none !important; }
   font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--fg-0);
 }
-.arch-def-card.card-main   { border-left-color: var(--purple); }
-.arch-def-card.card-main   h4 { color: var(--purple); }
-.arch-def-card.card-engine { border-left-color: var(--blue); }
-.arch-def-card.card-engine h4 { color: var(--blue); }
-.arch-def-card.card-sim    { border-left-color: var(--green); }
-.arch-def-card.card-sim    h4 { color: var(--green); }
-.arch-def-card.card-ext    { border-left-color: var(--amber); }
-.arch-def-card.card-ext    h4 { color: var(--amber); }
-.arch-def-card.card-store  { border-left-color: var(--teal); }
-.arch-def-card.card-store  h4 { color: var(--teal); }
-.arch-def-card.card-view   { border-left-color: var(--red); }
-.arch-def-card.card-view   h4 { color: var(--red); }
+/* KaTeX formula block. One per card by default; a card can stack two
+   formula blocks (e.g. the EU scoring card) and they'll space evenly. */
+.arch-def-card .formula {
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--fg-0);
+}
+.arch-def-card .formula + .formula { margin-top: -2px; }
+.arch-def-card .formula .katex { font-size: 1.02em; }
+.arch-def-card .formula .katex-display {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.arch-def-card.card-paper  { border-left-color: var(--blue); }
+.arch-def-card.card-paper  h4 { color: var(--blue); }
+.arch-def-card.card-strat  { border-left-color: var(--green); }
+.arch-def-card.card-strat  h4 { color: var(--green); }
+.arch-def-card.card-ll     { border-left-color: var(--amber); }
+.arch-def-card.card-ll     h4 { color: var(--amber); }
 .arch-def-card.card-wang   { border-left-color: var(--pink); }
 .arch-def-card.card-wang   h4 { color: var(--pink); }
+.arch-def-card.card-metric { border-left-color: var(--red); }
+.arch-def-card.card-metric h4 { color: var(--red); }
+
+/* ---------- Glossary tab ---------- */
+/*
+ * Reference section for every abbreviation, symbol, figure, and source
+ * paper used in the simulator. Four gloss-sections stacked vertically;
+ * each section has a heading + a full-width table (or a flex list for
+ * the figure descriptions). KaTeX renders the math cells via main.js
+ * ._renderMath(), triggered on tab switch.
+ */
+.glossary-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+}
+.glossary-wrap > h2 {
+  margin: 0 0 26px;
+  padding-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fg-0);
+  border-bottom: 1px solid var(--border);
+}
+.gloss-section {
+  margin-bottom: 34px;
+}
+.gloss-section > h3 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.gloss-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.gloss-table thead th {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.gloss-table tbody td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-1);
+  vertical-align: top;
+}
+.gloss-table tbody tr:first-child td { border-top: 0; }
+.gloss-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-2) 55%, transparent); }
+.gloss-table td.term {
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: var(--fg-0);
+  min-width: 90px;
+}
+.gloss-table td.term.math {
+  font-family: var(--font-ui);
+  font-weight: 500;
+}
+
+/* Figure-description rows — each is a flex card with a coloured number
+   circle and a two-line title/body block. */
+.plot-desc {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.plot-desc:last-child { margin-bottom: 0; }
+.plot-icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 13px var(--font-ui);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.plot-info { flex: 1 1 auto; }
+.plot-info h4 {
+  margin: 0 0 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.plot-info p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--fg-1);
+}
+
+/* ---------- Slides tab ---------- */
+/*
+ * Presentation mode. Responsive flex viewport (no fixed aspect ratio)
+ * — one active .slide at a time, navigated with prev/next buttons or
+ * keyboard arrows. Fullscreen mode fixes the viewport to the whole
+ * window; reading mode unhides every slide and stacks them for
+ * scrolling or printing. Page size is intentionally NOT hard-coded
+ * to 16:9 so the slides adapt to the host window rather than showing
+ * black bars.
+ */
+.slides-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+}
+.slides-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.slides-counter {
+  font: 600 12px var(--font-ui);
+  color: var(--fg-2);
+  letter-spacing: 0.05em;
+}
+.slides-counter #slide-cur { color: var(--fg-0); }
+.slides-nav {
+  display: flex;
+  gap: 6px;
+}
+.slides-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg-1);
+  font: 600 14px var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.slides-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.slides-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.slides-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.slides-viewport {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 560px;
+  padding: 40px 48px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.slide {
+  display: none;
+  flex: 1 1 auto;
+  width: 100%;
+  animation: slide-fade 0.24s var(--ease);
+}
+.slide.active { display: flex; }
+@keyframes slide-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+.slide-body.slide-center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.slide-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-0);
+}
+.slide-subtitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--fg-2);
+  font-style: italic;
+}
+.slide-heading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--fg-0);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.slide-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--fg-1);
+  max-width: 900px;
+}
+.slide-center .slide-text { margin: 0 auto; }
+.slide-note-sm {
+  margin: 0;
+  font-size: 11px;
+  color: var(--fg-3);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.slide-sm {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+.slide-big {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--fg-0);
+  line-height: 1.5;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Formula blocks — .slide-formula is inline / compact,
+   .slide-formula-card is a bordered block for display equations. */
+.slide-formula {
+  font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+  background: var(--bg-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: inline-block;
+}
+.slide-formula-card {
+  padding: 18px 22px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 14px;
+  overflow-x: auto;
+}
+.slide-formula-card .katex-display { margin: 0; }
+.slide-formula .katex { font-size: 1em; }
+
+/* Card layouts inside slides. slide-card is a soft bordered block; the
+   *-col grids lay multiple cards side-by-side; slide-highlight adds a
+   coloured left-border accent. */
+.slide-card {
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.slide-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-0);
+}
+.slide-card .slide-formula { display: block; margin-top: 4px; }
+.slide-highlight { border-left: 3px solid var(--accent); }
+.slide-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.slide-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.slide-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+/* Paradigm env badges — pill labels used on the title / closing slides. */
+.slide-env-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.slide-env-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.slide-env-badge.slide-dlm  { color: var(--blue);  }
+.slide-env-badge.slide-ll   { color: var(--amber); }
+.slide-env-badge.slide-wang { color: var(--pink);  }
+
+/* Fullscreen mode — lifts the viewport out of the normal flow and
+   fills the window. z-index above everything else. The toolbar stays
+   in its normal spot; main.js adds a subtle overlay so the underlying
+   page doesn't distract. */
+.slides-viewport.fullscreen {
+  position: fixed;
+  inset: 32px;
+  z-index: 1000;
+  padding: 60px 80px;
+  min-height: unset;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+.slides-fs-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  backdrop-filter: blur(3px);
+}
+
+/* Reading mode — unhides every slide and stacks them vertically with
+   generous spacing. The viewport becomes a long scroll column; print
+   reuses this mode via @media print below. */
+.slides-viewport.reading-mode {
+  display: block;
+  min-height: unset;
+  padding: 32px 48px;
+}
+.slides-viewport.reading-mode .slide {
+  display: flex;
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px dashed var(--border);
+  animation: none;
+  page-break-after: always;
+}
+.slides-viewport.reading-mode .slide:last-child {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Print — force reading mode, full bleed, one slide per page. */
+@media print {
+  .app-header, .paradigm-switch, .nav-tabs, .controls { display: none !important; }
+  .tab-pane { display: none !important; }
+  #tab-slides { display: block !important; }
+  .slides-toolbar { display: none !important; }
+  .slides-viewport {
+    display: block;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    min-height: unset;
+    background: transparent;
+  }
+  .slide {
+    display: flex !important;
+    page-break-after: always;
+    padding: 24px;
+    animation: none;
+  }
+  .slide:last-child { page-break-after: auto; }
+}
+@page { size: A4 landscape; margin: 1cm; }
+
+/* Responsive breakpoints — below 900px the three/two-col grids collapse
+   and the slide title scales down. */
+@media (max-width: 900px) {
+  .slide-three-col { grid-template-columns: 1fr; }
+  .slide-two-col   { grid-template-columns: 1fr; }
+  .slide-title     { font-size: 24px; }
+  .slide-heading   { font-size: 18px; }
+  .slides-viewport { padding: 24px 20px; min-height: 420px; }
+}
 
 /* ---------- Scrollbars ---------- */
 *::-webkit-scrollbar { width: 8px; height: 8px; }
