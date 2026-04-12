@@ -493,6 +493,7 @@ const UI = {
   /* -------- Price vs FV chart -------- */
 
   renderPriceChart(v, config) {
+    if (!this.charts.price) return;
     const { ctx, width, height } = this.charts.price;
     Viz.clear(ctx, width, height);
     // padL 44: y-tick numerics only. padB 38: tick row + "Period t" label.
@@ -591,6 +592,7 @@ const UI = {
   /* -------- Bubble magnitude chart -------- */
 
   renderBubbleChart(v, config) {
+    if (!this.charts.bubble) return;
     const { ctx, width, height } = this.charts.bubble;
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
@@ -647,6 +649,7 @@ const UI = {
   /* -------- Volume-per-period chart -------- */
 
   renderVolumeChart(v, config) {
+    if (!this.charts.volume) return;
     const { ctx, width, height } = this.charts.volume;
     Viz.clear(ctx, width, height);
     // padT 28: extra headroom so the legend can sit above the plot frame
@@ -718,6 +721,7 @@ const UI = {
   /* -------- Price × period trade-density heatmap -------- */
 
   renderHeatmapChart(v, config) {
+    if (!this.charts.heatmap) return;
     const { ctx, width, height } = this.charts.heatmap;
     Viz.clear(ctx, width, height);
     const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
@@ -787,6 +791,7 @@ const UI = {
   /* -------- Agent action timeline -------- */
 
   renderTimelineChart(v, config) {
+    if (!this.charts.timeline) return;
     const { ctx, width, height } = this.charts.timeline;
     Viz.clear(ctx, width, height);
     // padL 66: wide enough for the longest agent name (e.g. "Quinn").
