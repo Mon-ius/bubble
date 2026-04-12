@@ -54,18 +54,11 @@ const App = {
   // results are calibrated to this market size.
   TOTAL_N: 6,
 
-  // Population composition — feeds the sampling stage in agents.js,
-  // which turns each per-type count into a per-agent spec. Defaults
-  // to six utility agents (pure Lopez-Lira / AIPE). The F/T background
-  // sliders redistribute within the fixed N = 6 total.
+  // Population composition — feeds the sampling stage in agents.js.
+  // DLM 2005 uses six homogeneous human subjects with no algorithmic
+  // agent types (no Fundamentalist/Trend/Random). All six slots are
+  // utility agents whose risk preference is set by the riskMix sliders.
   mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
-
-  // Starting defaults for the F/T/R background. Editable from the
-  // Experiment-settings panel (min 0 each), so a run with some
-  // Fundamentalists or Trend followers is reachable — the research
-  // plans want to study the effect of adding rational/momentum
-  // anchors. Capped so F + T + R never exceeds TOTAL_N.
-  FIXED_BACKGROUND: { F: 0, T: 0, R: 0 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which
@@ -243,13 +236,10 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
-    // Background population counts — editable per-type sliders with
-    // min 0, so a run with zero Fundamentalists or zero Trend followers
-    // is reachable. Changing either slider rescales the U slot so the
-    // total-N stays consistent. Structural, so they reseed on release.
-    'p-count-f':     { target: 'FIXED_BACKGROUND.F', out: 'v-count-f',    fmt: v => String(v), int: true, bg: true },
-    'p-count-t':     { target: 'FIXED_BACKGROUND.T', out: 'v-count-t',    fmt: v => String(v), int: true, bg: true },
     // Risk preferences — three linked shares summing to 100.
+    // DLM 2005 uses homogeneous human subjects (no F/T/R agent types),
+    // so the only composition knob is the risk-preference split across
+    // the six utility agents.
     'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',  out: 'v-risk-averse',  fmt: v => v + '%', int: true },
@@ -272,8 +262,7 @@ const App = {
       if (!input) continue;
       const structural =
         spec.target.startsWith('mix.') ||
-        spec.target.startsWith('riskMix.') ||
-        spec.target.startsWith('FIXED_BACKGROUND.');
+        spec.target.startsWith('riskMix.');
       input.addEventListener('input', e => {
         const raw = Number(e.target.value);
         const val = spec.int ? (raw | 0) : raw;
@@ -282,26 +271,6 @@ const App = {
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
-        // Editing a background-count slider rescales U within the
-        // fixed N = 6 total. Clamp background sum so it never exceeds
-        // TOTAL_N — the just-changed slider is reduced if needed.
-        if (spec.bg) {
-          const bgKey = spec.target.split('.')[1]; // 'F' or 'T'
-          const others = Object.entries(this.FIXED_BACKGROUND)
-            .filter(([k]) => k !== bgKey)
-            .reduce((s, [, v]) => s + (v | 0), 0);
-          if ((this.FIXED_BACKGROUND[bgKey] | 0) + others > this.TOTAL_N) {
-            this.FIXED_BACKGROUND[bgKey] = Math.max(0, this.TOTAL_N - others);
-            e.target.value = String(this.FIXED_BACKGROUND[bgKey]);
-            const out = document.getElementById(spec.out);
-            if (out) out.textContent = spec.fmt(this.FIXED_BACKGROUND[bgKey]);
-            this._updateSliderPct(e.target);
-          }
-          this.mix.F = this.FIXED_BACKGROUND.F | 0;
-          this.mix.T = this.FIXED_BACKGROUND.T | 0;
-          this._rescaleMixToTotal(this.TOTAL_N);
-          this._refreshMixTotal();
-        }
       });
       input.addEventListener('change', () => {
         // Structural edits (population mix counts, risk-share shares,
@@ -701,21 +670,6 @@ const App = {
     const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
     const el = document.getElementById('mix-total');
     if (el) el.textContent = `(N = ${total})`;
-  },
-
-  /**
-   * Rescale the population to total N (fixed at TOTAL_N = 6 per DLM
-   * 2005). F/T/R counts come from FIXED_BACKGROUND (editable per-slider
-   * with min 0); U absorbs whatever slack remains after F + T + R.
-   * Background sum is clamped to TOTAL_N in the slider input handler
-   * so U never goes negative.
-   */
-  _rescaleMixToTotal(newTotal) {
-    const FIXED    = this.FIXED_BACKGROUND;
-    const bgSum    = (FIXED.F | 0) + (FIXED.T | 0) + (FIXED.R | 0);
-    newTotal = Math.max(newTotal | 0, bgSum);
-    const U = Math.max(0, newTotal - bgSum);
-    this.mix = { F: FIXED.F | 0, T: FIXED.T | 0, R: FIXED.R | 0, E: 0, U };
   },
 
   _getByPath(path) {

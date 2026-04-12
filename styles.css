@@ -600,10 +600,6 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
    either plan-ii or plan-iii, hidden for plan-i. main.js sets the
    active body class in _setPlan() on every plan change. */
 body.plan-i .llm-plan-only      { display: none !important; }
-/* Hide the background-count sliders (F/T) in strict-DLM mode — DLM
-   §I pins the population at six DLM traders with no F/T background.
-   Outside of DLM mode they are always visible and editable (min 0). */
-body.dlm-mode .bg-only          { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
 /*
