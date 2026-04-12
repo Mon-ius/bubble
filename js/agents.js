@@ -651,16 +651,12 @@ class UtilityAgent extends Agent {
     const fv   = market.fundamentalValue();
     const plan = (ctx && ctx.plan) || 'I';
 
-    // Prior = FV × (1 + bias_i + ε), where bias_i is the agent's
-    // persistent bias (from biasAmount/biasMode) and ε is i.i.d.
-    // per-tick noise drawn from U[-valuationNoise, +valuationNoise].
-    // This is the DLM-Lopez-Lira belief channel: heterogeneity in
-    // priors is what drives non-degenerate trading.
-    const noise = this.valuationNoise * (2 * rng() - 1);
-    const bias  = this.biasMode === 'over'  ?  this.biasAmount
-                : this.biasMode === 'under' ? -this.biasAmount
-                : 0;
-    const prior = Math.max(0, fv * (1 + bias + noise));
+    // DLM 2005: both experienced and inexperienced traders know FV.
+    // Prior = FV exactly — no bias, no noise. The sole channel of
+    // heterogeneity is the peer-message blend below, where the
+    // experience-dependent weight w makes veterans less susceptible
+    // to peer influence than novices.
+    const prior = Math.max(0, fv);
     this.trueValuation = prior;
 
     // Gather last period's messages from the bus (peer channel). These

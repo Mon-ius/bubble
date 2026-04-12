@@ -60,12 +60,12 @@
 <section class="tab-pane active" id="tab-experiment">
 <main class="grid">
   <!-- ============================================================
-       Experiment settings — the only user-adjustable knobs are the
-       risk-preference split (αL/αN/αA) and the AI endpoint for
-       Plans II/III. Population is fixed at N = 6 per DLM 2005.
-       Paper-fixed constants (T, μ_d, dividend shape, FV formula)
-       live in the read-only Paper constants card below. Structural
-       edits (risk shares) re-sample and reseed on release.
+       Experiment settings — population mix (F/T/U summing to N=6),
+       risk-preference split (αL/αN/αA), and the AI endpoint for
+       Plans II/III. F and T are settable to 0 for a pure utility-
+       agent market. Paper-fixed constants (T, μ_d, dividend shape,
+       FV formula) live in the read-only Paper constants card below.
+       Structural edits (mix, risk shares) re-sample and reseed.
        ============================================================ -->
   <section class="panel panel-params" id="panel-params">
     <div class="panel-header" id="panel-params-head">
@@ -74,6 +74,32 @@
     </div>
 
     <div class="params-body">
+
+      <details class="psec" open>
+        <summary>Population mix <span class="muted" id="mix-total">(N = 6)</span></summary>
+        <div class="psec-body">
+          <div class="param-row" data-tip="Number of Fundamentalist (mean-reversion) agents. Buy when ask < 0.98·FV, sell when bid > 1.02·FV. Provides a rational anchor that pulls prices toward fundamental value. Can be set to 0 for a pure utility-agent market.">
+            <div class="param-head">
+              <label for="p-fund">Fundamentalist N(F)</label>
+              <span class="pval" id="v-fund">1</span>
+            </div>
+            <input type="range" id="p-fund" min="0" max="5" step="1" value="1">
+          </div>
+          <div class="param-row" data-tip="Number of Trend-follower (momentum) agents. Estimate a price slope from the last 6 prints and chase the trend. Drives bubble inflation when prices are rising. Can be set to 0.">
+            <div class="param-head">
+              <label for="p-trend">Trend follower N(T)</label>
+              <span class="pval" id="v-trend">1</span>
+            </div>
+            <input type="range" id="p-trend" min="0" max="5" step="1" value="1">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label>Utility N(U)</label>
+              <span class="pval" id="v-util">4</span>
+            </div>
+          </div>
+        </div>
+      </details>
 
       <details class="psec ext-only" open>
         <summary>Risk preferences</summary>

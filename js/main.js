@@ -55,10 +55,13 @@ const App = {
   TOTAL_N: 6,
 
   // Population composition — feeds the sampling stage in agents.js.
-  // DLM 2005 uses six homogeneous human subjects with no algorithmic
-  // agent types (no Fundamentalist/Trend/Random). All six slots are
-  // utility agents whose risk preference is set by the riskMix sliders.
-  mix: { F: 0, T: 0, R: 0, U: 6 },
+  // Total N is pinned at 6. F (Fundamentalist) and T (Trend follower)
+  // are user-adjustable via sliders (can be 0 for a pure utility-agent
+  // market); U is derived as TOTAL_N − F − T so all six slots are
+  // always filled. F and T provide the initial price heterogeneity
+  // that bootstraps non-degenerate trading under Plan I's DLM belief
+  // model (prior = FV, peer-message blend with experience weight w).
+  mix: { F: 1, T: 1, R: 0, U: 4 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which
@@ -235,10 +238,10 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
+    // Population mix — F and T are user-adjustable; U is derived.
+    'p-fund':  { target: 'mix.F', out: 'v-fund',  fmt: v => v, int: true },
+    'p-trend': { target: 'mix.T', out: 'v-trend', fmt: v => v, int: true },
     // Risk preferences — three linked shares summing to 100.
-    // DLM 2005 uses homogeneous human subjects (no F/T/R agent types),
-    // so the only composition knob is the risk-preference split across
-    // the six utility agents.
     'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',  out: 'v-risk-averse',  fmt: v => v + '%', int: true },
@@ -269,6 +272,7 @@ const App = {
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
+        if (spec.target.startsWith('mix.'))     this._constrainMix();
       });
       input.addEventListener('change', () => {
         // Structural edits (population mix counts, risk-share shares,
@@ -280,6 +284,7 @@ const App = {
       });
     }
     this._updateCompBar();
+    this._constrainMix();
 
     // Plan switch — the three segmented buttons Plan I / Plan II /
     // Plan III in the navbar drive App.plan, a matching body class
@@ -586,6 +591,40 @@ const App = {
    * others are zero, split the remainder 50/50. After rebalancing,
    * App.riskMix, the readouts, and the comp-bar are all refreshed.
    */
+  /**
+   * When F or T changes, clamp the other so F + T ≤ TOTAL_N,
+   * derive U = TOTAL_N − F − T, and update the readouts + maxes.
+   */
+  _constrainMix() {
+    const N = this.TOTAL_N;
+    const elF = document.getElementById('p-fund');
+    const elT = document.getElementById('p-trend');
+    if (!elF || !elT) return;
+    const f = this.mix.F | 0;
+    const t = this.mix.T | 0;
+    // Clamp: if the sum exceeds N, trim the *other* slider.
+    if (f + t > N) {
+      // Last-writer-wins: the slider that just moved keeps its value,
+      // but since we don't know which one moved, cap T first.
+      this.mix.T = Math.max(0, N - f);
+      elT.value = String(this.mix.T);
+      const outT = document.getElementById('v-trend');
+      if (outT) outT.textContent = this.mix.T;
+      this._updateSliderPct(elT);
+    }
+    this.mix.U = Math.max(0, N - (this.mix.F | 0) - (this.mix.T | 0));
+    // Update the derived U readout and the mix-total badge.
+    const outU = document.getElementById('v-util');
+    if (outU) outU.textContent = this.mix.U;
+    const badge = document.getElementById('mix-total');
+    if (badge) badge.textContent = `(N = ${N})`;
+    // Cap each slider's max so the user can't push past N.
+    elF.max = String(N - (this.mix.T | 0));
+    elT.max = String(N - (this.mix.F | 0));
+    this._updateSliderPct(elF);
+    this._updateSliderPct(elT);
+  },
+
   _constrainRiskMix(changedId) {
     this._constrainLinkedTriplet(changedId, {
       ids:    ['p-risk-loving', 'p-risk-neutral', 'p-risk-averse'],
