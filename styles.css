@@ -868,26 +868,26 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   box-shadow: 0 0 0 8px var(--accent-light);
 }
 
-/* Toggle buttons — inline button pair on the param-head right side.
-   Each button wraps a hidden checkbox; off = outlined muted,
-   on = solid accent fill. Border + shadow give a clear clickable
-   affordance distinct from the passive .pval readout badges. */
+/* Toggle buttons — two equal-width buttons side by side, each showing
+   its label + an ON/OFF state indicator. Off = muted outline;
+   on = accent fill. The row keeps data-tip for a hover tooltip. */
 .param-toggle-row { gap: 0; }
-.toggle-pills {
+.toggle-pair {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 8px;
+  width: 100%;
 }
-.pill-btn {
-  display: inline-flex;
+.toggle-btn {
+  flex: 1;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
   border: 1px solid var(--border);
@@ -896,28 +896,38 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   transition: background 0.18s var(--ease), color 0.18s var(--ease),
               border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
-.pill-btn:hover {
-  border-color: var(--fg-3);
-  color: var(--fg-1);
-}
-.pill-btn:active {
-  transform: scale(0.96);
-}
-.pill-btn input {
+.toggle-btn input {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
   pointer-events: none;
 }
-.pill-btn:has(input:checked) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 2px var(--accent-light);
+.toggle-btn .toggle-state::after {
+  content: 'OFF';
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--fg-3);
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
 }
-.pill-btn:has(input:checked):hover {
+.toggle-btn:hover {
+  border-color: var(--fg-3);
+  color: var(--fg-1);
+}
+.toggle-btn:active { transform: scale(0.97); }
+.toggle-btn:has(input:checked) {
+  background: var(--accent-light);
   border-color: var(--accent);
+  color: var(--accent);
+}
+.toggle-btn:has(input:checked) .toggle-state::after {
+  content: 'ON';
+  background: var(--accent);
+  color: #fff;
 }
 
 /* Risk-preference composition bar — the three linked sliders push
