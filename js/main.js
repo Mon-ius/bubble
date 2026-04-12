@@ -837,10 +837,12 @@ const App = {
       // endpoint at period boundary; Plan I ignores both.
       plan:          this.plan,
       aiConfig:      this.aiConfig,
-      // Period-boundary LLM cache: { [agentId]: subjectiveValuation }.
-      // Populated asynchronously by the engine's comms round when
-      // plan ∈ {II, III}, consumed next period by updateBelief.
+      // Period-boundary LLM cache (legacy valuation path).
       llmBeliefs:    {},
+      // Period-boundary LLM action cache: { [agentId]: {action, reason} }.
+      // Populated asynchronously by the engine's comms round when
+      // plan ∈ {II, III}, consumed next tick by decide().
+      llmActions:    {},
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();

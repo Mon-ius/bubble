@@ -811,6 +811,19 @@ class UtilityAgent extends Agent {
   decide(market, rng, ctx = {}) {
     this.observe(market);
     this.updateBelief(market, ctx, rng);
+
+    // Plan II / III — LLM direct action override. The cached action
+    // from the period-boundary LLM call is translated into an order
+    // using the *current* book state. Consumed once, then cleared.
+    const plan = ctx && ctx.plan;
+    const llmEntry = ctx && ctx.llmActions && ctx.llmActions[this.id];
+    if ((plan === 'II' || plan === 'III') && llmEntry) {
+      const result = this._translateLLMAction(llmEntry, market);
+      delete ctx.llmActions[this.id];
+      if (result) return result;
+      // Falls through to EU evaluation if action is invalid.
+    }
+
     const { candidates, w0, U0 } = this.evaluate(market, rng, ctx);
 
     let chosen = candidates[0];
@@ -857,6 +870,57 @@ class UtilityAgent extends Agent {
       quantity: chosen.quantity || 1,
       reasoning,
     };
+  }
+
+  /**
+   * Translate an LLM action string into an order using the current
+   * book state. Returns null if the action is invalid (constraint
+   * violation), in which case decide() falls back to EU evaluation.
+   */
+  _translateLLMAction(llmEntry, market) {
+    const { action, reason } = llmEntry;
+    const bid  = market.book.bestBid();
+    const ask  = market.book.bestAsk();
+    const cash = this.cash;
+    const inv  = this.inventory;
+    const reasoning = {
+      ruleUsed:         `llm_action`,
+      estimatedValue:   this.subjectiveValuation,
+      expectedProfit:   null,
+      triggerCondition: `LLM chose ${action}`,
+      llmReason:        reason,
+      biasActive:       false,
+      noiseActive:      false,
+      biasMode:         this.biasMode,
+      biasAmount:       this.biasAmount,
+      beliefMode:       this.beliefMode,
+      receivedMsgs:     this.receivedMsgs.map(m => ({
+        from: m.senderName, claim: m.claimedValuation, sig: m.signal,
+      })),
+    };
+
+    if (action === 'BUY_NOW' && ask && cash >= ask.price) {
+      return { type: 'bid', price: ask.price, quantity: 1, reasoning };
+    }
+    if (action === 'SELL_NOW' && bid && inv > 0) {
+      return { type: 'ask', price: bid.price, quantity: 1, reasoning };
+    }
+    if (action === 'BID_1' && bid && cash >= bid.price + 1) {
+      return { type: 'bid', price: round2(bid.price + 1), quantity: 1, reasoning };
+    }
+    if (action === 'BID_3' && bid && cash >= bid.price + 3) {
+      return { type: 'bid', price: round2(bid.price + 3), quantity: 1, reasoning };
+    }
+    if (action === 'ASK_1' && ask && inv > 0) {
+      return { type: 'ask', price: round2(ask.price - 1), quantity: 1, reasoning };
+    }
+    if (action === 'ASK_3' && ask && inv > 0) {
+      return { type: 'ask', price: round2(ask.price - 3), quantity: 1, reasoning };
+    }
+    if (action === 'HOLD') {
+      return { type: 'hold', reasoning };
+    }
+    return null;
   }
 
   /* ---- Communication (called once per period by engine) ---- */

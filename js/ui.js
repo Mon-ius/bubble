@@ -1651,6 +1651,11 @@ const UI = {
         ? `<div class="trace-row muted">prior adj: ${priorFlags.join(' + ')}</div>`
         : '';
 
+      // LLM reasoning (Plan II/III direct action).
+      const llmBlock = r.llmReason
+        ? `<div class="trace-row muted llm-reason">LLM: ${UI._escHtml(r.llmReason)}</div>`
+        : '';
+
       // Extended: messages heard this period.
       const msgBlock = (r.receivedMsgs && r.receivedMsgs.length)
         ? `<div class="trace-row muted">heard ${r.receivedMsgs.map(m => `${m.from}:${m.claim.toFixed(0)}(${m.sig})`).join(', ')}</div>`
@@ -1667,6 +1672,7 @@ const UI = {
           <div class="trace-row">est value <strong>${valStr}</strong> · E[π] <strong>${profitStr}</strong></div>
           <div class="trace-row">cash <strong>${t.state.cash.toFixed(0)}</strong> · inv <strong>${t.state.inventory}</strong></div>
           ${uBlock}
+          ${llmBlock}
           ${priorBlock}
           ${msgBlock}
         </div>`;

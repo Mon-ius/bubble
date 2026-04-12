@@ -215,6 +215,22 @@ const AI = {
   },
 
   /**
+   * Parse an action from the structured LLM response.
+   * Expected format: "Reason: ... Action: BUY_NOW"
+   */
+  _VALID_ACTIONS: ['BUY_NOW', 'SELL_NOW', 'BID_1', 'BID_3', 'ASK_1', 'ASK_3', 'HOLD'],
+
+  parseAction(raw) {
+    if (typeof raw !== 'string') return null;
+    const m = raw.match(/Action\s*:\s*(BUY_NOW|SELL_NOW|BID_1|BID_3|ASK_1|ASK_3|HOLD)/i);
+    if (!m) return null;
+    const action = m[1].toUpperCase();
+    if (!this._VALID_ACTIONS.includes(action)) return null;
+    const rm = raw.match(/Reason\s*:\s*(.+?)(?=\nAction|\n*$)/is);
+    return { action, reason: rm ? rm[1].trim() : '' };
+  },
+
+  /**
    * Fire one chat completion per Utility agent in parallel and return
    * a { [agentId]: anchor } map. Utility agents whose slot is absent
    * from the result (network error, parse failure, missing key) are
@@ -325,142 +341,213 @@ const AI = {
     );
     if (!utilityAgents.length) return {};
 
-    const fv0          = config.dividendMean * config.periods;
-    const fvNow        = market.fundamentalValue();
     const periods      = config.periods;
     const periodNow    = market.period;
-    const round        = market.round;
-    const roundsTotal  = config.roundsPerSession || 1;
+    const kRemaining   = periods - periodNow + 1;
     const dividendAvg  = config.dividendMean;
+    const fvNow        = market.fundamentalValue();
     const lastPrice    = market.lastPrice != null ? market.lastPrice : fvNow;
     const bestBid      = market.book.bestBid();
     const bestAsk      = market.book.bestAsk();
-    const vol          = market.volumeByPeriod[market.sessionPeriod()] || 0;
-    const lo           = 0;
-    const hi           = fv0 * 2;
+    const bidPrice     = bestBid ? bestBid.price : null;
+    const askPrice     = bestAsk ? bestAsk.price : null;
 
-    // Recent trade tape — last 10 trades in the current round.
-    const recentTrades = market.trades
-      .filter(t => t.round === round)
-      .slice(-10);
-
-    const biasOn  = !!(tunables && tunables.applyBias);
-    const noiseOn = !!(tunables && tunables.applyNoise);
+    // Previous reference price — last trade from prior period.
+    const round        = market.round;
+    const prevTrades   = market.trades.filter(
+      t => t.round === round && t.period < periodNow,
+    );
+    const prevPrice    = prevTrades.length
+      ? prevTrades[prevTrades.length - 1].price
+      : lastPrice;
 
     const system =
-      'You are a trader in a finite-horizon experimental asset market ' +
-      '(Dufwenberg, Lindqvist & Moore 2005). You can see public market ' +
-      'information and your own private state. Respond with ONE number ' +
-      'only — your private subjective valuation per share for the next ' +
-      'period, in experimental cents. No explanation, no units, no ' +
-      'currency symbols, no text, just a single decimal number.';
+      'You are a trader in an experimental asset market. Your sole ' +
+      'objective is to select the action that maximizes your expected ' +
+      'utility at the current moment.\n\n' +
+      'You are in a double auction market. You cannot make moral ' +
+      'judgments, cannot think for the experiment designers, and can ' +
+      'only make decisions based on "how to maximize your utility as ' +
+      'the trader."\n\n' +
+      'Important Rules:\n' +
+      '1. You must select exactly one action from the given set of actions.\n' +
+      '2. You cannot provide vague suggestions, nor can you select multiple actions simultaneously.\n' +
+      '3. You cannot say "depends on" or "insufficient information." You must make the best decision based on the given information.\n' +
+      '4. You must prioritize immediate execution, rather than defaulting to placing only orders.\n' +
+      '5. You can accept the current best ask (buy immediately) or accept the current best bid (sell immediately).\n' +
+      '6. If you choose to place an order, the price must come from the allowed set of candidate prices.\n' +
+      '7. Your output must strictly conform to the specified format.';
 
     const labelOf = (risk) =>
-      risk === 'loving' ? 'risk-loving' :
-      risk === 'averse' ? 'risk-averse' :
-                          'risk-neutral';
+      risk === 'loving' ? 'Risk loving' :
+      risk === 'averse' ? 'Risk averse' :
+                          'Risk neutral';
+    const riskDesc = (risk) =>
+      risk === 'loving' ? 'More willing to take risks, less sensitive to losses' :
+      risk === 'averse' ? 'More averse to wealth volatility, more sensitive to losses' :
+                          'Makes decisions based on expected returns';
     const formulaOf = (risk) =>
       risk === 'loving' ? 'U_L(w) = (w / w0)^2  (strictly convex, upside-seeking)' :
       risk === 'averse' ? 'U_A(w) = sqrt(w / w0)  (strictly concave, downside-fearing)' :
                           'U_N(w) = w / w0  (linear, EV-indifferent)';
 
     const promptFor = (a) => {
-      // ---- PUBLIC MARKET STATE ----
-      const pub = [
-        `=== PUBLIC MARKET STATE ===`,
-        `Market rules: asset lives ${periods} periods per round,`,
-        `${roundsTotal} round(s) per session. Each period every share`,
-        `pays a dividend of 0 or 20 cents with equal probability`,
-        `(expected ${dividendAvg} cents). Risk-neutral fundamental`,
-        `value at period t is ${dividendAvg} × (${periods} − t + 1).`,
-        ``,
-        `Current: round ${round}/${roundsTotal}, period ${periodNow}/${periods}.`,
-        `FV now: ${fvNow} cents.`,
-        `Last trade: ${lastPrice.toFixed(2)} cents.`,
-        `Best bid: ${bestBid ? bestBid.price.toFixed(2) : '—'} cents.`,
-        `Best ask: ${bestAsk ? bestAsk.price.toFixed(2) : '—'} cents.`,
-        `Volume this period: ${vol} shares.`,
-      ];
-      if (recentTrades.length) {
-        pub.push(``, `Recent trades (newest first):`);
-        for (let i = recentTrades.length - 1; i >= 0; i--) {
-          const t = recentTrades[i];
-          pub.push(`  period ${t.period}: ${t.price.toFixed(2)} cents × ${t.quantity}`);
-        }
+      const exp = a.roundsPlayed | 0;
+      const cash = Math.round(a.cash);
+      const inv  = a.inventory;
+
+      // ---- Available actions + constraints ----
+      const actions = [];
+      const constraints = [];
+
+      if (askPrice != null && cash >= askPrice) {
+        actions.push(`1. BUY_NOW: Immediately buy 1 unit at the current lowest ask price (${askPrice.toFixed(0)}).`);
+      } else {
+        constraints.push(`- BUY_NOW cannot be selected${askPrice == null ? ' (no ask available)' : ` (cash ${cash} < best_ask ${askPrice.toFixed(0)})`}.`);
       }
-      // Peer messages from the last period.
+      if (bidPrice != null && inv >= 1) {
+        actions.push(`2. SELL_NOW: Immediately sell 1 unit at the current highest bid price (${bidPrice.toFixed(0)}).`);
+      } else {
+        constraints.push(`- SELL_NOW cannot be selected${bidPrice == null ? ' (no bid available)' : ' (holdings < 1)'}.`);
+      }
+      if (bidPrice != null && cash >= bidPrice + 1) {
+        actions.push(`3. BID_1: Submit bid = best_bid + 1 = ${(bidPrice + 1).toFixed(0)}.`);
+      } else {
+        constraints.push(`- BID_1 cannot be selected${bidPrice == null ? ' (no bid available)' : ` (cash ${cash} < ${(bidPrice + 1).toFixed(0)})`}.`);
+      }
+      if (bidPrice != null && cash >= bidPrice + 3) {
+        actions.push(`4. BID_3: Submit bid = best_bid + 3 = ${(bidPrice + 3).toFixed(0)}.`);
+      } else {
+        constraints.push(`- BID_3 cannot be selected${bidPrice == null ? ' (no bid available)' : ` (cash ${cash} < ${(bidPrice + 3).toFixed(0)})`}.`);
+      }
+      if (askPrice != null && inv >= 1) {
+        actions.push(`5. ASK_1: Submit ask = best_ask - 1 = ${(askPrice - 1).toFixed(0)}.`);
+        actions.push(`6. ASK_3: Submit ask = best_ask - 3 = ${(askPrice - 3).toFixed(0)}.`);
+      } else {
+        constraints.push(`- ASK_1 / ASK_3 cannot be selected${askPrice == null ? ' (no ask available)' : ' (holdings < 1)'}.`);
+      }
+      actions.push(`7. HOLD: Do not trade.`);
+
+      // ---- Compose prompt ----
+      const lines = [
+        `You are a trader in the market, agent_${a.id}.`,
+        ``,
+        `【Your Type】`,
+        `- Risk Preference Type: ${labelOf(a.riskPref)}`,
+        `  ${riskDesc(a.riskPref)}`,
+        `- Experience level: ${exp}`,
+        `  The higher the experience level, the more anchored to fundamental value, the less likely to follow recent prices and price trends, and the lower the decision noise.`,
+      ];
+
+      // Plan II — explicit utility formula.
+      if (plan === 'II') {
+        lines.push(
+          `- Your utility function: ${formulaOf(a.riskPref)}`,
+          `  w0 (initial wealth) = ${Math.round(a.initialWealth)} cents.`,
+        );
+      }
+
+      lines.push(
+        ``,
+        `【Market Rules】`,
+        `1. This is a ${periods}-period asset market.`,
+        `2. Each asset pays a dividend of 0 or ${dividendAvg * 2} in each remaining period, with a 50% probability of each.`,
+        `3. Therefore, the expected dividend for each remaining period is ${dividendAvg}.`,
+        `4. If the current remaining period is k, then the fundamental value = ${dividendAvg} × k.`,
+        `5. All traders know how this fundamental value is calculated.`,
+        `6. Double Auction Rules:`,
+        `   - You can buy the lowest ask immediately.`,
+        `   - You can sell the highest bid immediately.`,
+        `   - You can submit a new bid.`,
+        `   - You can submit a new ask.`,
+        `   - You can also choose not to trade.`,
+        `7. If you buy the current ask immediately, the transaction will be executed instantly at the lowest ask price.`,
+        `8. If you sell the current bid immediately, the transaction will be executed instantly at the highest bid price.`,
+        `9. The last price is only updated when a transaction occurs.`,
+        ``,
+        `【Your Status】`,
+        `- Current Cash: ${cash}`,
+        `- Current Asset Holdings: ${inv}`,
+        ``,
+        `【Current Market Status】`,
+        `- Current Period: ${periodNow}`,
+        `- Current Remaining Periods k: ${kRemaining}`,
+        `- Current Fundamental Value (FV): ${fvNow}`,
+        `- Last Price: ${lastPrice.toFixed(0)}`,
+        `- Highest Bid: ${bidPrice != null ? bidPrice.toFixed(0) : '—'}`,
+        `- Lowest Ask: ${askPrice != null ? askPrice.toFixed(0) : '—'}`,
+        `- Previous Reference Price: ${prevPrice.toFixed(0)}`,
+        ``,
+        `【Your Decision-Making Principles】`,
+        `You want to maximize the following intuitive utilities:`,
+        `1. The higher the wealth, the better;`,
+        `2. ${a.riskPref === 'averse' ? 'You dislike risk and are sensitive to losses' : a.riskPref === 'loving' ? 'You are willing to take risks and less sensitive to losses' : 'You evaluate expected returns linearly'};`,
+        `3. Buying at a price lower than the last traded price increases utility; buying at a price higher than the last traded price decreases utility;`,
+        `4. Selling at a price higher than the last traded price increases utility; selling at a price lower than the last traded price decreases utility;`,
+        `5. Holding too many positions increases inventory risk;`,
+        `6. The higher the experience, the more you should refer to fundamental value, rather than blindly following the last price and short-term trends.`,
+        ``,
+        `【Additional Requirements】`,
+        `1. You cannot mechanically favor holding.`,
+        `2. If the utility of immediate execution is similar to holding, you should prioritize actions that facilitate the trade.`,
+        `3. You must consider "execution opportunities" valuable because not executing means you cannot improve your position.`,
+        `4. When you hold a lot of assets, you should seriously consider selling; when you hold a lot of cash and fewer assets, you should seriously consider buying.`,
+        `5. Towards the later stages, you should focus more on fundamental value than short-term resale opportunities.`,
+        ``,
+        `【Role-Specific Guidance】`,
+      );
+      if (a.riskPref === 'averse') {
+        lines.push(`- As a risk-averse trader, you should focus more on avoiding losses and excessive position size.`);
+      } else if (a.riskPref === 'loving') {
+        lines.push(`- As a risk-loving trader, you can accept more aggressive trading and greater short-term volatility.`);
+      } else {
+        lines.push(`- As a risk-neutral trader, you should focus more on expected returns.`);
+      }
+      if (exp >= 2) {
+        lines.push(`- As a highly experienced trader (level ${exp}), you should rely more on fundamental value.`);
+      } else {
+        lines.push(`- As a less experienced trader (level ${exp}), you can be more influenced by last price and recent price changes.`);
+      }
+
+      // Peer messages.
       const msgs = (a.receivedMsgs || []).filter(m => m.senderId !== a.id);
       if (msgs.length) {
-        pub.push(``, `Peer messages from last period:`);
+        lines.push(``, `【Peer Messages from Last Period】`);
         for (const m of msgs) {
-          pub.push(`  - ${m.senderName || ('agent ' + m.senderId)}: claimed ${Number(m.claimedValuation).toFixed(1)} cents`);
+          lines.push(`- ${m.senderName || ('agent ' + m.senderId)}: claimed value ${Number(m.claimedValuation).toFixed(0)} cents`);
         }
       }
 
-      // ---- YOUR PRIVATE STATE ----
-      const priv = [
+      lines.push(
         ``,
-        `=== YOUR PRIVATE STATE (agent ${a.id}) ===`,
-        `Cash: ${Math.round(a.cash)} cents.`,
-        `Shares held: ${a.inventory}.`,
-        `Rounds of experience: ${a.roundsPlayed | 0}.`,
-        `Risk preference: ${labelOf(a.riskPref)}.`,
-        `Belief mode: ${a.beliefMode || 'naive'}.`,
-        `Deception mode: ${a.deceptionMode || 'honest'}.`,
-      ];
-      // Bias / noise prior configuration.
-      const biasLabel =
-        a.biasMode === 'over'  ? `optimistic (+${(a.biasAmount * 100).toFixed(0)}%)` :
-        a.biasMode === 'under' ? `pessimistic (−${(a.biasAmount * 100).toFixed(0)}%)` :
-                                 'none';
-      priv.push(
-        `Bias on prior: ${biasOn ? biasLabel : 'off'}.`,
-        `Noise on prior: ${noiseOn ? '±' + ((a.valuationNoise || 0) * 100).toFixed(0) + '%' : 'off'}.`,
+        `【You must choose one of the following actions】`,
+        ...actions,
       );
-      if (a.trueValuation != null) {
-        priv.push(`Your current prior (FV × (1 + bias + noise)): ${a.trueValuation.toFixed(2)} cents.`);
-      }
-      if (a.subjectiveValuation != null) {
-        priv.push(`Your last subjective valuation (after peer blend): ${a.subjectiveValuation.toFixed(2)} cents.`);
-      }
-      // Plan II — explicit utility formula + action set.
-      if (plan === 'II') {
-        priv.push(
-          ``,
-          `Your utility function: ${formulaOf(a.riskPref)}.`,
-          `Each tick your valuation v is used to evaluate 5 actions by EU:`,
-          `  1. hold — keep current position`,
-          `  2. buy now at best ask — cross the book (deterministic fill)`,
-          `  3. sell now at best bid — cross the book (deterministic fill)`,
-          `  4. post passive bid near v — probabilistic fill`,
-          `  5. post passive ask near v — probabilistic fill`,
-          `The engine picks argmax EU relative to initial wealth`,
-          `w0 = ${Math.round(a.initialWealth)} cents.`,
+      if (constraints.length) {
+        lines.push(``, `Constraints:`, ...constraints);
+        lines.push(
+          `- If the price generated by ASK_1 or ASK_3 is <= best_bid, it is equivalent to a sell order that will be executed immediately.`,
+          `- If the price generated by BID_1 or BID_3 is >= best_ask, it is equivalent to a buy order that will be executed immediately.`,
         );
       }
 
-      // Plan III — action set without utility formula.
-      if (plan === 'III') {
-        priv.push(
-          ``,
-          `Each tick your valuation v is used to evaluate 5 actions:`,
-          `  1. hold — keep current position`,
-          `  2. buy now at best ask — cross the book (deterministic fill)`,
-          `  3. sell now at best bid — cross the book (deterministic fill)`,
-          `  4. post passive bid near v — probabilistic fill`,
-          `  5. post passive ask near v — probabilistic fill`,
-        );
-      }
-
-      // ---- INSTRUCTION ----
-      const instr = [
+      lines.push(
         ``,
-        `Given the public market state and your private information,`,
-        `what is your subjective valuation per share for the next`,
-        `period? Answer with ONE number in experimental cents.`,
-      ];
+        `【Your Task】`,
+        `Please briefly compare the available actions to determine which is most advantageous to you:`,
+        `- Buy immediately`,
+        `- Sell immediately`,
+        `- Place a more aggressive bid`,
+        `- Place a more aggressive ask`,
+        `- Do not trade`,
+        `Then output only one final action.`,
+        ``,
+        `【Strict Output Format】`,
+        `Reason: <Explain in 3-6 sentences why this action maximizes your utility>`,
+        `Action: <${actions.map(a => a.split(':')[0].replace(/^\d+\.\s*/, '')).join(' / ')}>`,
+      );
 
-      return [...pub, ...priv, ...instr].join('\n');
+      return lines.join('\n');
     };
 
     const tasks = utilityAgents.map(async (a) => {
@@ -468,9 +555,10 @@ const AI = {
       a.lastLLMPrompt = { system, user: userPrompt, plan, ts: Date.now() };
       try {
         const raw = await this.call(aiCfg, system, userPrompt);
-        const v   = this.parseValuation(raw, lo, hi);
         a.lastLLMResponse = raw;
-        return v == null ? null : { id: a.id, valuation: v };
+        const parsed = this.parseAction(raw);
+        if (!parsed) return null;
+        return { id: a.id, action: parsed.action, reason: parsed.reason };
       } catch (err) {
         a.lastLLMResponse = '[error] ' + (err.message || err);
         console.warn('[ai.getPlanBeliefs]', a.id, err.message || err);
@@ -479,7 +567,7 @@ const AI = {
     });
     const results = await Promise.all(tasks);
     const out = {};
-    for (const r of results) if (r) out[r.id] = r.valuation;
+    for (const r of results) if (r) out[r.id] = { action: r.action, reason: r.reason };
     return out;
   },
 };

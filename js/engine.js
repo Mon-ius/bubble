@@ -416,15 +416,14 @@ class Engine {
       trust.snapshot(this.market.tick);
       this.logger.logTrust({ tick: this.market.tick, period, trust: trust.copy() });
     }
-    // Plan II / Plan III — period-boundary LLM belief refresh. This
+    // Plan II / Plan III — period-boundary LLM action request. This
     // call is fire-and-forget: the tick loop continues immediately
     // while the network request runs in the background. When the
-    // promise resolves, `ctx.llmBeliefs` is populated with subjective
-    // valuations that updateBelief will consume on the next period's
-    // first tick. If the LLM is slower than the next period boundary,
-    // the affected agents simply fall back to Plan I for that period
-    // (updateBelief treats a missing cache key as "use the algorithmic
-    // branch"). Plan I ignores this block entirely.
+    // promise resolves, `ctx.llmActions` is populated with action
+    // choices that decide() will consume on the next tick. If the
+    // LLM is slower than the next period boundary, the affected
+    // agents simply fall back to EU evaluation for that period.
+    // Plan I ignores this block entirely.
     this._schedulePlanLLM();
   }
 
@@ -434,9 +433,9 @@ class Engine {
    * Reads ctx.plan and ctx.aiConfig; no-op unless plan is II or III
    * AND an API key is present AND the global AI object is available
    * (it's not in Node smoke tests). Results are merged into
-   * ctx.llmBeliefs as soon as the promise resolves, overwriting any
+   * ctx.llmActions as soon as the promise resolves, overwriting any
    * previous per-agent entry so the next period sees the freshest
-   * belief. Errors surface only to the console — the engine does not
+   * action. Errors surface only to the console — the engine does not
    * await or retry.
    */
   _schedulePlanLLM() {
@@ -464,10 +463,10 @@ class Engine {
     }
     Promise.resolve().then(async () => {
       try {
-        const beliefs = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables);
-        if (!beliefs) return;
-        for (const k of Object.keys(beliefs)) {
-          ctx.llmBeliefs[k] = beliefs[k];
+        const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables);
+        if (!results) return;
+        for (const k of Object.keys(results)) {
+          ctx.llmActions[k] = results[k];
         }
       } catch (err) {
         console.warn('[engine._schedulePlanLLM]', err && err.message || err);
