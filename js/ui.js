@@ -351,29 +351,49 @@ const UI = {
           <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
-      // LLM prompt back-face — rendered on the flip side of the card.
+      // Back-face content — LLM prompt for utility agents, rule
+      // explanation for algorithmic agents.
       const hasLLM = isUtil && a.lastLLMPrompt;
-      const llmBack = hasLLM ? `
-        <div class="card-back">
-          <div class="card-back-head">
-            <span class="card-back-title">LLM · Plan ${a.lastLLMPrompt.plan || '?'}</span>
-            <span class="card-back-hint">click to flip back</span>
-          </div>
-          <div class="llm-prompt-body">
-            <div class="llm-section">
-              <div class="llm-label">System</div>
-              <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
+      const ruleDesc = {
+        fundamentalist: 'Fundamentalist agents make decisions through coded rules — FV-anchored spreads that cross the book when mispricing exceeds ±2%, otherwise post passive quotes around the fundamental value.',
+        trend:          'Trend Follower agents make decisions through coded rules — momentum chasing that bids aggressively on positive slopes and flees on negative slopes, with no horizon model.',
+        random:         'Random (Zero-Intelligence) agents draw uniform prices bounded by the fundamental value. They provide a price-discovery floor/ceiling pinned to fundamentals.',
+        dlm:            'DLM Trader agents follow the Dufwenberg–Lindqvist–Moore (2005) protocol — inexperienced traders chase trends while experienced traders anchor to the fundamental value.',
+      };
+      let cardBack;
+      if (hasLLM) {
+        cardBack = `
+          <div class="card-back">
+            <div class="card-back-head">
+              <span class="card-back-title">LLM · Plan ${a.lastLLMPrompt.plan || '?'}</span>
+              <span class="card-back-hint">click to flip back</span>
             </div>
-            <div class="llm-section">
-              <div class="llm-label">User</div>
-              <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
+            <div class="llm-prompt-body">
+              <div class="llm-section">
+                <div class="llm-label">System</div>
+                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
+              </div>
+              <div class="llm-section">
+                <div class="llm-label">User</div>
+                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
+              </div>
+              <div class="llm-section">
+                <div class="llm-label">Response</div>
+                <pre class="llm-text llm-response">${UI._escHtml(String(a.lastLLMResponse || '—'))}</pre>
+              </div>
             </div>
-            <div class="llm-section">
-              <div class="llm-label">Response</div>
-              <pre class="llm-text llm-response">${UI._escHtml(String(a.lastLLMResponse || '—'))}</pre>
+          </div>`;
+      } else {
+        const desc = ruleDesc[a.type] || 'This agent uses algorithmic decision rules. No LLM prompt is generated.';
+        cardBack = `
+          <div class="card-back">
+            <div class="card-back-head">
+              <span class="card-back-title">Decision rule</span>
+              <span class="card-back-hint">click to flip back</span>
             </div>
-          </div>
-        </div>` : '';
+            <p class="card-back-note">${desc}</p>
+          </div>`;
+      }
 
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
@@ -386,9 +406,8 @@ const UI = {
                   value="${a.inventory}">`
         : a.inventory;
 
-      const flipClass = hasLLM ? ' flippable' : '';
       return `
-        <div class="agent-card-wrap${flipClass}">
+        <div class="agent-card-wrap flippable">
           <div class="agent-card-inner">
             <div class="agent-card card-front ${a.type}"${borderStyle}>
               <div class="agent-header">
@@ -408,9 +427,9 @@ const UI = {
                 <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
                 <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
               </div>
-              ${hasLLM ? '<div class="card-flip-hint">click to view prompt</div>' : ''}
+              <div class="card-flip-hint">click to view prompt</div>
             </div>
-            ${llmBack}
+            ${cardBack}
           </div>
         </div>`;
     }).join('');
