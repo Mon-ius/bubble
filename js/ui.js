@@ -373,12 +373,12 @@ const UI = {
             </div>
             <div class="llm-prompt-body">
               <div class="llm-section">
-                <div class="llm-label">System</div>
-                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
+                <div class="llm-label">System <span class="copy-hint">click to copy</span></div>
+                <pre class="llm-text llm-copyable">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
               </div>
               <div class="llm-section">
-                <div class="llm-label">User</div>
-                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
+                <div class="llm-label">User <span class="copy-hint">click to copy</span></div>
+                <pre class="llm-text llm-copyable">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
               </div>
               <div class="llm-section">
                 <div class="llm-label">Response</div>
@@ -444,12 +444,27 @@ const UI = {
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flippable').forEach(wrap => {
       wrap.addEventListener('click', (e) => {
         if (e.target.closest('.endow-input')) return;
-        // Don't flip when interacting with scrollable back-face content.
-        if (e.target.closest('.llm-prompt-body')) return;
+        // Back face: only flip back via the header hint, not content.
+        if (e.target.closest('.card-back') && !e.target.closest('.card-back-head')) return;
         const id = Number(wrap.dataset.agentId);
         if (UI._flipped.has(id)) UI._flipped.delete(id);
         else                     UI._flipped.add(id);
         wrap.classList.toggle('flipped');
+      });
+    });
+
+    // Click-to-copy on system / user prompt blocks.
+    this.els.agentsGrid.querySelectorAll('.llm-copyable').forEach(pre => {
+      pre.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(pre.textContent).then(() => {
+          const label = pre.previousElementSibling;
+          if (!label) return;
+          const hint = label.querySelector('.copy-hint');
+          if (!hint) return;
+          hint.textContent = 'copied!';
+          setTimeout(() => { hint.textContent = 'click to copy'; }, 1200);
+        });
       });
     });
 

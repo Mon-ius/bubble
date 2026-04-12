@@ -1694,6 +1694,21 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   text-transform: uppercase;
   color: var(--fg-3);
   margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.copy-hint {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--fg-3);
+  opacity: 0.6;
+}
+.llm-copyable {
+  cursor: pointer;
+}
+.llm-copyable:hover {
+  border-color: var(--accent);
 }
 .llm-text {
   margin: 0;
