@@ -654,13 +654,21 @@
         </g>
         <g class="n n-paper" transform="translate(60 60)">
           <rect width="260" height="46" rx="6" ry="6"/>
-          <text class="t" x="130" y="20">T = 10 periods</text>
-          <text class="s" x="130" y="36">d ∈ {0, 20}¢   E[d] = 10¢</text>
+          <foreignObject width="260" height="46">
+            <div class="fo-node">
+              <div class="fo-t">$T = 10$ periods</div>
+              <div class="fo-s">$d \in \{0,\, 20\}$¢ &nbsp; $\mathbb{E}[d] = 10$¢</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-paper n-eq" transform="translate(60 122)">
           <rect width="260" height="62" rx="6" ry="6"/>
-          <text class="t" x="130" y="26">FV_t = E[d] · (T − t + 1)</text>
-          <text class="s" x="130" y="46">Risk-neutral fundamental value</text>
+          <foreignObject width="260" height="62">
+            <div class="fo-node">
+              <div class="fo-t">$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$</div>
+              <div class="fo-s">Risk-neutral fundamental value</div>
+            </div>
+          </foreignObject>
         </g>
 
         <!-- Group 2 — Strategies -->
@@ -671,51 +679,83 @@
 
         <g class="n n-fund" transform="translate(400 60)">
           <rect width="260" height="68" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Fundamentalist</text>
-          <text class="s" x="130" y="40">ask &lt; 0.98 · FV_t ⇒ buy</text>
-          <text class="s" x="130" y="56">bid &gt; 1.02 · FV_t ⇒ sell</text>
+          <foreignObject width="260" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Fundamentalist</div>
+              <div class="fo-s">$\text{ask} \lt 0.98 \cdot \mathrm{FV}_t \Rightarrow \text{buy}$</div>
+              <div class="fo-s">$\text{bid} \gt 1.02 \cdot \mathrm{FV}_t \Rightarrow \text{sell}$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-trend" transform="translate(680 60)">
           <rect width="250" height="68" rx="6" ry="6"/>
-          <text class="t" x="125" y="22">Trend follower</text>
-          <text class="s" x="125" y="40">slope = Σ Δp over last 6</text>
-          <text class="s" x="125" y="56">bid_1 = p + k·slope</text>
+          <foreignObject width="250" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Trend follower</div>
+              <div class="fo-s">$\text{slope} = \Sigma\,\Delta p$ over last 6</div>
+              <div class="fo-s">$\text{bid}_1 = p + k \cdot \text{slope}$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-zi" transform="translate(400 142)">
           <rect width="260" height="68" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Random (ZI)</text>
-          <text class="s" x="130" y="40">bid ∼ U[0.7·FV, 1.1·FV]</text>
-          <text class="s" x="130" y="56">ask ∼ U[0.9·FV, 1.3·FV]</text>
+          <foreignObject width="260" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Random (ZI)</div>
+              <div class="fo-s">$\text{bid} \sim \mathcal{U}[0.7\,\mathrm{FV},\; 1.1\,\mathrm{FV}]$</div>
+              <div class="fo-s">$\text{ask} \sim \mathcal{U}[0.9\,\mathrm{FV},\; 1.3\,\mathrm{FV}]$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-exp" transform="translate(680 142)">
           <rect width="250" height="68" rx="6" ry="6"/>
-          <text class="t" x="125" y="22">Experienced (DLM)</text>
-          <text class="s" x="125" y="40">prior = φ(h) · FV_t</text>
-          <text class="s" x="125" y="56">refuses overpay in late h</text>
+          <foreignObject width="250" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Experienced (DLM)</div>
+              <div class="fo-s">$\text{prior} = \varphi(h) \cdot \mathrm{FV}_t$</div>
+              <div class="fo-s">refuses overpay in late $h$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-util" transform="translate(400 224)">
           <rect width="260" height="72" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Utility agent</text>
-          <text class="s" x="130" y="40">prior = FV_t·(1 + b + ε)</text>
-          <text class="s" x="130" y="58">risk U_L (convex) / U_N / U_A</text>
+          <foreignObject width="260" height="72">
+            <div class="fo-node">
+              <div class="fo-t">Utility agent</div>
+              <div class="fo-s">$\text{prior} = \mathrm{FV}_t \cdot (1 + b + \varepsilon)$</div>
+              <div class="fo-s">risk $U_L$ (convex) / $U_N$ / $U_A$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-eu" transform="translate(680 224)">
           <rect width="250" height="72" rx="6" ry="6"/>
-          <text class="t" x="125" y="22">Expected-utility score</text>
-          <text class="s" x="125" y="40">EU = p · U(w₁) + (1−p) · U(w₀)</text>
-          <text class="s" x="125" y="58">a* = argmax EU</text>
+          <foreignObject width="250" height="72">
+            <div class="fo-node">
+              <div class="fo-t">Expected-utility score</div>
+              <div class="fo-s">$\mathrm{EU} = p \!\cdot\! U(w_1) + (1\!-\!p) \!\cdot\! U(w_0)$</div>
+              <div class="fo-s">$a^* = \arg\max \mathrm{EU}$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-msg" transform="translate(400 310)">
           <rect width="260" height="68" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Plan I · algorithmic blend</text>
-          <text class="s" x="130" y="40">post = w·prior + (1−w)·avg(msgs)</text>
-          <text class="s" x="130" y="56">w = 0.6 + 0.1·min(3, k)</text>
+          <foreignObject width="260" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Plan I · algorithmic blend</div>
+              <div class="fo-s">$\text{post} = w \!\cdot\! \text{prior} + (1\!-\!w)\!\cdot\!\bar{m}$</div>
+              <div class="fo-s">$w = 0.6 + 0.1 \cdot \min(3,\,k)$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-trust" transform="translate(680 310)">
           <rect width="250" height="68" rx="6" ry="6"/>
-          <text class="t" x="125" y="22">Trust EMA</text>
-          <text class="s" x="125" y="40">τ_s ← (1−α)·τ_s +</text>
-          <text class="s" x="125" y="56">α · (1 − |claim−VWAP|/VWAP)</text>
+          <foreignObject width="250" height="68">
+            <div class="fo-node">
+              <div class="fo-t">Trust EMA</div>
+              <div class="fo-s">$\tau_s \leftarrow (1\!-\!\alpha)\,\tau_s \,+$</div>
+              <div class="fo-s">$\alpha\,(1 - |\text{claim} - \text{VWAP}|\,/\,\text{VWAP})$</div>
+            </div>
+          </foreignObject>
         </g>
 
         <!-- Group 3 — Plan II / III LLM belief update -->
@@ -725,13 +765,21 @@
         </g>
         <g class="n n-wang n-eq" transform="translate(60 278)">
           <rect width="260" height="50" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Plan II · prompt ⊇ {U_L, U_N, U_A}</text>
-          <text class="s" x="130" y="40">V_i^post ← LLM(risk + formulas)</text>
+          <foreignObject width="260" height="50">
+            <div class="fo-node">
+              <div class="fo-t">Plan II · prompt $\supseteq \{U_L, U_N, U_A\}$</div>
+              <div class="fo-s">$V_i^{\text{post}} \leftarrow \text{LLM}(\text{risk} + \text{formulas})$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-wang" transform="translate(60 340)">
           <rect width="260" height="50" rx="6" ry="6"/>
-          <text class="t" x="130" y="22">Plan III · prompt ⊇ risk label only</text>
-          <text class="s" x="130" y="40">V_i^post ← LLM(risk label)</text>
+          <foreignObject width="260" height="50">
+            <div class="fo-node">
+              <div class="fo-t">Plan III · prompt $\supseteq$ risk label only</div>
+              <div class="fo-s">$V_i^{\text{post}} \leftarrow \text{LLM}(\text{risk label})$</div>
+            </div>
+          </foreignObject>
         </g>
 
         <!-- Group 4 — Market matching + metrics -->
@@ -741,28 +789,48 @@
         </g>
         <g class="n n-book" transform="translate(60 472)">
           <rect width="400" height="52" rx="6" ry="6"/>
-          <text class="t" x="200" y="22">Order book (price–time priority)</text>
-          <text class="s" x="200" y="40">bid ≥ ask ⇒ trade at resting price</text>
+          <foreignObject width="400" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Order book (price–time priority)</div>
+              <div class="fo-s">$\text{bid} \geq \text{ask} \Rightarrow$ trade at resting price</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-metric" transform="translate(490 472)">
           <rect width="200" height="52" rx="6" ry="6"/>
-          <text class="t" x="100" y="22">Haessel R²</text>
-          <text class="s" x="100" y="40">fit of p̄_t to FV_t</text>
+          <foreignObject width="200" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Haessel $R^2$</div>
+              <div class="fo-s">fit of $\bar{p}_t$ to $\mathrm{FV}_t$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-metric" transform="translate(710 472)">
           <rect width="210" height="52" rx="6" ry="6"/>
-          <text class="t" x="105" y="22">Amplitude</text>
-          <text class="s" x="105" y="40">(max−min residual) / FV₀</text>
+          <foreignObject width="210" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Amplitude</div>
+              <div class="fo-s">$(\max - \min\;\text{residual})\,/\,\mathrm{FV}_0$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-metric" transform="translate(60 546)">
           <rect width="400" height="52" rx="6" ry="6"/>
-          <text class="t" x="200" y="22">Normalized deviation</text>
-          <text class="s" x="200" y="40">ND = Σ |p_t − FV_t| / (T · FV₀ · Q)</text>
+          <foreignObject width="400" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Normalized deviation</div>
+              <div class="fo-s">$\mathrm{ND} = \Sigma\,|p_t - \mathrm{FV}_t|\,/\,(T \!\cdot\! \mathrm{FV}_0 \!\cdot\! Q)$</div>
+            </div>
+          </foreignObject>
         </g>
         <g class="n n-metric" transform="translate(490 546)">
           <rect width="430" height="52" rx="6" ry="6"/>
-          <text class="t" x="215" y="22">Turnover · Allocative efficiency</text>
-          <text class="s" x="215" y="40">TO = Σ qty / Q    AE = U_realized / U_max</text>
+          <foreignObject width="430" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Turnover · Allocative efficiency</div>
+              <div class="fo-s">$\mathrm{TO} = \Sigma\,\text{qty}\,/\,Q$ &nbsp;&nbsp; $\mathrm{AE} = U_{\text{realized}}\,/\,U_{\max}$</div>
+            </div>
+          </foreignObject>
         </g>
 
         <!-- Connectors -->

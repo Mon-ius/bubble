@@ -2156,9 +2156,9 @@ body.dlm-mode .bg-only          { display: none !important; }
 
 /* ---------- Architecture tab (math-focused) ---------- */
 /*
- * Snapshot of the three paradigms' equation pipeline. The SVG nodes
- * carry inline equations (no KaTeX; KaTeX lives in .arch-def-card
- * .formula blocks below). Every node class has a CSS custom-property
+ * Snapshot of the three paradigms' equation pipeline. SVG nodes use
+ * foreignObject to embed KaTeX-rendered math (same auto-render pass
+ * as .arch-def-card .formula blocks). Every node class has a CSS custom-property
  * pair (--nc = accent/stroke, --nb = soft fill) so the theme-swap is
  * free. The "Edit in draw.io" button opens architecture.drawio in the
  * public app.diagrams.net editor — href is filled in at runtime by
@@ -2270,6 +2270,31 @@ body.dlm-mode .bg-only          { display: none !important; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-ui);
   font-size: 10px;
 }
+/* KaTeX-rendered nodes via foreignObject inside the architecture SVG */
+.arch-diagram foreignObject .fo-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  overflow: hidden;
+}
+.arch-diagram foreignObject .fo-t {
+  font: 600 12px/1.4 var(--font-ui);
+  color: var(--nc);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.arch-diagram foreignObject .fo-s {
+  font: 10px/1.4 var(--font-ui);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.arch-diagram foreignObject .katex { font-size: 1em; }
 
 /* Paradigm group frames — soft rectangles behind each cluster of nodes.
    Paper constants (blue) / strategies (green) / Wang overlay (pink, dashed)
