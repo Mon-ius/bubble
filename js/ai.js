@@ -45,7 +45,7 @@ const AI = {
    */
   PROVIDERS: {
     openai: {
-      label: 'OpenAI',
+      label: 'OpenAI ChatGPT',
       endpoint: 'https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions',
       models: [
         { id: 'gpt-4o',        label: 'GPT-4o' },
