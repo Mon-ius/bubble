@@ -292,21 +292,17 @@ const AI = {
    * engine writes into `ctx.llmBeliefs` for the next period's
    * `updateBelief` pass to consume.
    *
-   * The prompt differs between the two plans by exactly one block:
+   * The prompt is structured into two clearly labelled blocks:
    *
-   *   Plan II  — the three utility formulas U_L, U_N, U_A are
-   *              printed out and the agent is told which of the
-   *              three applies to it. The model can then reason
-   *              about wealth-to-utility mapping explicitly and
-   *              return a subjective valuation that internalizes
-   *              the curvature.
+   *   PUBLIC MARKET STATE  — observable by all participants: market
+   *     rules, current round/period, FV, order book, recent trades,
+   *     cumulative volume, and peer messages from last period.
    *
-   *   Plan III — the formulas are omitted. The agent is told only
-   *              its risk-preference label ("risk-loving",
-   *              "risk-neutral", "risk-averse") and must infer the
-   *              behavioral implication on its own. This is the
-   *              ablation that tests whether the label alone is
-   *              sufficient to recover the utility-aware belief.
+   *   YOUR PRIVATE STATE   — known only to this agent: cash,
+   *     inventory, rounds of experience, risk preference, belief
+   *     mode, bias/noise configuration, and the resulting prior
+   *     valuation. Plan II additionally reveals the explicit utility
+   *     formula; Plan III reveals only the risk-preference label.
    *
    * Every call is independent; failures are logged and the agent
    * is simply skipped in the returned map — the engine treats a
@@ -318,9 +314,10 @@ const AI = {
    * @param {{periods:number, dividendMean:number}} config
    * @param {{apiKey:string, endpoint?:string, model?:string}} aiCfg
    * @param {'II'|'III'} plan
+   * @param {object} [tunables]
    * @returns {Promise<{[id:number]: number}>}
    */
-  async getPlanBeliefs(agents, market, config, aiCfg, plan) {
+  async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables) {
     if (!aiCfg || !aiCfg.apiKey) return {};
     if (plan !== 'II' && plan !== 'III') return {};
     const utilityAgents = Object.values(agents).filter(
@@ -333,76 +330,122 @@ const AI = {
     const periods      = config.periods;
     const periodNow    = market.period;
     const round        = market.round;
+    const roundsTotal  = config.roundsPerSession || 1;
     const dividendAvg  = config.dividendMean;
     const lastPrice    = market.lastPrice != null ? market.lastPrice : fvNow;
+    const bestBid      = market.book.bestBid();
+    const bestAsk      = market.book.bestAsk();
+    const vol          = market.volumeByPeriod[market.sessionPeriod()] || 0;
     const lo           = 0;
     const hi           = fv0 * 2;
 
+    // Recent trade tape — last 10 trades in the current round.
+    const recentTrades = market.trades
+      .filter(t => t.round === round)
+      .slice(-10);
+
+    const biasOn  = !!(tunables && tunables.applyBias);
+    const noiseOn = !!(tunables && tunables.applyNoise);
+
     const system =
       'You are a trader in a finite-horizon experimental asset market ' +
-      '(Dufwenberg, Lindqvist & Moore 2005). Respond with ONE number only ' +
-      '— your private subjective valuation per share for the next period, ' +
-      'in experimental cents. No explanation, no units, no currency symbols, ' +
-      'no text, just a single decimal number.';
+      '(Dufwenberg, Lindqvist & Moore 2005). You can see public market ' +
+      'information and your own private state. Respond with ONE number ' +
+      'only — your private subjective valuation per share for the next ' +
+      'period, in experimental cents. No explanation, no units, no ' +
+      'currency symbols, no text, just a single decimal number.';
 
     const labelOf = (risk) =>
       risk === 'loving' ? 'risk-loving' :
       risk === 'averse' ? 'risk-averse' :
                           'risk-neutral';
-    // Plan II only — print the utility form that corresponds to the
-    // agent's risk preference so the model has the explicit curvature.
     const formulaOf = (risk) =>
       risk === 'loving' ? 'U_L(w) = (w / w0)^2  (strictly convex, upside-seeking)' :
       risk === 'averse' ? 'U_A(w) = sqrt(w / w0)  (strictly concave, downside-fearing)' :
                           'U_N(w) = w / w0  (linear, EV-indifferent)';
 
     const promptFor = (a) => {
-      const lines = [
-        `Market: asset lives ${periods} periods. Each period every share pays`,
-        `a dividend of 0 or 20 cents with equal probability, so the expected`,
-        `dividend per period is ${dividendAvg} cents. Risk-neutral fundamental`,
-        `value at the start of period t is dividendMean × (${periods} − t + 1).`,
-        `\n\nCurrent state: round ${round}, period ${periodNow}. FV right now is`,
-        `${fvNow} cents. Last trade printed at ${lastPrice.toFixed(2)} cents.`,
-        `\n\nYou, agent ${a.id}, currently hold ${a.inventory} shares and`,
-        `${Math.round(a.cash)} cents in cash. You have played`,
-        `${a.roundsPlayed | 0} previous rounds of this market`,
-        `(experience in DLM 2005 dampens bubble-chasing).`,
-        `\n\nYour risk preference is ${labelOf(a.riskPref)}.`,
+      // ---- PUBLIC MARKET STATE ----
+      const pub = [
+        `=== PUBLIC MARKET STATE ===`,
+        `Market rules: asset lives ${periods} periods per round,`,
+        `${roundsTotal} round(s) per session. Each period every share`,
+        `pays a dividend of 0 or 20 cents with equal probability`,
+        `(expected ${dividendAvg} cents). Risk-neutral fundamental`,
+        `value at period t is ${dividendAvg} × (${periods} − t + 1).`,
+        ``,
+        `Current: round ${round}/${roundsTotal}, period ${periodNow}/${periods}.`,
+        `FV now: ${fvNow} cents.`,
+        `Last trade: ${lastPrice.toFixed(2)} cents.`,
+        `Best bid: ${bestBid ? bestBid.price.toFixed(2) : '—'} cents.`,
+        `Best ask: ${bestAsk ? bestAsk.price.toFixed(2) : '—'} cents.`,
+        `Volume this period: ${vol} shares.`,
       ];
-      if (plan === 'II') {
-        lines.push(
-          `Your utility function is ${formulaOf(a.riskPref)}.`,
-          `Every trade you consider will be scored by expected utility under`,
-          `this curvature relative to your current wealth.`,
-        );
-      }
-      // Peer messages from the last period — each utility agent
-      // broadcasts its trueValuation at every period boundary and the
-      // model should be allowed to blend them under its preference.
-      const msgs = (a.receivedMsgs || []).filter(m => m.senderId !== a.id);
-      if (msgs.length) {
-        lines.push(
-          `\n\nLast period, other traders reported these subjective valuations:`,
-        );
-        for (const m of msgs) {
-          lines.push(
-            `  - ${m.senderName || ('agent ' + m.senderId)}: ${Number(m.claimedValuation).toFixed(1)} cents`,
-          );
+      if (recentTrades.length) {
+        pub.push(``, `Recent trades (newest first):`);
+        for (let i = recentTrades.length - 1; i >= 0; i--) {
+          const t = recentTrades[i];
+          pub.push(`  period ${t.period}: ${t.price.toFixed(2)} cents × ${t.quantity}`);
         }
       }
-      lines.push(
-        `\n\nGiven the DLM fundamental-value pattern, your experience, your`,
-        `risk preference, and the peer claims above, what is your subjective`,
-        `valuation per share for the next period? Answer with ONE number in`,
-        `experimental cents, nothing else.`,
+      // Peer messages from the last period.
+      const msgs = (a.receivedMsgs || []).filter(m => m.senderId !== a.id);
+      if (msgs.length) {
+        pub.push(``, `Peer messages from last period:`);
+        for (const m of msgs) {
+          pub.push(`  - ${m.senderName || ('agent ' + m.senderId)}: claimed ${Number(m.claimedValuation).toFixed(1)} cents`);
+        }
+      }
+
+      // ---- YOUR PRIVATE STATE ----
+      const priv = [
+        ``,
+        `=== YOUR PRIVATE STATE (agent ${a.id}) ===`,
+        `Cash: ${Math.round(a.cash)} cents.`,
+        `Shares held: ${a.inventory}.`,
+        `Rounds of experience: ${a.roundsPlayed | 0}.`,
+        `Risk preference: ${labelOf(a.riskPref)}.`,
+        `Belief mode: ${a.beliefMode || 'naive'}.`,
+        `Deception mode: ${a.deceptionMode || 'honest'}.`,
+      ];
+      // Bias / noise prior configuration.
+      const biasLabel =
+        a.biasMode === 'over'  ? `optimistic (+${(a.biasAmount * 100).toFixed(0)}%)` :
+        a.biasMode === 'under' ? `pessimistic (−${(a.biasAmount * 100).toFixed(0)}%)` :
+                                 'none';
+      priv.push(
+        `Bias on prior: ${biasOn ? biasLabel : 'off'}.`,
+        `Noise on prior: ${noiseOn ? '±' + ((a.valuationNoise || 0) * 100).toFixed(0) + '%' : 'off'}.`,
       );
-      return lines.join(' ').replace(/\s+\n\s+/g, '\n');
+      if (a.trueValuation != null) {
+        priv.push(`Your current prior (FV × (1 + bias + noise)): ${a.trueValuation.toFixed(2)} cents.`);
+      }
+      if (a.subjectiveValuation != null) {
+        priv.push(`Your last subjective valuation (after peer blend): ${a.subjectiveValuation.toFixed(2)} cents.`);
+      }
+      // Plan II — explicit utility formula.
+      if (plan === 'II') {
+        priv.push(
+          ``,
+          `Your utility function: ${formulaOf(a.riskPref)}.`,
+          `Trades are scored by expected utility under this curvature`,
+          `relative to your initial wealth w0 = ${Math.round(a.initialWealth)} cents.`,
+        );
+      }
+
+      // ---- INSTRUCTION ----
+      const instr = [
+        ``,
+        `Given the public market state and your private information,`,
+        `what is your subjective valuation per share for the next`,
+        `period? Answer with ONE number in experimental cents.`,
+      ];
+
+      return [...pub, ...priv, ...instr].join('\n');
     };
 
     const tasks = utilityAgents.map(async (a) => {
       const userPrompt = promptFor(a);
-      // Persist the prompt on the agent for UI display.
       a.lastLLMPrompt = { system, user: userPrompt, plan, ts: Date.now() };
       try {
         const raw = await this.call(aiCfg, system, userPrompt);

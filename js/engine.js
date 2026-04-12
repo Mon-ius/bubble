@@ -464,7 +464,7 @@ class Engine {
     }
     Promise.resolve().then(async () => {
       try {
-        const beliefs = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan);
+        const beliefs = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables);
         if (!beliefs) return;
         for (const k of Object.keys(beliefs)) {
           ctx.llmBeliefs[k] = beliefs[k];

@@ -82,6 +82,8 @@ const App = {
     trustAlpha:           0.30,
     valuationNoise:       0.03,
     biasAmount:           0.15,
+    applyBias:            false,
+    applyNoise:           false,
   },
 
   // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only
@@ -285,6 +287,17 @@ const App = {
     }
     this._updateCompBar();
     this._constrainMix();
+
+    // Boolean toggles in Trade Settings (bias / noise on the prior).
+    for (const key of ['applyBias', 'applyNoise']) {
+      const cb = document.getElementById('p-' + key);
+      if (!cb) continue;
+      cb.checked = !!this.tunables[key];
+      cb.addEventListener('change', () => {
+        this.tunables[key] = cb.checked;
+        this.rebuild();
+      });
+    }
 
     // Plan switch — the three segmented buttons Plan I / Plan II /
     // Plan III in the navbar drive App.plan, a matching body class

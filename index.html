@@ -92,6 +92,12 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="5" step="1" value="1">
           </div>
+          <div class="param-row" data-tip="Apply persistent per-agent bias to the FV prior. When on, the prior becomes FV × (1 + bias_i) where bias_i is drawn from the agent's biasMode (over / under / none) and biasAmount. Creates heterogeneous priors that drive trading.">
+            <label class="checkbox"><input type="checkbox" id="p-applyBias"> Apply bias to prior</label>
+          </div>
+          <div class="param-row" data-tip="Apply i.i.d. per-tick noise to the FV prior. When on, the prior becomes FV × (1 + ε) where ε ~ U[-valuationNoise, +valuationNoise]. Adds per-tick jitter that prevents valuation deadlocks.">
+            <label class="checkbox"><input type="checkbox" id="p-applyNoise"> Apply noise to prior</label>
+          </div>
         </div>
       </details>
 

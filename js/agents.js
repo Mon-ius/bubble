@@ -540,10 +540,10 @@ const UTILITY_DEFAULTS = {
   signalThreshold:      0.03,  // |claim/v − 1| threshold for buy/sell label
   deceptiveThreshold:   0.05,  // |claim-true|/true > this → flagged deceptive
   valuationNoise:       0.03,  // ±fraction per-tick random belief jitter
-  passiveBidLo:         0.96,  // passive bid drawn from v × [lo, hi]
-  passiveBidHi:         0.98,
-  passiveAskLo:         1.02,  // passive ask drawn from v × [lo, hi]
-  passiveAskHi:         1.04,
+  passiveBidLo:         0.98,  // passive bid drawn from v × [lo, hi]
+  passiveBidHi:         1.01,
+  passiveAskLo:         0.99,  // passive ask drawn from v × [lo, hi]
+  passiveAskHi:         1.02,
 };
 function tunable(ctx, key) {
   const t = ctx && ctx.tunables;
@@ -651,12 +651,21 @@ class UtilityAgent extends Agent {
     const fv   = market.fundamentalValue();
     const plan = (ctx && ctx.plan) || 'I';
 
-    // DLM 2005: both experienced and inexperienced traders know FV.
-    // Prior = FV exactly — no bias, no noise. The sole channel of
-    // heterogeneity is the peer-message blend below, where the
-    // experience-dependent weight w makes veterans less susceptible
-    // to peer influence than novices.
-    const prior = Math.max(0, fv);
+    // Prior = FV × (1 + bias_i + ε). Each term is toggled independently
+    // via the applyBias / applyNoise tunables (checkboxes in Trade
+    // Settings). When both are off the prior collapses to FV exactly
+    // and the sole heterogeneity channel is the peer-message blend.
+    const useBias  = ctx && ctx.tunables && ctx.tunables.applyBias;
+    const useNoise = ctx && ctx.tunables && ctx.tunables.applyNoise;
+    const bias  = useBias
+      ? (this.biasMode === 'over'  ?  this.biasAmount
+       : this.biasMode === 'under' ? -this.biasAmount
+       : 0)
+      : 0;
+    const noise = useNoise
+      ? this.valuationNoise * (2 * rng() - 1)
+      : 0;
+    const prior = Math.max(0, fv * (1 + bias + noise));
     this.trueValuation = prior;
 
     // Gather last period's messages from the bus (peer channel). These
@@ -702,22 +711,19 @@ class UtilityAgent extends Agent {
 
   /* ---- Pipeline step 3: evaluate candidate actions ----
    *
-   * Wealth is mark-to-market: every inventory share is valued at the
-   * market's most recent print (with FV as the fallback before the
-   * first trade). The agent's subjective valuation `v` is still used
-   * to *price* the passive quotes it posts — that is the channel by
-   * which Plan I/II/III belief differences affect trading — but wealth
-   * itself always reflects the external price the market is willing
-   * to pay right now.
+   * Wealth is mark-to-belief: every inventory share is valued at the
+   * agent's subjective valuation `v`. This means an agent that believes
+   * a share is worth more than the ask will see EU(buy) > EU(hold) and
+   * cross the book, and symmetrically for sells. The full action set
+   * evaluated each tick is {hold, buy@ask, sell@bid, post bid, post ask}.
    */
   evaluate(market, rng, ctx) {
     const v    = this.subjectiveValuation;
-    const mp   = markPrice(market);
     const bid  = market.book.bestBid();
     const ask  = market.book.bestAsk();
     const cash = this.cash;
     const inv  = this.inventory;
-    const w0   = cash + inv * mp;
+    const w0   = cash + inv * v;
     const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth);
     const U0   = U(w0);
     const pFill       = tunable(ctx, 'passiveFillProb');
@@ -736,13 +742,11 @@ class UtilityAgent extends Agent {
       eu:       U0,
     });
 
-    // Cross the book: hit best ask (buy). Deterministic fill. The
-    // post-trade inventory is still marked at `mp` (the market's most
-    // recent print at decision time), so a buy is profitable iff
-    // mp > ask.price — i.e. the agent is acquiring a share the market
-    // currently values above what the agent is paying for it.
+    // Cross the book: hit best ask (buy). Deterministic fill.
+    // Profitable iff v > ask.price — the agent believes the share is
+    // worth more than what it pays.
     if (ask && cash >= ask.price) {
-      const w1 = (cash - ask.price) + (inv + 1) * mp;
+      const w1 = (cash - ask.price) + (inv + 1) * v;
       candidates.push({
         label:    `buy@ask ${ask.price.toFixed(2)}`,
         type:     'bid',
@@ -752,10 +756,11 @@ class UtilityAgent extends Agent {
         eu:       U(w1),
       });
     }
-    // Lift best bid (sell). Deterministic fill. Symmetrically, a sell
-    // is profitable iff bid.price > mp.
+    // Lift best bid (sell). Deterministic fill.
+    // Profitable iff bid.price > v — the bid exceeds the agent's
+    // subjective value.
     if (bid && inv > 0) {
-      const w1 = (cash + bid.price) + (inv - 1) * mp;
+      const w1 = (cash + bid.price) + (inv - 1) * v;
       candidates.push({
         label:    `sell@bid ${bid.price.toFixed(2)}`,
         type:     'ask',
@@ -769,7 +774,7 @@ class UtilityAgent extends Agent {
     {
       const price = round2(v * (passiveBidLo + rng() * Math.max(0, passiveBidHi - passiveBidLo)));
       if (price > 0 && cash >= price) {
-        const w1 = (cash - price) + (inv + 1) * mp;
+        const w1 = (cash - price) + (inv + 1) * v;
         const eu = pFill * U(w1) + (1 - pFill) * U0;
         candidates.push({
           label:    `passive bid ${price.toFixed(2)}`,
@@ -786,7 +791,7 @@ class UtilityAgent extends Agent {
     // Passive ask at v × [passiveAskLo, passiveAskHi]. Probabilistic fill.
     if (inv > 0) {
       const price = round2(v * (passiveAskLo + rng() * Math.max(0, passiveAskHi - passiveAskLo)));
-      const w1 = (cash + price) + (inv - 1) * mp;
+      const w1 = (cash + price) + (inv - 1) * v;
       const eu = pFill * U(w1) + (1 - pFill) * U0;
       candidates.push({
         label:    `passive ask ${price.toFixed(2)}`,
