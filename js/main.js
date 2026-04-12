@@ -96,51 +96,22 @@ const App = {
   // or API failure, Plans II and III fall back to Plan I's algorithm.
   plan: 'I',
 
-  // Research paradigm tag — surfaced in the navbar as a segmented
-  // switch between 'dlm' (Dufwenberg, Lindqvist & Moore 2005, human
-  // subjects, E-heavy population), 'lll' (Lopez-Lira 2025, AI-agent
-  // EU-maximizer with messaging/trust, U-heavy population) and
-  // 'wang' (AI-Agent Prior Elicitation — AIPE, merged E + U
-  // population with an optional AI-agent prior-elicitation step at
-  // run start; the code key 'wang' is retained as the internal
-  // paradigm id for stability even though the user-facing label
-  // is now AIPE). Purely a preset applier: clicking a paradigm
-  // button fills the user-controlled slots with the matching agent
-  // type, but individual sliders remain fully editable afterwards.
-  // Default 'lll' matches the default mix above (E=0, U=6) so
-  // extended panels light up on first load.
-  paradigm: 'lll',
-
-  // AIPE AI endpoint state. Populated from the #ai-key /
-  // #ai-endpoint / #ai-model inputs on every change event and
-  // consumed by start() when paradigm === 'wang'. Nothing is
-  // persisted to localStorage, matching the lying project's
-  // deliberately forgetful design — the key must be re-entered
-  // after a page reload. The initial model value is overwritten
-  // on init from AI.DEFAULT_MODEL so a future edit in ai.js
-  // propagates without touching main.js.
+  // LLM endpoint state for Plans II and III. Populated from the
+  // #ai-key / #ai-endpoint / #ai-model inputs on every change event
+  // and consumed by start() to gate the run (both plans refuse to
+  // launch without a key) and by the engine's period-boundary
+  // `_schedulePlanLLM` (which reads ctx.aiConfig on each call).
+  // Nothing is persisted to localStorage, matching the lying
+  // project's deliberately forgetful design — the key must be
+  // re-entered after a page reload. The initial model value is
+  // overwritten on init from AI.DEFAULT_MODEL so a future edit in
+  // ai.js propagates without touching main.js.
   aiConfig: { apiKey: '', endpoint: '', model: '' },
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
-  // instantiated with in the sampling stage. Only consumed by the
-  // Lopez-Lira and AIPE paradigms; strict-DLM mode ignores it.
+  // instantiated with in the sampling stage under every plan.
   riskMix: { loving: 33, neutral: 34, averse: 33 },
-
-  // Strict-DLM 2005 mode configuration. Active when App.paradigm ===
-  // 'dlm'. The treatment selects how many experienced subjects are
-  // randomly removed and replaced by inexperienced ones at the start
-  // of round 4 (DLM 2005 §I, p. 1733: "two or four experienced
-  // subjects … were randomly selected, removed, and replaced by the
-  // same number of inexperienced subjects"). batchResults caches the
-  // most recent multi-session run summary so the UI can re-render it
-  // without re-running. Experience itself is endogenous — there is
-  // no field here that pre-labels any agent as experienced.
-  dlmConfig: {
-    treatment:    2,
-    batchResults: null,
-    sessionLabel: null,
-  },
 
   // Extended-mode flags consulted by the engine's communication round
   // and by the utility-agent message-listener. Kept as constants now
@@ -180,6 +151,10 @@ const App = {
   init() {
     this._initTheme();
     UI.init();
+    // Seed the plan body class so the LLM endpoint panel gating
+    // (plan-i hides .llm-plan-only) is correct before _wireControls
+    // attaches the plan-button handlers.
+    document.body.classList.add('plan-' + this.plan.toLowerCase());
     this._wireControls();
     this.reset();
   },
@@ -271,8 +246,7 @@ const App = {
     // total-N stays consistent. Structural, so they reseed on release.
     'p-count-f':     { target: 'FIXED_BACKGROUND.F', out: 'v-count-f',    fmt: v => String(v), int: true, bg: true },
     'p-count-t':     { target: 'FIXED_BACKGROUND.T', out: 'v-count-t',    fmt: v => String(v), int: true, bg: true },
-    // Risk preferences — three linked shares summing to 100. Only
-    // consumed by the non-DLM paradigms.
+    // Risk preferences — three linked shares summing to 100.
     'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',  out: 'v-risk-averse',  fmt: v => v + '%', int: true },
@@ -331,72 +305,28 @@ const App = {
     // Total-agents slider — proportionally rescales the per-type
     // counts when the user moves it, then triggers a population
     // rebuild on release. Wired separately because it doesn't map
-    // to a single mix/tunables key. Disabled in strict-DLM mode
-    // (N is pinned at 6 by the paper) — see _setParadigm.
+    // to a single mix/tunables key.
     const totalSlider = document.getElementById('p-total');
     if (totalSlider) {
       totalSlider.addEventListener('input', e => {
-        if (this.paradigm === 'dlm') {
-          // DLM mode: pinned at 6. Snap the slider back if the user
-          // somehow nudged it (the disabled state should prevent this
-          // but the guard is cheap).
-          e.target.value = '6';
-          this._updateSliderPct(e.target);
-          return;
-        }
         const newTotal = Number(e.target.value) | 0;
         this._rescaleMixToTotal(newTotal);
         this._pushStateToSliders();
         this._refreshMixTotal();
         this._updateSliderPct(e.target);
-        this._syncParadigmButtons();
       });
-      totalSlider.addEventListener('change', () => {
-        if (this.paradigm !== 'dlm') this.reset();
-      });
+      totalSlider.addEventListener('change', () => this.reset());
     }
 
-    // Research-plan radio selector. Three mutually-exclusive options
-    // (I/II/III) drive the UtilityAgent's belief-update pipeline on
-    // `ctx.plan`. The label in the header updates on selection; the
-    // engine ctx picks it up on the next rebuild().
-    const planRadios = document.querySelectorAll('input[name="plan"]');
-    planRadios.forEach(r => {
-      r.addEventListener('change', e => {
-        if (!e.target.checked) return;
-        const v = e.target.value;
-        if (v !== 'I' && v !== 'II' && v !== 'III') return;
-        this.plan = v;
-        const label = document.getElementById('v-plan');
-        if (label) label.textContent = 'Plan ' + v;
-        this.rebuild();
-      });
+    // Plan switch — the three segmented buttons Plan I / Plan II /
+    // Plan III in the navbar drive App.plan, a matching body class
+    // (plan-i / plan-ii / plan-iii), and a rebuild so the engine ctx
+    // picks up the new plan immediately. Plans II and III additionally
+    // reveal the LLM endpoint panel below through the body-class CSS.
+    document.querySelectorAll('.plan-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._setPlan(btn.dataset.plan));
     });
-    // Sync the header readout with the initial value.
-    const initialPlanLabel = document.getElementById('v-plan');
-    if (initialPlanLabel) initialPlanLabel.textContent = 'Plan ' + this.plan;
-
-    // Strict-DLM treatment selector + multi-session batch button.
-    // Both controls are only visible in DLM mode (gated by the
-    // .dlm-mode body class). The treatment selector is a pair of
-    // radio buttons; the batch button kicks off the 10-session run
-    // synchronously and writes results into App.dlmConfig.batchResults.
-    const tRadios = document.querySelectorAll('input[name="dlm-treatment"]');
-    tRadios.forEach(r => {
-      r.addEventListener('change', e => {
-        const t = Number(e.target.value) | 0;
-        if (t === 2 || t === 4) {
-          this.dlmConfig.treatment = t;
-          // Soft rebuild so the engine ctx picks up the new treatment
-          // size for the next round-4 transition.
-          this.rebuild();
-        }
-      });
-    });
-    const batchBtn = document.getElementById('btn-dlm-batch');
-    if (batchBtn) {
-      batchBtn.addEventListener('click', () => this.runDlmBatch());
-    }
+    this._syncPlanButtons();
 
     // Prime the custom --pct on every slider so the filled portion of
     // the track matches the initial value before any interaction.
@@ -411,14 +341,6 @@ const App = {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
 
-    // Paradigm switch — three-button segmented control in the header.
-    // Each button applies a population preset via _setParadigm; no
-    // dragging, no per-tick wiring. The .active class is set here for
-    // the initial default and maintained by _setParadigm on click.
-    document.querySelectorAll('.paradigm-btn').forEach(btn => {
-      btn.addEventListener('click', () => this._setParadigm(btn.dataset.paradigm));
-    });
-    this._syncParadigmButtons();
 
     // AIPE — AI endpoint inputs. Kept in App.aiConfig live so
     // start() can read it synchronously without another DOM lookup.
@@ -620,83 +542,53 @@ const App = {
   },
 
   /**
-   * Apply a paradigm preset.
+   * Apply one of the three research-plan selections from the navbar.
    *
-   *   'dlm'  — strict DLM 2005 mode. Pins N=6, drops the F/T/R
-   *            background and the U block, hands rebuild() the
-   *            dlmSampleAgents path which produces six DLMTraders
-   *            with the two discrete endowment types from §I,
-   *            p. 1733. Round-4 replacement is enabled with the
-   *            current dlmConfig.treatment, and the multi-session
-   *            batch driver is reachable from the DLM panel.
+   *   'I'   — algorithm-only belief update. No LLM calls, no network
+   *           activity, no API key required.
    *
-   *   'lll'  — Lopez-Lira (2025). F/T/R background + U slots,
-   *            relaxed endowment draw, no E (no agent is ever
-   *            instantiated as pre-experienced).
+   *   'II'  — LLM with explicit utility formulas (U_L / U_N / U_A).
+   *           Every period boundary the engine schedules an async
+   *           `AI.getPlanBeliefs` call whose prompt includes the
+   *           matching formula for each agent's risk preference.
    *
-   *   'wang' — AIPE (AI-Agent Prior Elicitation). Same population
-   *            shape as Lopez-Lira (no E either) plus the
-   *            run-start AI anchor pass over every Utility agent.
+   *   'III' — LLM with risk-preference label only. Same channel as
+   *           Plan II but the prompt omits the formulas, testing
+   *           whether the label alone is enough to recover the
+   *           utility-aware belief. Both II and III fall back to
+   *           Plan I's algorithm if the network call fails or no
+   *           API key is present.
+   *
+   * Setting a plan toggles a matching body class (plan-i / plan-ii /
+   * plan-iii) that the CSS uses to gate the LLM endpoint panel, syncs
+   * the three navbar buttons, and rebuilds the engine so the new plan
+   * lands on ctx.plan immediately. No reseed — changing the plan is a
+   * soft edit that preserves the current draw.
    */
-  _setParadigm(paradigm) {
-    if (paradigm !== 'dlm' && paradigm !== 'lll' && paradigm !== 'wang') return;
-    this.paradigm = paradigm;
-    const FIXED    = this.FIXED_BACKGROUND;
-    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
-    if (paradigm === 'dlm') {
-      // Strict DLM: bypass the mix entirely. The rebuild path keys
-      // off this.paradigm and routes to dlmSampleAgents.
-      this.mix = { F: 0, T: 0, R: 0, E: 0, U: 0 };
-    } else {
-      const totalSlider = document.getElementById('p-total');
-      const N        = totalSlider
-        ? Math.max(fixedSum, Number(totalSlider.value) | 0)
-        : (fixedSum + (this.mix.U | 0));
-      const capacity = Math.max(0, N - fixedSum);
-      this.mix = { F: FIXED.F, T: FIXED.T, R: FIXED.R, E: 0, U: capacity };
-    }
-    document.body.classList.toggle('wang-mode', paradigm === 'wang');
-    document.body.classList.toggle('dlm-mode',  paradigm === 'dlm');
-    this._applyDlmModeUI();
-    this._syncParadigmButtons();
-    this.reset();
+  _setPlan(plan) {
+    if (plan !== 'I' && plan !== 'II' && plan !== 'III') return;
+    this.plan = plan;
+    document.body.classList.toggle('plan-i',   plan === 'I');
+    document.body.classList.toggle('plan-ii',  plan === 'II');
+    document.body.classList.toggle('plan-iii', plan === 'III');
+    this._syncPlanButtons();
+    this._setAiStatus('');
+    this.rebuild();
   },
 
   /**
-   * Reflect App.paradigm on the navbar buttons. Called on init and
-   * after any paradigm-changing action so the segmented control
-   * stays in sync.
+   * Reflect App.plan on the navbar buttons and the body class. Called
+   * on init and after every plan change so the segmented control and
+   * the CSS gating of the LLM endpoint panel stay in sync.
    */
-  _syncParadigmButtons() {
-    const active = this.paradigm;
-    document.body.classList.toggle('wang-mode', active === 'wang');
-    document.body.classList.toggle('dlm-mode',  active === 'dlm');
-    document.querySelectorAll('.paradigm-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.paradigm === active);
+  _syncPlanButtons() {
+    const active = this.plan;
+    document.body.classList.toggle('plan-i',   active === 'I');
+    document.body.classList.toggle('plan-ii',  active === 'II');
+    document.body.classList.toggle('plan-iii', active === 'III');
+    document.querySelectorAll('.plan-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.plan === active);
     });
-  },
-
-  /**
-   * Pin the Total-agents slider to 6 in DLM mode and free it in
-   * the other paradigms. Sets disabled, snaps the value, and
-   * refreshes the readout + filled-track percentage so the slider
-   * looks visibly locked.
-   */
-  _applyDlmModeUI() {
-    const totalSlider = document.getElementById('p-total');
-    if (!totalSlider) return;
-    if (this.paradigm === 'dlm') {
-      totalSlider.disabled = true;
-      totalSlider.value    = '6';
-      this._updateSliderPct(totalSlider);
-      const out = document.getElementById('v-total');
-      if (out) out.textContent = '6';
-      // Sync treatment radios with current dlmConfig.treatment.
-      const radios = document.querySelectorAll('input[name="dlm-treatment"]');
-      radios.forEach(r => { r.checked = Number(r.value) === this.dlmConfig.treatment; });
-    } else {
-      totalSlider.disabled = false;
-    }
   },
 
   /**
@@ -806,9 +698,7 @@ const App = {
 
   _refreshMixTotal() {
     const m = this.mix;
-    const total = this.paradigm === 'dlm'
-      ? 6
-      : (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
+    const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
     const el = document.getElementById('mix-total');
     if (el) el.textContent = `(total ${total})`;
     // Keep the Total agents slider and its readout in sync with the
@@ -826,14 +716,12 @@ const App = {
   },
 
   /**
-   * Rescale the population to a new total N (only meaningful in
-   * non-DLM modes — DLM mode pins N at 6). F/T/R counts come from
-   * FIXED_BACKGROUND (now editable per-slider with min 0); U absorbs
+   * Rescale the population to a new total N. F/T/R counts come from
+   * FIXED_BACKGROUND (editable per-slider with min 0); U absorbs
    * whatever slack remains after F + T + R. If the background total
    * exceeds N, U collapses to zero rather than going negative.
    */
   _rescaleMixToTotal(newTotal) {
-    if (this.paradigm === 'dlm') return;
     const FIXED    = this.FIXED_BACKGROUND;
     const bgSum    = (FIXED.F | 0) + (FIXED.T | 0) + (FIXED.R | 0);
     newTotal = Math.max(newTotal | 0, bgSum);
@@ -898,23 +786,13 @@ const App = {
     // Sampling RNG is independent of the engine RNG so that editing
     // endowments (which skips the re-sample path) leaves the engine's
     // tick-level draws unchanged.
-    if (this.paradigm === 'dlm') {
-      // Strict-DLM: fixed N=6, two-discrete endowment types, no
-      // pre-labeled experience. Experience is endogenous and develops
-      // only through rounds played in the session.
-      if (!this.agentSpecs || this.agentSpecs.length !== 6) {
-        const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-        this.agentSpecs = dlmSampleAgents(sampleRng);
-      }
-    } else {
-      const totalN =
-        (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0);
-      if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
-        const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-        this.agentSpecs = sampleAgents(this.mix, sampleRng, {
-          riskMix: this.riskMix,
-        });
-      }
+    const totalN =
+      (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0);
+    if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
+      const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
+      this.agentSpecs = sampleAgents(this.mix, sampleRng, {
+        riskMix: this.riskMix,
+      });
     }
     this.agents = buildAgentsFromSpecs(this.agentSpecs, {
       biasAmount:     this.tunables.biasAmount,
@@ -934,17 +812,10 @@ const App = {
       extended:     this.extendedConfig,
       tunables:     this.tunables,
       // agentSpecs is how the engine reaches the original endowment
-      // draw when it runs the DLM round-end reset: every agent is
-      // rewound to the spec cash/inventory between rounds so each of
-      // the four markets in a session starts from the same schedule.
+      // draw when it runs the round-end reset: every agent is rewound
+      // to the spec cash/inventory between rounds so each of the
+      // four markets in a session starts from the same schedule.
       agentSpecs:   this.agentSpecs,
-      // Strict-DLM routing flags consumed by the engine: strictDLM
-      // gates the round-4 replacement step, treatmentSize selects how
-      // many experienced subjects are replaced by inexperienced ones
-      // (DLM 2005 §I, p. 1733 — T2 = R4-⅔, T4 = R4-⅓ in the paper's
-      // notation on p. 1735).
-      strictDLM:     this.paradigm === 'dlm',
-      treatmentSize: this.paradigm === 'dlm' ? this.dlmConfig.treatment : 0,
       // Research plan drives the UtilityAgent belief-update branch.
       // Plans II and III also read aiConfig so they can reach the LLM
       // endpoint at period boundary; Plan I ignores both.
@@ -985,35 +856,29 @@ const App = {
   },
 
   /**
-   * Kick off the simulation loop. AIPE (AI-Agent Prior Elicitation)
-   * hooks in here: if the paradigm is 'wang' AND an API key is
-   * present AND the population has at least one Utility agent, await
-   * one AI-agent chat completion per Utility agent before launching
-   * the engine. Each returned anchor is written onto
-   * `agent.psychAnchor` so the first decide() tick seeds
-   * `subjectiveValuation` from the elicited answer instead of the
-   * deterministic Lopez-Lira prior. Errors, missing keys, and
-   * non-AIPE paradigms skip the await entirely — AIPE must still
-   * produce a run when the network is unavailable.
+   * Kick off the simulation loop. Plan II and Plan III refuse to
+   * launch without an API key in `aiConfig.apiKey`: the LLM call
+   * is the whole point of those plans, and running them without a
+   * key would silently collapse every agent into Plan I's algorithm.
+   * Plan I does not touch the network and starts immediately.
    */
-  async start() {
+  start() {
     if (this.replayMode) this.exitReplay();
-    if (this.paradigm === 'wang' && this.aiConfig && this.aiConfig.apiKey) {
-      this._setAiStatus('eliciting AI-agent priors…');
-      try {
-        const anchors = await AI.getPsychAnchors(this.agents, this.config, this.aiConfig);
-        let applied = 0;
-        for (const id in anchors) {
-          const agent = this.agents[id];
-          if (!agent) continue;
-          agent.psychAnchor = anchors[id].anchor;
-          applied++;
-        }
-        this._setAiStatus(applied > 0 ? `Anchored ${applied} agent${applied === 1 ? '' : 's'}` : 'No anchors returned — deterministic fallback');
-      } catch (err) {
-        console.warn('[App.start] AIPE elicitation failed:', err);
-        this._setAiStatus('AI-agent call failed — deterministic fallback');
+    // Plan II and Plan III require an API key — they call an LLM at
+    // every period boundary and there is no algorithmic fallback at
+    // run start (a missing key means the entire plan collapses to
+    // Plan I). Refuse to launch until the user either supplies a key
+    // or switches to Plan I. The AI status line is repurposed to
+    // carry the error back into the AI endpoint panel.
+    if (this.plan === 'II' || this.plan === 'III') {
+      const key = this.aiConfig && (this.aiConfig.apiKey || '').trim();
+      if (!key) {
+        this._setAiStatus(`Plan ${this.plan} requires an API key — enter one in the AI endpoint panel or switch to Plan I.`);
+        return;
       }
+      this._setAiStatus(`Plan ${this.plan} — period-boundary LLM calls armed.`);
+    } else {
+      this._setAiStatus('');
     }
     this.engine.start();
   },
@@ -1028,154 +893,6 @@ const App = {
     if (el) el.textContent = msg;
   },
 
-  /**
-   * Strict-DLM multi-session batch driver.
-   *
-   * DLM 2005 §I, p. 1733: "We report results from ten sessions in
-   * total, five of each treatment." Each session is a full
-   * roundsPerSession-round run with a fresh population, a fresh engine
-   * seed, and the current dlmConfig.treatment. The batch runs
-   * synchronously via Engine.runToEnd (no setTimeout, no rendering),
-   * captures a compact per-session summary into dlmConfig.batchResults,
-   * and then restores the pre-batch App state so the user's interactive
-   * session is not disturbed.
-   *
-   * Only valid in DLM mode. Does nothing in other paradigms.
-   */
-  runDlmBatch() {
-    if (this.paradigm !== 'dlm') return;
-    const SESSIONS_PER_TREATMENT = 5;
-    const treatments = [2, 4];
-    const results    = [];
-
-    // Preserve the pre-batch state so we can restore the live UI
-    // afterwards. The batch runs create throwaway engine/market/logger
-    // triples that never touch the display.
-    const savedSeed    = this.seed;
-    const savedSpecs   = this.agentSpecs;
-    const savedTreat   = this.dlmConfig.treatment;
-    const savedLabel   = this.dlmConfig.sessionLabel;
-
-    const batchStatus = (msg) => {
-      const el = document.getElementById('dlm-batch-status');
-      if (el) el.textContent = msg;
-    };
-    batchStatus('running 10 sessions…');
-
-    for (const treatment of treatments) {
-      for (let s = 0; s < SESSIONS_PER_TREATMENT; s++) {
-        const seed      = this._rollSeed();
-        const sampleRng = makeRNG((seed ^ 0xA5A5A5A5) >>> 0);
-        const specs     = dlmSampleAgents(sampleRng);
-        const agents    = buildAgentsFromSpecs(specs, {
-          biasAmount:     this.tunables.biasAmount,
-          valuationNoise: this.tunables.valuationNoise,
-        });
-        const market    = new Market(this.config);
-        const logger    = new Logger();
-        const ctx = {
-          messageBus:    new MessageBus(),
-          trustTracker:  new TrustTracker(Object.keys(agents).map(Number)),
-          extended:      this.extendedConfig,
-          tunables:      this.tunables,
-          agentSpecs:    specs,
-          strictDLM:     true,
-          treatmentSize: treatment,
-        };
-        const rng    = makeRNG(seed);
-        const engine = new Engine(market, agents, logger, this.config, rng, ctx);
-        engine.runToEnd();
-        results.push(this._summarizeSession({
-          treatment, session: s + 1, seed,
-          market, logger, agents, specs,
-        }));
-      }
-    }
-
-    this.dlmConfig.batchResults = {
-      ranAt:     new Date().toISOString(),
-      sessions:  results,
-      aggregate: this._aggregateBatchResults(results),
-    };
-
-    // Restore pre-batch state (seed, specs) so the interactive view
-    // resumes against the same population the user was inspecting.
-    this.seed       = savedSeed;
-    this.agentSpecs = savedSpecs;
-    this.dlmConfig.treatment    = savedTreat;
-    this.dlmConfig.sessionLabel = savedLabel;
-    this.rebuild();
-    batchStatus(`done — ${results.length} sessions (${treatments.length}×${SESSIONS_PER_TREATMENT})`);
-    this.requestRender();
-  },
-
-  /**
-   * Reduce one finished session (market + logger) into a compact row
-   * for the batch results table. Captures treatment, per-agent payoffs
-   * (including the $5 show-up fee), bubble-quality metrics from the
-   * replay view helpers, and a round-4 replacement summary so the
-   * renderer can print who was swapped out.
-   */
-  _summarizeSession({ treatment, session, seed, market, logger, agents, specs }) {
-    // Per-agent payoff = sum of per-round final cash + 500¢ show-up.
-    const payoffs = {};
-    for (const id of Object.keys(agents)) {
-      let total = 0;
-      for (const row of logger.roundFinalCash) {
-        if (row && row[id] != null) total += row[id];
-      }
-      total += 500;
-      payoffs[id] = Math.round(total * 100) / 100;
-    }
-    // Round-4 replacement event, if any.
-    const replacement = logger.events.find(e => e.type === 'round_4_replacement');
-    // Mean |p_t − FV_t| / FV_0 across the whole session as a
-    // treatment-agnostic bubble magnitude. Uses trade data so
-    // rounds with zero trades are skipped cleanly.
-    const fvByPeriod = (r, p) =>
-      this.config.dividendMean * (this.config.periods - p + 1);
-    let devSum = 0, devN = 0, turnover = 0;
-    const inv0 = specs.reduce((s, a) => s + a.inventory, 0);
-    for (const tr of market.trades) {
-      const fv = fvByPeriod(tr.round, tr.period);
-      if (fv > 0) {
-        devSum += Math.abs(tr.price - fv) / fv;
-        devN   += 1;
-      }
-      turnover += tr.quantity;
-    }
-    return {
-      treatment, session, seed,
-      payoffs,
-      payoffTotal: Math.round(Object.values(payoffs).reduce((a, b) => a + b, 0) * 100) / 100,
-      meanDev:     devN > 0 ? devSum / devN : 0,
-      turnover:    inv0 > 0 ? turnover / inv0 : 0,
-      trades:      market.trades.length,
-      replacement: replacement ? replacement.replaced : null,
-    };
-  },
-
-  /**
-   * Aggregate a batch across treatments: mean meanDev, mean turnover,
-   * mean payoff per trader. Returned as { t2: {...}, t4: {...} } so
-   * the renderer can print a side-by-side comparison.
-   */
-  _aggregateBatchResults(rows) {
-    const byTreat = { 2: [], 4: [] };
-    for (const r of rows) byTreat[r.treatment].push(r);
-    const summarize = (arr) => {
-      if (!arr.length) return null;
-      const mean = (sel) => arr.reduce((a, b) => a + sel(b), 0) / arr.length;
-      return {
-        n:        arr.length,
-        meanDev:  mean(r => r.meanDev),
-        turnover: mean(r => r.turnover),
-        trades:   mean(r => r.trades),
-        payoff:   mean(r => r.payoffTotal / 6),
-      };
-    };
-    return { t2: summarize(byTreat[2]), t4: summarize(byTreat[4]) };
-  },
 
   pause() {
     this.engine.pause();

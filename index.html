@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=17">
+<link rel="stylesheet" href="styles.css?v=19">
 <!--
   KaTeX — client-side math rendering for the Architecture, Glossary,
   and Slides tabs. Mirrors the lying project's setup (same version,
@@ -40,20 +40,20 @@
     <button class="nav-tab"        data-tab="slides"       role="tab">Slides</button>
   </div>
   <!--
-    Paradigm switch — segmented control between the two research
-    paradigms this simulator replicates. DLM 2005 is the classic
-    human-subject bubble experiment (E-heavy, U = 0); Lopez-Lira 2025
-    is the AI-agent EU-maximizer extension with messaging, trust and
-    deception (U-heavy, E = 0). Clicking a paradigm applies a
-    population preset that fills the user-controllable slots with
-    the matching agent type; individual sliders can still be edited
-    afterwards. Visual style follows the lying project's Math / AI
-    Agent toggle: a rounded bg-2 rail with an elevated active button.
+    Research-plan switch — segmented control between the three
+    belief-update variants Plan I / Plan II / Plan III. Plan I is
+    pure algorithm (no LLM). Plans II and III each call an LLM at
+    every period boundary and differ only in whether the prompt
+    spells out the agent's utility function (Plan II) or just the
+    risk-preference label (Plan III); both require an API key in
+    the AI endpoint panel below. Visual style follows the lying
+    project's Math / AI Agent toggle: a rounded bg-2 rail with an
+    elevated active button.
   -->
-  <div class="paradigm-switch" role="group" aria-label="Research paradigm">
-    <button class="paradigm-btn" data-paradigm="dlm" title="Dufwenberg, Lindqvist &amp; Moore (2005) — strict replication. Pins N = 6, draws the two discrete endowment types (200¢ + 6 shares vs 600¢ + 2 shares), runs 4 consecutive rounds, and applies the round-4 replacement treatment (T2 or T4). Experience is endogenous — no agent is pre-labeled as experienced; a trader only becomes experienced by playing prior rounds in the session.">DLM 2005</button>
-    <button class="paradigm-btn active" data-paradigm="lll" title="Lopez-Lira (2025) — AI-agent expected-utility extension with messaging, trust, and deception. Fills the population with Utility agents.">Lopez-Lira 2025</button>
-    <button class="paradigm-btn" data-paradigm="wang" title="AI-Agent Prior Elicitation (AIPE) — merged DLM + Lopez-Lira experiment that seats Experienced and Utility agents in the same market and elicits each Utility agent's starting psychological valuation from an AI agent at run start. Research question: does the asset ultimately end up in the hands of the agent with the highest elicited valuation?">AIPE</button>
+  <div class="plan-switch" role="group" aria-label="Research plan">
+    <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
+    <button class="plan-btn" data-plan="II" title="Plan II — LLM with utility forms. Every period the model is asked for a subjective valuation given the agent's risk preference and the explicit utility function U_L / U_N / U_A that corresponds to it. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan II</button>
+    <button class="plan-btn" data-plan="III" title="Plan III — LLM with risk-preference label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover the utility-aware belief. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan III</button>
   </div>
   <div class="controls">
     <label>Speed
@@ -112,68 +112,6 @@
         </div>
       </details>
 
-      <!-- ============================================================
-           DLM 2005 strict-replication controls. Only visible when the
-           paradigm is DLM (gated by the .dlm-mode body class applied
-           in main.js). Experience is endogenous — there is no slider
-           that pre-labels any subject as experienced. The only knob is
-           the round-4 replacement treatment (T2 or T4) and the
-           multi-session batch runner that reproduces DLM's 10-session
-           design (5 T2 + 5 T4).
-           ============================================================ -->
-      <details class="psec dlm-only" open>
-        <summary>DLM 2005 replication</summary>
-        <div class="psec-body">
-          <div class="param-row" data-tip="Round-4 replacement treatment. DLM 2005 §I, p. 1733: after three rounds played by the same six subjects, the experimenter randomly selects either 2 or 4 of them, removes them, and replaces them with inexperienced subjects for the fourth round. The paper labels these conditions by the fraction of experienced traders remaining in round 4 — R4-⅔ (two-thirds experienced, four veterans + two fresh, shorthand T2 here) and R4-⅓ (one-third experienced, two veterans + four fresh, shorthand T4 here); see Table 1 footnote a on p. 1734 and Table 2 footnote c on p. 1735. Experience is endogenous in this simulator — survivors become experienced only by playing rounds 1–3.">
-            <div class="param-head">
-              <label>Treatment</label>
-              <span class="pval">round 4</span>
-            </div>
-            <div class="dlm-treatment-row">
-              <label class="dlm-treatment-opt">
-                <input type="radio" name="dlm-treatment" value="2" checked>
-                <span>T2 · R4-⅔ — 4 veterans + 2 fresh</span>
-              </label>
-              <label class="dlm-treatment-opt">
-                <input type="radio" name="dlm-treatment" value="4">
-                <span>T4 · R4-⅓ — 2 veterans + 4 fresh</span>
-              </label>
-            </div>
-          </div>
-          <div class="param-row" data-tip="Run the DLM 2005 10-session batch (5 sessions × T2, 5 sessions × T4) synchronously in the background. Each session is a fresh seed + fresh sample + fresh engine run to completion with no rendering. When the batch finishes, the Batch results card below fills with per-session payoffs, mean deviation from FV, turnover, and the round-4 replacement record.">
-            <button type="button" class="btn-dlm-batch" id="btn-dlm-batch">Run 10-session batch</button>
-            <div class="dlm-batch-status" id="dlm-batch-status" aria-live="polite"></div>
-          </div>
-          <div id="dlm-batch-results" class="dlm-batch-results"></div>
-        </div>
-      </details>
-
-      <details class="psec ext-only" open>
-        <summary>Research plan</summary>
-        <div class="psec-body">
-          <div class="param-row" data-tip="Plan I — algorithm-only. Each utility agent forms a prior equal to the current FV and blends peer messages with weight w = 0.6 + 0.1·min(3, roundsPlayed), so agents grow less susceptible to peer influence as they accumulate rounds of experience. No LLM calls. Plan II — same FV prior, but every period an LLM is asked for a new belief given the agent's risk preference AND the explicit utility-function form (U_L, U_N, or U_A) corresponding to that preference. Plan III — same as Plan II but the LLM is only told the risk-preference label (risk-loving / risk-neutral / risk-averse) without any utility-function formulas, testing whether the label alone is sufficient to recover the utility-aware belief. Plans II and III fall back to Plan I on network/API errors.">
-            <div class="param-head">
-              <label>Plan</label>
-              <span class="pval" id="v-plan">Plan I</span>
-            </div>
-            <div class="plan-row">
-              <label class="plan-opt">
-                <input type="radio" name="plan" value="I" checked>
-                <span>Plan I — algorithm (FV prior, w by rounds)</span>
-              </label>
-              <label class="plan-opt">
-                <input type="radio" name="plan" value="II">
-                <span>Plan II — LLM with utility forms (U_L / U_N / U_A)</span>
-              </label>
-              <label class="plan-opt">
-                <input type="radio" name="plan" value="III">
-                <span>Plan III — LLM with risk preference only</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </details>
-
       <details class="psec ext-only" open>
         <summary>Risk preferences</summary>
         <div class="psec-body">
@@ -208,17 +146,19 @@
         </div>
       </details>
 
-      <details class="psec wang-only" open>
-        <summary>AI endpoint <span class="muted">ChatGPT · AIPE</span></summary>
+      <details class="psec llm-plan-only" open>
+        <summary>AI endpoint <span class="muted">ChatGPT · Plan II &amp; Plan III</span></summary>
         <div class="psec-body ai-config">
           <p class="ai-config-note">
-            When the paradigm is set to AIPE and an API key is present, each Utility
-            agent calls the AI agent once at the start of the run to anchor its private
-            subjective valuation. Provider list and endpoint match the lying project's
-            GPT provider (<code>PROVIDERS.gpt</code> in <code>lying/js/ai-agent.js</code>).
-            Fields are read fresh from the DOM on every run (no localStorage) and no
-            call is made if the key field is empty — the simulation falls back to the
-            deterministic Lopez-Lira belief model.
+            <strong>Required for Plan II and Plan III.</strong> Every period boundary,
+            each Utility agent calls the AI agent for a fresh subjective valuation
+            given its risk preference (Plan III) or its risk preference + explicit
+            utility function form U_L / U_N / U_A (Plan II). Provider list and
+            endpoint match the lying project's GPT provider
+            (<code>PROVIDERS.gpt</code> in <code>lying/js/ai-agent.js</code>). Fields
+            are read fresh from the DOM on every run (no localStorage); if the key
+            field is empty, Plan II and Plan III cannot run and the Start button
+            will refuse to launch the engine until a key is supplied.
           </p>
           <div class="param-row">
             <div class="param-head">
@@ -1248,17 +1188,17 @@
   </div>
 </section>
 
-<script data-cfasync="false" src="js/mathml.js?v=18"></script>
-<script data-cfasync="false" src="js/utility.js?v=18"></script>
-<script data-cfasync="false" src="js/messaging.js?v=18"></script>
-<script data-cfasync="false" src="js/market.js?v=18"></script>
-<script data-cfasync="false" src="js/agents.js?v=18"></script>
-<script data-cfasync="false" src="js/logger.js?v=18"></script>
-<script data-cfasync="false" src="js/viz.js?v=18"></script>
-<script data-cfasync="false" src="js/ai.js?v=18"></script>
-<script data-cfasync="false" src="js/engine.js?v=18"></script>
-<script data-cfasync="false" src="js/ui.js?v=18"></script>
-<script data-cfasync="false" src="js/replay.js?v=18"></script>
-<script data-cfasync="false" src="js/main.js?v=18"></script>
+<script data-cfasync="false" src="js/mathml.js?v=19"></script>
+<script data-cfasync="false" src="js/utility.js?v=19"></script>
+<script data-cfasync="false" src="js/messaging.js?v=19"></script>
+<script data-cfasync="false" src="js/market.js?v=19"></script>
+<script data-cfasync="false" src="js/agents.js?v=19"></script>
+<script data-cfasync="false" src="js/logger.js?v=19"></script>
+<script data-cfasync="false" src="js/viz.js?v=19"></script>
+<script data-cfasync="false" src="js/ai.js?v=19"></script>
+<script data-cfasync="false" src="js/engine.js?v=19"></script>
+<script data-cfasync="false" src="js/ui.js?v=19"></script>
+<script data-cfasync="false" src="js/replay.js?v=19"></script>
+<script data-cfasync="false" src="js/main.js?v=19"></script>
 </body>
 </html>
