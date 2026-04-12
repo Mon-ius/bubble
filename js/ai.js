@@ -49,11 +49,8 @@ const AI = {
       endpoint: 'https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions',
       keyPlaceholder: 'sk-...',
       models: [
-        { id: 'gpt-4o',        label: 'GPT-4o' },
-        { id: 'gpt-4.1',       label: 'GPT-4.1' },
-        { id: 'gpt-5.4',       label: 'GPT-5.4' },
-        { id: 'o3',            label: 'o3' },
-        { id: 'o4-mini',       label: 'o4-mini' },
+        { id: 'gpt-4o',   label: 'GPT-4o' },
+        { id: 'gpt-5.4',  label: 'GPT-5.4' },
       ],
       default: 'gpt-4o',
     },
