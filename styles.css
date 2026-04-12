@@ -600,6 +600,7 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
    either plan-ii or plan-iii, hidden for plan-i. main.js sets the
    active body class in _setPlan() on every plan change. */
 body.plan-i .llm-plan-only      { display: none !important; }
+body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
 
 /* ---------- Parameters panel ---------- */
 /*
