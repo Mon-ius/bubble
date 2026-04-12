@@ -39,58 +39,68 @@
 
 const AI = {
   /**
-   * Default OpenAI endpoint — matches the lying project's GPT
-   * provider default (`PROVIDERS.gpt.defaultEndpoint` in
-   * `/Users/monius/Documents/code/2026/lying/js/ai-agent.js`). A
-   * user-supplied `endpoint` override in the AI-config form wins;
-   * leaving the field blank routes through this URL.
+   * Provider definitions — endpoint, agent-capable models, and default
+   * for each supported LLM provider. The UI builds the provider
+   * dropdown from PROVIDERS and swaps the model list on change.
    */
-  DEFAULT_ENDPOINT: 'https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions',
+  PROVIDERS: {
+    openai: {
+      label: 'OpenAI',
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      models: [
+        { id: 'gpt-4o',        label: 'GPT-4o' },
+        { id: 'gpt-4.1',       label: 'GPT-4.1' },
+        { id: 'gpt-5.4',       label: 'GPT-5.4' },
+        { id: 'o3',            label: 'o3' },
+        { id: 'o4-mini',       label: 'o4-mini' },
+      ],
+      default: 'gpt-4o',
+    },
+    gemini: {
+      label: 'Google Gemini',
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+      models: [
+        { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash' },
+        { id: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro' },
+        { id: 'gemini-2.0-flash',  label: 'Gemini 2.0 Flash' },
+      ],
+      default: 'gemini-2.5-flash',
+    },
+    claude: {
+      label: 'Anthropic Claude',
+      endpoint: 'https://api.anthropic.com/v1/messages',
+      models: [
+        { id: 'claude-sonnet-4-5-20250514', label: 'Claude Sonnet 4.5' },
+        { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
+        { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5' },
+      ],
+      default: 'claude-sonnet-4-5-20250514',
+    },
+  },
 
-  /**
-   * Supported models — mirror-image of `PROVIDERS.gpt.models` in the
-   * lying project. The ordering is preserved so UI.populate() can
-   * build the model select identically in both codebases, and the
-   * first entry is the implicit default when the user has not yet
-   * interacted with the dropdown.
-   */
-  MODELS: [
-    { id: 'gpt-5.4',       label: 'GPT-5.4' },
-    { id: 'o3',            label: 'o3' },
-    { id: 'o4-mini',       label: 'o4-mini' },
-    { id: 'gpt-4.1',       label: 'GPT-4.1' },
-    { id: 'gpt-4o',        label: 'GPT-4o' },
-  ],
+  DEFAULT_PROVIDER: 'openai',
 
-  /** Default model used when the user leaves the dropdown untouched. */
-  DEFAULT_MODEL: 'gpt-4o',
+  /** Convenience accessors — resolve via the active provider. */
+  getProvider(key) {
+    return this.PROVIDERS[key] || this.PROVIDERS[this.DEFAULT_PROVIDER];
+  },
+  getModels(providerKey) { return this.getProvider(providerKey).models; },
+  getDefaultModel(providerKey) { return this.getProvider(providerKey).default; },
+  getDefaultEndpoint(providerKey) { return this.getProvider(providerKey).endpoint; },
 
   /**
    * gpt-5 / o3+ / o1+ families require `max_completion_tokens` in
-   * place of the legacy `max_tokens` field. Regex matches the lying
-   * project's `_openaiCall` branch verbatim — both codebases must
-   * agree on this test or a model upgrade will 400 in one place
-   * and succeed in the other.
+   * place of the legacy `max_tokens` field.
    */
   _usesCompletionTokens(model) {
     return /^(gpt-5|o[3-9]|o[1-9]\d)/.test(model || '');
   },
 
-  /**
-   * Low-level chat-completion call. Intentionally mirrors the
-   * `_openaiCall` helper in the lying project's js/ai-agent.js so
-   * the two codebases stay trivially portable: identical headers,
-   * identical body shape, identical token-field branching.
-   *
-   * @param {{apiKey: string, endpoint?: string, model?: string, maxTokens?: number, temperature?: number}} cfg
-   * @param {string} system  — system prompt
-   * @param {string} prompt  — user prompt
-   * @returns {Promise<string>} the plain-text content of the first choice
-   */
-  async call(cfg, system, prompt) {
-    if (!cfg || !cfg.apiKey) throw new Error('ai.call: missing apiKey');
-    const endpoint  = cfg.endpoint || this.DEFAULT_ENDPOINT;
-    const model     = cfg.model    || this.DEFAULT_MODEL;
+  /* ---- Provider-specific call implementations ---- */
+
+  async _callOpenAI(cfg, system, prompt) {
+    const endpoint  = cfg.endpoint || this.getDefaultEndpoint('openai');
+    const model     = cfg.model    || this.getDefaultModel('openai');
     const maxTokens = cfg.maxTokens || 1024;
     const body = {
       model,
@@ -113,12 +123,80 @@ const AI = {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      throw new Error(`ai.call: HTTP ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`ai.openai: HTTP ${res.status} ${text}`);
     }
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string') throw new Error('ai.call: no content in response');
+    if (typeof content !== 'string') throw new Error('ai.openai: no content');
     return content.trim();
+  },
+
+  async _callGemini(cfg, system, prompt) {
+    const model     = cfg.model || this.getDefaultModel('gemini');
+    const base      = cfg.endpoint || this.getDefaultEndpoint('gemini');
+    const endpoint  = `${base.replace(/\/+$/, '')}/models/${model}:generateContent?key=${cfg.apiKey}`;
+    const body = {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: cfg.temperature ?? 0.4,
+        maxOutputTokens: cfg.maxTokens || 1024,
+      },
+    };
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`ai.gemini: HTTP ${res.status} ${text}`);
+    }
+    const data = await res.json();
+    const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof content !== 'string') throw new Error('ai.gemini: no content');
+    return content.trim();
+  },
+
+  async _callClaude(cfg, system, prompt) {
+    const endpoint  = cfg.endpoint || this.getDefaultEndpoint('claude');
+    const model     = cfg.model    || this.getDefaultModel('claude');
+    const body = {
+      model,
+      max_tokens: cfg.maxTokens || 1024,
+      system,
+      messages: [{ role: 'user', content: prompt }],
+    };
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`ai.claude: HTTP ${res.status} ${text}`);
+    }
+    const data = await res.json();
+    const block = (data?.content || []).find(b => b.type === 'text');
+    if (!block || typeof block.text !== 'string') throw new Error('ai.claude: no content');
+    return block.text.trim();
+  },
+
+  /**
+   * Unified call dispatcher — routes to the provider-specific handler
+   * based on `cfg.provider`. Falls back to OpenAI format for backwards
+   * compatibility when provider is unset.
+   */
+  async call(cfg, system, prompt) {
+    if (!cfg || !cfg.apiKey) throw new Error('ai.call: missing apiKey');
+    const provider = cfg.provider || this.DEFAULT_PROVIDER;
+    if (provider === 'gemini') return this._callGemini(cfg, system, prompt);
+    if (provider === 'claude') return this._callClaude(cfg, system, prompt);
+    return this._callOpenAI(cfg, system, prompt);
   },
 
   /**

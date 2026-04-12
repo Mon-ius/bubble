@@ -102,7 +102,7 @@ const App = {
   // re-entered after a page reload. The initial model value is
   // overwritten on init from AI.DEFAULT_MODEL so a future edit in
   // ai.js propagates without touching main.js.
-  aiConfig: { apiKey: '', endpoint: '', model: '' },
+  aiConfig: { provider: '', apiKey: '', endpoint: '', model: '' },
 
   // Risk-preference composition for utility agents — three linked
   // shares summing to 100. Drives which risk profile each U slot is
@@ -305,28 +305,44 @@ const App = {
     }
 
 
-    // AIPE — AI endpoint inputs. Kept in App.aiConfig live so
-    // start() can read it synchronously without another DOM lookup.
-    // Nothing is persisted; a page reload clears the key deliberately.
-    // The #ai-model element is a <select> populated from AI.MODELS
-    // (which mirrors the lying project's PROVIDERS.gpt.models list),
-    // so the set of allowed model ids is single-sourced in ai.js.
-    // Wire both AI endpoint panels (Plan II and Plan III) to the
-    // shared aiConfig.  Inputs are synced: typing in one panel copies
-    // the value to the other so a plan switch preserves credentials.
+    // AI endpoint inputs — provider, key, endpoint, model.  All synced
+    // between the Plan II and Plan III panels via shared CSS classes.
+    // Provider change rebuilds the model dropdown and updates the
+    // endpoint placeholder.
+    const aiProviders = document.querySelectorAll('.ai-shared-provider');
     const aiKeys      = document.querySelectorAll('.ai-shared-key');
     const aiEndpoints = document.querySelectorAll('.ai-shared-endpoint');
     const aiModels    = document.querySelectorAll('.ai-shared-model');
-    if (aiModels.length && typeof AI !== 'undefined') {
-      const optHtml = AI.MODELS
+
+    const _syncModels = (providerKey) => {
+      if (typeof AI === 'undefined') return;
+      const models = AI.getModels(providerKey);
+      const def    = AI.getDefaultModel(providerKey);
+      const ep     = AI.getDefaultEndpoint(providerKey);
+      const optHtml = models
         .map(m => `<option value="${m.id}">${m.label}</option>`)
         .join('');
-      aiModels.forEach(sel => {
-        sel.innerHTML = optHtml;
-        sel.value = AI.DEFAULT_MODEL;
+      aiModels.forEach(sel => { sel.innerHTML = optHtml; sel.value = def; });
+      aiEndpoints.forEach(el => el.placeholder = ep);
+      this.aiConfig.model = def;
+      this.aiConfig.provider = providerKey;
+    };
+
+    if (aiProviders.length && typeof AI !== 'undefined') {
+      const provHtml = Object.entries(AI.PROVIDERS)
+        .map(([k, p]) => `<option value="${k}">${p.label}</option>`)
+        .join('');
+      aiProviders.forEach(sel => {
+        sel.innerHTML = provHtml;
+        sel.value = AI.DEFAULT_PROVIDER;
       });
-      this.aiConfig.model = AI.DEFAULT_MODEL;
+      _syncModels(AI.DEFAULT_PROVIDER);
     }
+    aiProviders.forEach(el => el.addEventListener('change', e => {
+      const v = e.target.value;
+      aiProviders.forEach(o => { if (o !== e.target) o.value = v; });
+      _syncModels(v);
+    }));
     aiKeys.forEach(el => el.addEventListener('input', e => {
       const v = (e.target.value || '').trim();
       this.aiConfig.apiKey = v;
@@ -338,7 +354,7 @@ const App = {
       aiEndpoints.forEach(o => { if (o !== e.target) o.value = e.target.value; });
     }));
     aiModels.forEach(el => el.addEventListener('change', e => {
-      const v = (e.target.value || '').trim() || AI.DEFAULT_MODEL;
+      const v = (e.target.value || '').trim();
       this.aiConfig.model = v;
       aiModels.forEach(o => { if (o !== e.target) o.value = e.target.value; });
     }));
