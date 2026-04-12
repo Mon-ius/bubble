@@ -71,11 +71,10 @@ const AI = {
       endpoint: 'https://anthropic-20250719-b6006324.rootdirectorylab.com/v1/messages',
       keyPlaceholder: 'sk-ant-...',
       models: [
-        { id: 'claude-sonnet-4-5-20250514', label: 'Claude Sonnet 4.5' },
-        { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
-        { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5' },
+        { id: 'claude-opus-4-6',   label: 'Claude Opus 4.6' },
+        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
       ],
-      default: 'claude-sonnet-4-5-20250514',
+      default: 'claude-sonnet-4-6',
     },
   },
 
