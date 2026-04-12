@@ -116,10 +116,10 @@
             <strong>Required for Plan II.</strong> Every period boundary, each Utility
             agent calls the LLM for a fresh subjective valuation. The prompt includes
             the agent's risk preference <em>and</em> the explicit closed-form utility
-            function (U<sub>L</sub>, U<sub>N</sub>, U<sub>A</sub>) so the model can
-            reason about convexity, linearity, or concavity of the agent's risk type.
-            Fields are read fresh from the DOM on every run (no localStorage); if the
-            key is empty the Start button will refuse to launch.
+            function ($U_L$, $U_N$, $U_A$) so the model can reason about convexity,
+            linearity, or concavity of the agent's risk type. Fields are read fresh
+            from the DOM on every run (no localStorage); if the key is empty the
+            Start button will refuse to launch.
           </p>
           <div class="param-row">
             <div class="param-head">
