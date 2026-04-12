@@ -2103,41 +2103,105 @@ body.dlm-mode .bg-only          { display: none !important; }
   .ai-config select.input-text,
   .agent-card .endow-input { font-size: 16px; }
 
-  /* Glossary: let the term column wrap instead of holding a 90px
-     min-width that forces horizontal overflow on phones. */
-  .glossary-wrap      { padding: 20px 14px 40px; }
-  .glossary-wrap > h2 { font-size: 16px; margin-bottom: 20px; }
-  .gloss-section      { margin-bottom: 26px; }
-  .gloss-table        { font-size: 11px; }
-  .gloss-table thead th,
-  .gloss-table tbody td { padding: 8px 10px; }
-  .gloss-table td.term  { white-space: normal; min-width: 0; word-break: break-word; }
-  .plot-desc { padding: 10px 12px; gap: 10px; }
+  /* ── Glossary ──
+     Tables wrap term column and tighten cell padding so nothing
+     overflows the viewport. */
+  .glossary-wrap { padding: 16px 12px 36px; }
+  .glossary-wrap > h2 { font-size: 15px; margin-bottom: 16px; padding-bottom: 10px; }
+  .gloss-section { margin-bottom: 22px; }
+  .gloss-section > h3 { font-size: 10px; margin-bottom: 8px; }
+  .gloss-table { font-size: 11px; border-radius: 6px; }
+  .gloss-table thead th { padding: 8px 10px; font-size: 9px; }
+  .gloss-table tbody td { padding: 7px 10px; }
+  .gloss-table td.term { white-space: normal; min-width: 0; word-break: break-word; }
+  .plot-desc { padding: 10px 12px; gap: 10px; border-radius: 6px; }
+  .plot-icon { width: 28px; height: 28px; font-size: 11px; }
+  .plot-info h4 { font-size: 12px; }
+  .plot-info p { font-size: 11px; }
 
-  /* Architecture: tighten outer padding. The SVG container already
-     has overflow-x: auto for anything that won't fit. */
-  .arch-wrap      { padding: 20px 14px 40px; }
-  .arch-header    { margin-bottom: 18px; padding-bottom: 12px; }
-  .arch-header h2 { font-size: 16px; }
-  .arch-defs      { gap: 12px; }
-  .arch-def-card  { padding: 12px 14px 14px; }
+  /* ── Architecture ──
+     Tighter padding, smaller header type, and the SVG scales to fit
+     the viewport width (overflow-x: auto catches anything that
+     genuinely can't fit). Definition cards and their formula blocks
+     get compact treatment to avoid horizontal overflow. */
+  .arch-wrap { padding: 16px 12px 36px; }
+  .arch-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arch-header h2 { font-size: 15px; }
+  .arch-desc { font-size: 11px; }
+  .btn-drawio { padding: 6px 10px; font-size: 11px; gap: 6px; }
+  .btn-drawio svg { width: 14px; height: 14px; }
+  .arch-svg-container { padding: 4px 0 16px; }
+  .arch-defs { gap: 10px; }
+  .arch-def-card {
+    padding: 10px 12px 12px;
+    border-radius: 6px;
+  }
+  .arch-def-card h4 { font-size: 12px; }
+  .arch-def-card .role { font-size: 9px; margin-bottom: 6px; }
+  .arch-def-card .body { font-size: 11px; line-height: 1.55; }
+  .arch-def-card .body code { font-size: 10px; padding: 0 3px; }
+  .arch-def-card .formula {
+    padding: 8px 10px;
+    margin: 4px 0 8px;
+    font-size: 11px;
+    border-radius: 4px;
+  }
+  .arch-def-card .formula .katex { font-size: 0.92em; }
 
-  /* Slides: collapse multi-col grids and tighten more aggressively
-     than the 900px breakpoint so a phone has room for content. */
+  /* ── Slides ──
+     Full mobile-first treatment: edge-to-edge viewport with compact
+     padding so content fills the screen. Multi-col grids all collapse
+     to single columns. Typography scaled for comfortable reading on a
+     375px viewport. Toolbar and nav controls wrap to two rows. */
   .slide-three-col { grid-template-columns: 1fr; }
   .slide-two-col   { grid-template-columns: 1fr; }
-  .slides-wrap    { padding: 16px 12px 40px; }
-  .slides-toolbar { padding: 8px 10px; gap: 10px; flex-wrap: wrap; }
-  .slides-nav     { flex-wrap: wrap; }
-  .slides-viewport { min-height: 360px; padding: 20px 16px; border-radius: 10px; }
-  .slide-title        { font-size: 20px; }
-  .slide-subtitle     { font-size: 13px; }
-  .slide-heading      { font-size: 16px; }
-  .slide-text         { font-size: 13px; line-height: 1.6; }
-  .slide-big          { font-size: 18px; }
-  .slide-card         { padding: 12px 14px; }
-  .slide-formula-card { padding: 14px 16px; font-size: 13px; }
-  .slides-viewport.fullscreen { inset: 0; padding: 40px 20px; border-radius: 0; }
+  .slide-class-grid { grid-template-columns: 1fr; }
+  .slides-wrap { padding: 12px 10px 36px; }
+  .slides-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    border-radius: 6px;
+  }
+  .slides-counter { font-size: 11px; }
+  .slides-nav { flex-wrap: wrap; gap: 4px; }
+  .slides-btn { min-width: 32px; height: 28px; padding: 0 8px; font-size: 12px; border-radius: 4px; }
+  .slides-viewport {
+    min-height: auto;
+    padding: 18px 14px;
+    border-radius: 8px;
+  }
+  .slide-body { gap: 14px; }
+  .slide-title { font-size: 19px; line-height: 1.3; }
+  .slide-subtitle { font-size: 12px; }
+  .slide-heading { font-size: 15px; padding-bottom: 8px; }
+  .slide-text { font-size: 12.5px; line-height: 1.6; }
+  .slide-big { font-size: 16px; line-height: 1.45; }
+  .slide-note-sm { font-size: 10px; }
+  .slide-sm { font-size: 10px; }
+  .slide-card { padding: 10px 12px; border-radius: 6px; }
+  .slide-card h4 { font-size: 12px; margin-bottom: 6px; }
+  .slide-formula { font-size: 11px; padding: 4px 8px; border-radius: 4px; }
+  .slide-formula-card {
+    padding: 12px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .slide-formula-card .katex { font-size: 0.92em; }
+  .slide-env-badge { padding: 4px 10px; font-size: 10px; }
+  .slides-viewport.fullscreen { inset: 0; padding: 24px 14px; border-radius: 0; }
+  .slides-viewport.reading-mode { padding: 18px 14px; }
+  .slides-viewport.reading-mode .slide {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+  }
 }
 
 /* ---------- Architecture tab (math-focused) ---------- */
