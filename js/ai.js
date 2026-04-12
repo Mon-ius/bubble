@@ -423,13 +423,32 @@ const AI = {
       if (a.subjectiveValuation != null) {
         priv.push(`Your last subjective valuation (after peer blend): ${a.subjectiveValuation.toFixed(2)} cents.`);
       }
-      // Plan II — explicit utility formula.
+      // Plan II — explicit utility formula + action set.
       if (plan === 'II') {
         priv.push(
           ``,
           `Your utility function: ${formulaOf(a.riskPref)}.`,
-          `Trades are scored by expected utility under this curvature`,
-          `relative to your initial wealth w0 = ${Math.round(a.initialWealth)} cents.`,
+          `Each tick your valuation v is used to evaluate 5 actions by EU:`,
+          `  1. hold — keep current position`,
+          `  2. buy now at best ask — cross the book (deterministic fill)`,
+          `  3. sell now at best bid — cross the book (deterministic fill)`,
+          `  4. post passive bid near v — probabilistic fill`,
+          `  5. post passive ask near v — probabilistic fill`,
+          `The engine picks argmax EU relative to initial wealth`,
+          `w0 = ${Math.round(a.initialWealth)} cents.`,
+        );
+      }
+
+      // Plan III — action set without utility formula.
+      if (plan === 'III') {
+        priv.push(
+          ``,
+          `Each tick your valuation v is used to evaluate 5 actions:`,
+          `  1. hold — keep current position`,
+          `  2. buy now at best ask — cross the book (deterministic fill)`,
+          `  3. sell now at best bid — cross the book (deterministic fill)`,
+          `  4. post passive bid near v — probabilistic fill`,
+          `  5. post passive ask near v — probabilistic fill`,
         );
       }
 
