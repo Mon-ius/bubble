@@ -602,7 +602,7 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
 /* Plan-specific AI endpoint panels: each visible only under its plan */
 body:not(.plan-ii)  .plan-ii-only  { display: none !important; }
 body:not(.plan-iii) .plan-iii-only { display: none !important; }
-.psec.ext-only                  { grid-column: 1 / -1; }
+body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
 
 /* ---------- Parameters panel ---------- */
 /*
@@ -698,6 +698,12 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   text-transform: uppercase;
   color: var(--fg-1);
   transition: color 0.18s var(--ease);
+  /* Own stacking context so absolutely-positioned tooltip ::after
+     pseudo-elements from .param-row children can never overlay the
+     click target — fixes fold toggle in grid layouts where the
+     tooltip z-index bleeds above the summary. */
+  position: relative;
+  z-index: 2;
 }
 .psec:hover summary { color: var(--fg-0); }
 .psec summary::marker { display: none; }
