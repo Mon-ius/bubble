@@ -2080,9 +2080,9 @@ body.dlm-mode .bg-only          { display: none !important; }
   .chart-messages canvas { height: 170px; }
   .chart-trust canvas    { height: 180px; }
 
-  /* Agent cards: 2-col on phones */
-  .agents-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .agent-card { padding: 8px 10px; }
+  /* Agent cards: single column so nothing clips on narrow screens */
+  .agents-grid { grid-template-columns: 1fr; gap: 8px; }
+  .agent-card { padding: 10px 12px; }
   .agent-card .agent-name { font-size: 12px; }
 
   /* Order book + trade feed: cap height since they're no longer
