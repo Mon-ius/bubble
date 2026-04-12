@@ -1918,9 +1918,9 @@ body.dlm-mode .bg-only          { display: none !important; }
 .trace-card .eu-lbl { flex: 1; }
 
 /* ---------- Responsive ---------- */
-/* Tablet: collapse to 6 columns — but only above 700px, since the
-   mobile breakpoint forces the desktop 12-col layout via min-width
-   and horizontal scroll so charts keep the same proportions. */
+/* Tablet (701–1100px): collapse to 6 columns. Mobile (≤700px) uses
+   a single-column stack — every panel fills the viewport width and
+   charts auto-resize via setupHiDPI for a fully responsive layout. */
 @media (min-width: 701px) and (max-width: 1100px) {
   .grid { grid-template-columns: repeat(6, 1fr); }
   .panel-stats { grid-template-columns: repeat(3, 1fr); }
@@ -2045,16 +2045,57 @@ body.dlm-mode .bg-only          { display: none !important; }
   .plan-btn[data-plan="II"]::after  { content: 'II'; }
   .plan-btn[data-plan="III"]::after { content: 'III'; }
 
-  /* Experiment grid: preserve the desktop 12-column dashboard layout
-     on mobile by making the grid horizontally scrollable. This gives
-     mobile the exact same chart proportions and multi-panel arrangement
-     as desktop — users pan left/right to explore the full dashboard. */
-  #tab-experiment { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Experiment grid: single-column responsive layout so every panel
+     stacks vertically and fills the screen width — no horizontal
+     scroll needed. Charts auto-resize via setupHiDPI. */
   .grid {
-    min-width: 1100px;
-    padding: 12px 12px 28px;
-    gap: 12px;
+    grid-template-columns: 1fr;
+    padding: 10px 10px 28px;
+    gap: 10px;
   }
+  /* Reset all panel spans to 1 for the single-column grid */
+  .panel-params, .panel-stats,
+  .chart-price, .panel-book,
+  .chart-bubble, .chart-volume, .chart-heatmap,
+  .chart-timeline, .panel-agents, .panel-feed,
+  .panel-replay { grid-column: span 1; }
+  .chart-valuation, .panel-metrics,
+  .chart-utility, .chart-ownership,
+  .chart-messages, .chart-trust { grid-column: span 1; }
+
+  /* Stats: 3-col on phones so all 6 fit in 2 rows */
+  .panel-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { padding: 10px 10px; }
+  .stat .value { font-size: 18px; }
+
+  /* Chart heights: slightly reduced but still readable */
+  .panel-chart canvas { height: 200px; }
+  .chart-bubble canvas,
+  .chart-volume canvas,
+  .chart-heatmap canvas { height: 140px; }
+  .chart-timeline canvas { height: 160px; }
+  .chart-valuation canvas { height: 180px; }
+  .chart-utility canvas,
+  .chart-ownership canvas { height: 170px; }
+  .chart-messages canvas { height: 170px; }
+  .chart-trust canvas    { height: 180px; }
+
+  /* Agent cards: 2-col on phones */
+  .agents-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .agent-card { padding: 8px 10px; }
+  .agent-card .agent-name { font-size: 12px; }
+
+  /* Order book + trade feed: cap height since they're no longer
+     pinned to a tall sibling in the same grid row */
+  .panel-book { max-height: 300px; }
+  .panel-feed { max-height: 340px; }
+
+  /* Figure captions: tighten for mobile */
+  .panel.figure { padding: 12px 14px 14px; gap: 10px; }
+  .panel.figure .fig-head { gap: 8px; padding-bottom: 6px; }
+  .panel.figure .fig-eq { font-size: 12px; padding: 8px 10px; min-height: 36px; }
+  .panel.figure .fig-note { padding: 8px 10px 10px; }
+  .panel.figure .fig-note-list { gap: 4px 10px; font-size: 10px; }
 
   /* Touch: hide hover-only tooltips; prevent iOS zoom on inputs. */
   .param-row[data-tip]::after { display: none; }
