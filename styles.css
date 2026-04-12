@@ -876,7 +876,8 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   flex-direction: row;
   gap: 8px;
 }
-.param-toggle-pair > .param-head { flex: 0 1 auto; min-width: 0; }
+.param-toggle-pair > .param-head { flex: 0 0 auto; }
+.param-toggle-pair > .param-head label { flex: none; overflow: visible; }
 .slide-toggle {
   position: relative;
   display: inline-flex;
