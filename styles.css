@@ -864,15 +864,25 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   box-shadow: 0 0 0 8px var(--accent-light);
 }
 
-.param-row .checkbox {
+/* Toggle (checkbox) rows — match the visual rhythm of slider rows:
+   same .param-head wrapper, same label font, accent-coloured tick. */
+.param-toggle-row { gap: 0; }
+.param-head .checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: var(--fg-0);
+  font-weight: 500;
+  color: var(--fg-1);
   cursor: pointer;
 }
-.param-row .checkbox input { accent-color: var(--accent); }
+.param-head .checkbox input[type=checkbox] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+}
 
 /* Risk-preference composition bar — the three linked sliders push
    their percentages into this segmented bar so the overall risk mix
