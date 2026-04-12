@@ -289,21 +289,14 @@ const App = {
     this._constrainMix();
 
     // Boolean toggles in Trade Settings (bias / noise on the prior).
-    // Each toggle mirrors a slider row: label + pval pill on top, a
-    // track/thumb switch below. The pill reads "on" / "off" and gains
-    // the accent-highlighted state when active.
+    // Each is a pill button whose checked state is shown via CSS
+    // (:has(input:checked) flips background to accent).
     for (const key of ['applyBias', 'applyNoise']) {
-      const cb  = document.getElementById('p-' + key);
-      const pill = document.getElementById('v-' + key);
+      const cb = document.getElementById('p-' + key);
       if (!cb) continue;
       cb.checked = !!this.tunables[key];
-      const sync = () => {
-        if (pill) pill.textContent = cb.checked ? 'on' : 'off';
-      };
-      sync();
       cb.addEventListener('change', () => {
         this.tunables[key] = cb.checked;
-        sync();
         this.rebuild();
       });
     }

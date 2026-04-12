@@ -94,23 +94,12 @@
           </div>
           <div class="param-row param-toggle-row">
             <div class="param-head">
-              <label for="p-applyBias">Bias on prior <span class="pval-sub">bias<sub>i</sub></span></label>
-              <span class="pval pval-toggle" id="v-applyBias">off</span>
+              <label>Prior adjustments</label>
+              <span class="toggle-pills">
+                <label class="pill-btn" id="v-applyBias" for="p-applyBias"><input type="checkbox" id="p-applyBias">Bias</label>
+                <label class="pill-btn" id="v-applyNoise" for="p-applyNoise"><input type="checkbox" id="p-applyNoise">Noise</label>
+              </span>
             </div>
-            <label class="toggle-track" for="p-applyBias">
-              <input type="checkbox" id="p-applyBias">
-              <span class="toggle-thumb"></span>
-            </label>
-          </div>
-          <div class="param-row param-toggle-row">
-            <div class="param-head">
-              <label for="p-applyNoise">Noise on prior <span class="pval-sub">&epsilon;</span></label>
-              <span class="pval pval-toggle" id="v-applyNoise">off</span>
-            </div>
-            <label class="toggle-track" for="p-applyNoise">
-              <input type="checkbox" id="p-applyNoise">
-              <span class="toggle-thumb"></span>
-            </label>
           </div>
         </div>
       </details>
