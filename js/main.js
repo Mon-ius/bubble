@@ -250,7 +250,6 @@ const App = {
     // controls reflect App state on first paint regardless of the
     // values baked into the HTML defaults.
     this._pushStateToSliders();
-    this._refreshMixTotal();
 
     // Uniform wiring for every slider in the param map. Sliders that
     // change the population *structure* (mix counts, risk shares) call
@@ -663,13 +662,6 @@ const App = {
       if (out) out.textContent = spec.fmt(val);
       this._updateSliderPct(input);
     }
-  },
-
-  _refreshMixTotal() {
-    const m = this.mix;
-    const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
-    const el = document.getElementById('mix-total');
-    if (el) el.textContent = `(N = ${total})`;
   },
 
   _getByPath(path) {

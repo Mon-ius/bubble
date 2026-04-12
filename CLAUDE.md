@@ -132,7 +132,7 @@ Before the simulation starts, `sampleAgents(mix, rng, options)` in
 `agents.js` draws a flat list of per-agent specs from the current `mix`.
 Each spec carries:
 
-- `id`, `slot`, `type`, `typeLabel` (F1, U3, …)
+- `id`, `slot`, `type`, `typeLabel` (U1, U3, …)
 - `name` — a random personal name drawn without replacement from
   `AGENT_NAMES`
 - `cash`, `inventory` — drawn from `ENDOWMENT_DEFAULT` (uniform
@@ -143,8 +143,8 @@ Each spec carries:
 spec list as editable cards before `tick === 0`; editing cash/inventory
 commits through `App.updateEndowment(id, field, value)` which mutates the
 spec in place and calls `App.rebuild()` — no reseed, no re-sample, the
-edits survive. Structural changes (mix counts, risk shares, total-N)
-and the header's **Reset** button call `App.reset()` instead, which
+edits survive. Structural changes (risk shares) and the header's
+**Reset** button call `App.reset()` instead, which
 rolls a new engine seed via `Math.random()`, nulls the spec cache, and
 delegates to `rebuild()` so a fresh population is drawn against the new
 seed. There is no seed input in the UI and no separate Resample button
