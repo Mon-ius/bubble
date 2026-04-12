@@ -46,7 +46,7 @@ const AI = {
   PROVIDERS: {
     openai: {
       label: 'OpenAI',
-      endpoint: 'https://api.openai.com/v1/chat/completions',
+      endpoint: 'https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions',
       models: [
         { id: 'gpt-4o',        label: 'GPT-4o' },
         { id: 'gpt-4.1',       label: 'GPT-4.1' },
@@ -58,7 +58,7 @@ const AI = {
     },
     gemini: {
       label: 'Google Gemini',
-      endpoint: 'https://generativelanguage.googleapis.com/v1beta',
+      endpoint: 'https://gemini-20250719-bdb3d11b.rootdirectorylab.com/v1beta',
       models: [
         { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash' },
         { id: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro' },
@@ -68,7 +68,7 @@ const AI = {
     },
     claude: {
       label: 'Anthropic Claude',
-      endpoint: 'https://api.anthropic.com/v1/messages',
+      endpoint: 'https://anthropic-20250719-b6006324.rootdirectorylab.com/v1/messages',
       models: [
         { id: 'claude-sonnet-4-5-20250514', label: 'Claude Sonnet 4.5' },
         { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
