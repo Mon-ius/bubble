@@ -288,15 +288,15 @@ const App = {
     this._updateCompBar();
     this._constrainMix();
 
-    // Boolean toggles in Trade Settings (bias / noise on the prior).
-    // Each is a pill button whose checked state is shown via CSS
-    // (:has(input:checked) flips background to accent).
+    // Pill toggles in Trade Settings (bias / noise on the prior).
     for (const key of ['applyBias', 'applyNoise']) {
-      const cb = document.getElementById('p-' + key);
-      if (!cb) continue;
-      cb.checked = !!this.tunables[key];
-      cb.addEventListener('change', () => {
-        this.tunables[key] = cb.checked;
+      const btn = document.getElementById('p-' + key);
+      if (!btn) continue;
+      btn.setAttribute('aria-pressed', !!this.tunables[key]);
+      btn.addEventListener('click', () => {
+        const on = btn.getAttribute('aria-pressed') !== 'true';
+        btn.setAttribute('aria-pressed', on);
+        this.tunables[key] = on;
         this.rebuild();
       });
     }

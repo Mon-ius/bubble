@@ -92,20 +92,13 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="5" step="1" value="1">
           </div>
-          <div class="param-row param-toggle-pair" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
+          <div class="param-row" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
             <div class="param-head">
-              <label>Prior Bias</label>
-              <label class="slide-toggle" for="p-applyBias">
-                <input type="checkbox" id="p-applyBias">
-                <span class="slide-track"><span class="slide-thumb"></span></span>
-              </label>
-            </div>
-            <div class="param-head">
-              <label>Prior Noise</label>
-              <label class="slide-toggle" for="p-applyNoise">
-                <input type="checkbox" id="p-applyNoise">
-                <span class="slide-track"><span class="slide-thumb"></span></span>
-              </label>
+              <label>Prior adjustments</label>
+              <span class="toggle-pills">
+                <button type="button" class="pill-toggle" id="p-applyBias" aria-pressed="false">Bias</button>
+                <button type="button" class="pill-toggle" id="p-applyNoise" aria-pressed="false">Noise</button>
+              </span>
             </div>
           </div>
         </div>
