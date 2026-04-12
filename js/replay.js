@@ -52,6 +52,8 @@ const Replay = {
         deceptionMode:       a.deceptionMode,
         beliefMode:          a.beliefMode,
         initialWealth:       a.initialWealth,
+        lastLLMPrompt:       a.lastLLMPrompt  || null,
+        lastLLMResponse:     a.lastLLMResponse || null,
       };
     }
     return {

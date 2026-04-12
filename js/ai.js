@@ -328,11 +328,16 @@ const AI = {
     };
 
     const tasks = utilityAgents.map(async (a) => {
+      const userPrompt = promptFor(a);
+      // Persist the prompt on the agent for UI display.
+      a.lastLLMPrompt = { system, user: userPrompt, plan, ts: Date.now() };
       try {
-        const raw = await this.call(aiCfg, system, promptFor(a));
+        const raw = await this.call(aiCfg, system, userPrompt);
         const v   = this.parseValuation(raw, lo, hi);
+        a.lastLLMResponse = raw;
         return v == null ? null : { id: a.id, valuation: v };
       } catch (err) {
+        a.lastLLMResponse = '[error] ' + (err.message || err);
         console.warn('[ai.getPlanBeliefs]', a.id, err.message || err);
         return null;
       }

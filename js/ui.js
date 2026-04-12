@@ -54,6 +54,12 @@ const UI = {
     utility:        'inU',
   },
 
+  // Minimal HTML escaper for injecting plain-text strings into
+  // template literals rendered via innerHTML (LLM prompt display).
+  _escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
   // Canvas-time theme cache. Populated by refreshTheme() which reads
   // CSS custom properties off :root via getComputedStyle. Every chart
   // renderer pulls colors from here so a theme switch flows through
@@ -345,6 +351,26 @@ const UI = {
           <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
+      // LLM prompt/response block — shown only for utility agents under Plan II/III
+      const llmBlock = (isUtil && a.lastLLMPrompt) ? `
+          <details class="llm-prompt-block">
+            <summary>LLM prompt · Plan ${a.lastLLMPrompt.plan || '?'}</summary>
+            <div class="llm-prompt-body">
+              <div class="llm-section">
+                <div class="llm-label">System</div>
+                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
+              </div>
+              <div class="llm-section">
+                <div class="llm-label">User</div>
+                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
+              </div>
+              <div class="llm-section">
+                <div class="llm-label">Response</div>
+                <pre class="llm-text llm-response">${UI._escHtml(String(a.lastLLMResponse || '—'))}</pre>
+              </div>
+            </div>
+          </details>` : '';
+
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
                   data-agent-id="${a.id}" data-field="cash"
@@ -374,7 +400,7 @@ const UI = {
             <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>
             <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
             <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
-          </div>
+          </div>${llmBlock}
         </div>`;
     }).join('');
     this.els.agentsGrid.innerHTML = html;

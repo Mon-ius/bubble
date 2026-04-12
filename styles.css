@@ -1568,6 +1568,69 @@ body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
   border-color: color-mix(in srgb, var(--red) 30%, transparent);
 }
 
+/* LLM prompt/response block — collapsible <details> inside each agent
+   card, shown only for Utility agents under Plan II/III after the first
+   period boundary fires an LLM call. */
+.llm-prompt-block {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.llm-prompt-block summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pink);
+  user-select: none;
+  padding: 2px 0;
+}
+.llm-prompt-block summary::-webkit-details-marker { display: none; }
+.llm-prompt-block summary::marker { display: none; }
+.llm-prompt-block summary::before {
+  content: '▸ ';
+  font-size: 8px;
+}
+.llm-prompt-block[open] summary::before {
+  content: '▾ ';
+}
+.llm-prompt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.llm-section .llm-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin-bottom: 2px;
+}
+.llm-text {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.llm-text.llm-response {
+  color: var(--pink);
+  font-weight: 600;
+  max-height: 40px;
+}
+
 /* Agents-panel header: title + Resample button inline, stage label
    under the title. In preview mode the panel picks up an outline to
    signal that the endowment fields are editable. */
