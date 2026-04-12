@@ -322,6 +322,18 @@ const App = {
       head.addEventListener('click', () => panel.classList.toggle('collapsed'));
     }
 
+    // Explicit <details> toggle — `display: flex` on <summary> breaks
+    // the native toggle in some browsers. Wire a click handler on every
+    // .psec summary that toggles the parent's `open` attribute manually.
+    document.querySelectorAll('.psec > summary').forEach(sum => {
+      sum.addEventListener('click', (e) => {
+        e.preventDefault();
+        const details = sum.parentElement;
+        if (details.open) details.removeAttribute('open');
+        else              details.setAttribute('open', '');
+      });
+    });
+
 
     // AI endpoint inputs — provider, key, endpoint, model.  All synced
     // between the Plan II and Plan III panels via shared CSS classes.
