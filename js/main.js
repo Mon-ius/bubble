@@ -589,6 +589,10 @@ const App = {
     document.querySelectorAll('.plan-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.plan === active);
     });
+    const lbl = document.getElementById('ai-panel-label');
+    const req = document.getElementById('ai-panel-required');
+    if (lbl) lbl.textContent = 'ChatGPT \u00b7 Plan ' + active;
+    if (req) req.textContent = 'Required for Plan ' + active + '.';
   },
 
   /**

@@ -292,8 +292,7 @@ const UI = {
     const html = Object.values(v.agents).map(a => {
       const action = a.lastAction || 'hold';
       const isUtil = a.riskPref != null;
-      const valueAnchor = isUtil && a.subjectiveValuation != null ? a.subjectiveValuation : v.fv;
-      const wealth = a.cash + a.inventory * valueAnchor;
+      const wealth = a.cash + a.inventory * (v.lastPrice != null ? v.lastPrice : v.fv);
       const init   = a.initialWealth != null ? a.initialWealth : (1000 + 3 * initialFV);
       const pnl    = wealth - init;
       const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
