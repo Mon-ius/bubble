@@ -2,129 +2,68 @@
 \section{Experimental Design}
 \label{sec:design}
 
-\subsection{Session structure: four consecutive rounds}
+\subsection{Three paradigms}
 
-The unit of study in~\citet{dufwenberg2005bubbles} is a
-\emph{session} of four consecutive ten-period markets played by the
-same agent population. The paper insists on the terminology explicitly:
-\begin{quote}
-``A session involved four consecutive markets. In the following, we
-shall talk in terms of four different rounds. Note the distinction
-between rounds and periods; a round (being a market) consists of
-ten periods.''~\citep[p.~1733]{dufwenberg2005bubbles}
-\end{quote}
-The session wrapper is the load-bearing element of the original
-design: in the human-subject study, bubbles inflate in round~1,
-attenuate in rounds~2--3, and have effectively died by round~4 even
-though the population is identical---experience, not composition,
-kills the bubble. The testbed inherits this wrapper because it is
-also the channel through which Plan~I's experience-weighted trust
-runs: every surviving utility agent's \texttt{roundsPlayed} counter
-is incremented at the end of each non-final round, which feeds
-equation~\eqref{eq:plan1_body} and ramps the Plan~I belief-blend
-weight from $0.60$ to $0.90$ across the session. The simulator
-therefore wraps the per-round market in a session loop of $R=4$
-rounds. At every round boundary the order book is cleared, each
-agent's cash and inventory are rewound to its sampled spec, and the
-period counter resets to one. Learned state---trust matrices, the
-experience counter, the candidate action cache---is intentionally
-preserved across the boundary so that the cross-round learning
-channel that drives Plan~I's weight ramp is the only source of
-persistent change between consecutive markets. Both
-$R$ and $T$ are surfaced read-only in the simulator's ``Paper
-constants'' panel and are not user tunable.
+The simulator implements three paradigms on a shared market substrate.
 
-\subsection{The asset and the fundamental}
+\emph{Strict-DLM.}---Exactly six DLM traders ($N{=}6$), three type-A
+(200\textcent, 6 shares) and three type-B (600\textcent, 2 shares),
+with identical buy-and-hold value of 1000\textcent.  Endowment types
+are assigned by Fisher-Yates shuffle.  No utility agents, no
+messaging.
 
-The asset is a finite-lived claim on an iid per-period dividend
-that pays either zero or twenty experimental cents with equal
-probability. Letting $d$ denote the period-$t$ dividend draw,
-\begin{equation}
-d\sim\text{Uniform}\{0,20\},\qquad \E[d]=10,\qquad T=10.
-\label{eq:dividend}
-\end{equation}
-The asset lives for $T=10$ periods within each round and pays
-nothing thereafter, so its risk-neutral fundamental value at the
-start of period~$t$ of any round is
-\begin{equation}
-\FV_t \;=\; \E[d]\cdot(T-t+1) \;=\; 10\cdot(T-t+1),
-\label{eq:fv}
-\end{equation}
-that is, a linearly declining staircase from $\FV_1=100$ to
-$\FV_T=10$ with a terminal value of zero after the final dividend
-pays. The fundamental resets to $\FV_1=100$ at the start of every
-new round, so the price chart traces a four-tooth saw-tooth across
-the full session. Equation~\eqref{eq:dividend} and
-equation~\eqref{eq:fv} reproduce the dividend process and the
-fundamental schedule of~\citet{dufwenberg2005bubbles} exactly. The
-session length $R$, the per-round asset life $T$, and the dividend
-mean $\E[d]$ are all surfaced read-only in the simulator's ``Paper
-constants'' panel so that every comparison across plans holds the
-market structure fixed.
+\emph{Lopez-Lira.}---A mix of fundamentalists (F), trend followers
+(T), a zero-intelligence agent (R), and utility agents (U).  Cash is
+drawn from $\text{Uniform}[800,1200]$, inventory from
+$\text{Uniform}\{2,3,4\}$.  Utility agents carry risk preferences
+apportioned by a user-specified split
+($\alpha_L{+}\alpha_N{+}\alpha_A{=}100$).  Belief update follows
+Plan~I.
 
-\subsection{Continuous double auction with period discretisation}
+\emph{AIPE (AI-Agent Prior Elicitation).}---Same population as
+Lopez-Lira, but the belief update switches to Plan~II or Plan~III.
+Before trading begins, a one-shot LLM call seeds each utility agent's
+initial valuation (clamped to $[25,175]$~cents).
 
-The simulator discretises each period into $K=18$ decision rounds,
-so a single round comprises $T\cdot K=180$ ticks and a full
-four-round session comprises $R\cdot T\cdot K=720$ ticks. Every
-tick, each agent posts at most one order, routed to a price--time
-priority order book; a crossing pair matches at the resting price.
-At the end of each period the outstanding quotes are withdrawn, the
-dividend is drawn from~\eqref{eq:dividend} and credited to each
-holder, and the belief-update plan (Plan~I, II, or~III) runs once
-to write next period's $V_i^{\text{prior}}$. At the end of period~$T$
-of every non-final round the session loop also rewinds endowments,
-clears the book, increments every surviving agent's
-\texttt{roundsPlayed} counter, and resets the period counter to one
-before the next round begins. The $K=18$ discretisation is the
-simulator's own approximation of the two-minute continuous z-Tree
-window used in the paper, is pinned in the ``Simulator constants''
-panel, and is not user tunable.
+\subsection{Session structure}
 
-\subsection{Population and endowment sampling}
-\label{sec:sampling}
+Following DLM, a session is four consecutive ten-period rounds played
+by the same population.  At each round boundary the engine:
+(i)~records round-final cash for payoff accounting,
+(ii)~increments every agent's $k_i$,
+(iii)~in strict-DLM mode at the round-3 boundary, executes the
+round-4 replacement protocol,
+(iv)~rewinds cash and inventory to initial endowments,
+(v)~clears the order book, and
+(vi)~resets the period counter.
+Trust matrices, experience counters, and agent identity persist
+across rounds.  Session payoff is
+$\pi_i = \sum_{r=1}^{4}\text{finalCash}_{r}[i] + 500$.
 
-The population is a mix of fundamentalists~(F), trend
-followers~(T), zero-intelligence randoms~(R), and utility
-agents~(U), dialled from the Experiment Settings panel. A utility
-slot is always present because Plans~I, II, and~III act only on~U
-agents---the background slots (F, T, R) are there to provide a
-rational anchor, a momentum amplifier, and a liquidity floor, and
-play the same role under every plan.
+\subsection{Round-4 replacement}
 
-Before the engine starts, \texttt{sampleAgents(mix, rng)} draws a
-flat list of agent specs, each carrying a numeric id, an agent
-type label, a personal name drawn without replacement from a
-built-in pool, a cash endowment drawn uniformly from
-$[800,1200]$~cents, and an inventory drawn uniformly from
-$\{2,3,4\}$. Utility agents additionally carry a persistent bias
-mode~$b_i$ and risk-preference type~$U_i$, assigned from a
-user-controlled split over optimistic/unbiased/pessimistic and
-loving/neutral/averse. The sample RNG is derived from
-$\mathrm{seed}\oplus \mathtt{0xA5A5A5A5}$ and is intentionally
-independent of the engine RNG, so editing a cash or inventory value
-in the Agents panel and pressing Rebuild produces the same per-tick
-trading sequence as a matched run without the edit.
+At the round-3$\to$round-4 transition in strict-DLM mode, the engine
+selects $k\in\{2,4\}$ veterans uniformly at random and replaces them
+with fresh traders ($k_i{=}0$, iid type-A/B endowment).  Following
+DLM's own notation:
+\begin{itemize}[nosep]
+\item \textbf{T2} (R4-$\sfrac{2}{3}$): two replacements, four
+  veterans---two-thirds experienced;
+\item \textbf{T4} (R4-$\sfrac{1}{3}$): four replacements, two
+  veterans---one-third experienced.
+\end{itemize}
+A batch runner executes ten sessions (five T2, five T4, interleaved)
+and tabulates per-session bubble statistics.
 
-\subsection{Reproducibility}
+\subsection{Identification}
 
-Every run is driven by a single scalar seed. A mulberry32 generator
-$s_{k+1}=(s_k+\mathtt{0x6D2B79F5})\bmod 2^{32}$ produces the
-$(0,1)$-uniform stream consumed by every stochastic step---dividend
-realisations, zero-intelligence quotes, the noise term in the
-utility prior, and the trust-update ordering. Calls to
-\texttt{Math.random} from agent or market code are a contract
-violation that breaks reproducibility by the (population, seed)
-pair and are flagged as an invariant in the project style guide.
-The seed is re-rolled only on Reset, and the replay system
-reconstructs past states by slicing append-only history arrays on
-\texttt{Market} and \texttt{Logger}---no frame is ever recomputed.
-A single seed therefore reproduces the entire 720-tick session
-end-to-end, rounds and round-end resets included.
-
-Plans~II and~III add a single exogenous source of randomness---the
-language-model reply---which the engine handles by keeping the
-Plan~I fallback closed-form (\S\ref{sec:plan2},~\S\ref{sec:plan3}).
-Paired comparisons across plans therefore always carry a
-(plan,~seed) tag, and a Plan~II run with zero successful LLM calls
-is definitionally identical to the matching Plan~I run.
+All randomness flows through a single seeded mulberry32 PRNG.  No
+agent code calls the system random-number generator.  For any
+(population, seed) pair, Plan~I produces identical output across
+runs.  Plans~II and~III introduce one exogenous source of
+variation---the LLM reply---handled by the silent degradation to
+Plan~I on failure.  Comparisons across plans hold the seed fixed, so
+any difference in market statistics is attributable to the belief
+channel.  The sample RNG is derived from the engine seed by an XOR
+offset, so endowment edits do not alter the trading sequence for
+unedited agents.

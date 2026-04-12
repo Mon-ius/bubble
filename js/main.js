@@ -58,7 +58,7 @@ const App = {
   // DLM 2005 uses six homogeneous human subjects with no algorithmic
   // agent types (no Fundamentalist/Trend/Random). All six slots are
   // utility agents whose risk preference is set by the riskMix sliders.
-  mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
+  mix: { F: 0, T: 0, R: 0, U: 6 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which

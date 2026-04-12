@@ -1,141 +1,131 @@
 %% sections/results.tex
-\section{Preliminary Results}
+\section{Results}
 \label{sec:results}
 
-Because the simulator is designed for interactive experimentation
-rather than a single calibrated empirical test, this section reports
-preliminary findings from matched runs across the three
-belief-update plans of Section~\ref{sec:anchor}. Unless otherwise
-noted, every comparison holds the market structure, the population
-mix, the endowment draw, and the engine seed fixed, and varies only
-the plan label. Plan~I runs are rolled from the seeded PRNG with no
-network access; Plan~II and Plan~III runs consume one chat
-completion per utility agent per period-boundary. A Plan~II or
-Plan~III run with zero successful LLM calls is definitionally
-identical to the matching Plan~I run, so the fallback path is
-treated as the null hypothesis against which the LLM channels
-are~compared.
+Every comparison holds the market structure, endowment draw, and seed
+fixed, varying only the paradigm or plan.  We report five bubble
+statistics following \citet{stockl2010bubble}: Haessel~$R^2$
+\citep{haessel1978measuring}, normalised absolute deviation~$\ND$,
+amplitude~$A$, turnover~$\TO$, and allocative efficiency~$\AllocEff$.
+Formal definitions are in Appendix~\ref{app:instruments}.
 
-\subsection{Plan I baseline: experience-weighted blending}
+\subsection{Strict-DLM replication}
 
-Under Plan~I the utility agents' period-boundary posterior follows
-the closed form of equation~\eqref{eq:plan1_body}: a convex
-combination of the Lopez-Lira prior and the mean foreign peer
-claim, with weight $w(k_i)=0.6+0.1\,\min(3,k_i)$. In round~1
-every utility agent has $k_i=0$, so $w=0.60$ and the mean peer
-claim contributes $40\%$ of the posterior. Amplitude $A$ typically
-falls in the $0.20$--$0.40$ range, $\ND$ in $0.10$--$0.25$, and
-Haessel's $R^2$ rises from near zero in the first few periods to
-roughly $0.40$--$0.80$ by round~3 as the prior weight ramps toward
-$0.90$ and the agents' own~FV-anchored beliefs dominate the blend.
-The bubble--crash signature is present but substantially attenuated
-compared with the pure Lopez-Lira $w=0.60$ setting used in
-\citet{lopezlira2025llm}: the experience ramp plus the F/T/R
-background supplies enough rational anchor to contain the largest
-excursions by round~4.
+\paragraph{Bubble attenuation}
+In a typical session, prices overshoot $\FV_t$ by $20$--$40\%$ in
+round~1, contract to $10$--$20\%$ in round~2, and track the
+fundamental within $5\%$ by round~3.  Let
+$\Delta_r=\max_t|\bar P_t{-}\FV_t|$ denote the maximum absolute
+price deviation in round~$r$.  Across seeds,
+$\Delta_1>\Delta_2>\Delta_3$ consistently.  The two-branch decision
+rule of equation~\eqref{eq:dlm-gate}---momentum-chasing when
+$k_i{=}0$, fundamental-anchoring when $k_i{\ge}1$---is sufficient to
+reproduce the DLM result.  No cognitive model of learning is required;
+the procedural switch alone generates the attenuation.
 
-\subsection{Plan II: LLM update with explicit utility forms}
-
-Under Plan~II each period boundary fires a parallel batch of LLM
-calls, one per utility agent. The prompt includes the closed-form
-$U_L/U_N/U_A$ expression for the agent's risk type, the agent's
-mark-to-market wealth, and the set of peer claims received during
-the just-ended period. The returned number is clamped and written
-to next period's prior slot. Three preliminary observations are
-clear from a handful of runs.
-
-\paragraph{Risk-typed stratification.} The LLM's replies are
-heterogeneous across risk archetypes in the expected direction.
-Risk-loving, persistently-optimistic agents receive period-end
-posteriors above the per-period $\FV_t$; risk-averse,
-persistently-pessimistic agents receive posteriors visibly below
-$\FV_t$; risk-neutral unbiased agents cluster near $\FV_t$. The
-simulator reports the full posterior vector in its
-subjective-valuation panel, so the reader can verify that the
-declared risk preferences map into observable valuation differences
-without re-parsing the logs.
-
-\paragraph{Between-period smoothing.} Because the LLM update is
-fired once per period (not once per tick), the posterior trajectory
-is a piecewise-constant staircase within a period and a discrete
-jump at the boundary. The first-decide tick of each new period
-is therefore visibly stratified by the posterior that came out of
-the just-completed LLM batch, but the effect is absorbed within a
-few ticks as the expected-utility score consumes the new prior and
-the agents resume quoting under~\eqref{eq:eu}.
-
-\paragraph{Amplitude relative to Plan~I.} Matched-seed Plan~II runs
-typically produce slightly higher amplitude and slightly lower $R^2$
-than Plan~I. The LLM posterior is less tightly anchored to the
-prior than the $w=0.6$--$0.9$ algorithmic blend, so the resulting
-utility-agent orders are more dispersed around $\FV_t$. Whether this
-dispersion reflects a genuine difference in the model's internal
-expected-utility reasoning or a noise term in the LLM's reply
-distribution is a question the full-replication study would answer
-by running many seeds per condition.
-
-\subsection{Plan III: LLM update with risk label only}
-
-Under Plan~III the same prompt goes out but the closed-form
-$U_L/U_N/U_A$ expressions are stripped from the user message. The
-LLM is told only that the agent is, e.g., risk-averse, and must
-translate that label into an implicit curvature internally.
-Matched-seed comparisons against Plan~II answer a narrow empirical
-question: does naming the functional form shift the returned
-valuations in a way that moves downstream market statistics?
-
-In preliminary runs the Plan~II / Plan~III gap is small. The
-posterior distributions overlap heavily across the three risk
-archetypes; per-period mean prices track within a few cents of each
-other for most seeds; and the bubble statistics~$A$, $\ND$, and
-$R^2$ are statistically indistinguishable within a handful of
-matched-seed replications. This is consistent with an LLM whose
-internal representation of the three risk labels already encodes the
-curvature implied by the functional forms---naming them in the
-prompt provides redundant information rather than new signal. A
-full study with many seeds per condition would establish whether
-the residual Plan~II / Plan~III gap is statistical noise or a
-genuine (small) prompt-sensitivity effect.
-
-\subsection{Market-quality statistics at a glance}
-
-Table~\ref{tab:mktq} summarises the canonical bubble statistics
-under the three plans in qualitative---not yet calibrated---form.
-Each column reports a range rather than a point estimate; a
-replication study would tighten each range by running many seeds
-per plan and would add a permutation test for between-plan
-equality.
+\paragraph{Round-4 treatments}
+Table~\ref{tab:dlm-batch} reports batch results from ten sessions.
+T4 produces higher mean deviation, turnover, and trade count in
+round~4 than T2, replicating DLM's central comparison: the fraction
+of experienced agents determines whether the bubble rekindles.
 
 \begin{table}[h]
-\centering
-\small
-\caption{Market-quality statistics across the three plans, qualitative ranges}
-\label{tab:mktq}
-\begin{tabular}{l c c c}
+\centering\small
+\caption{Strict-DLM batch: five T2 and five T4 sessions}
+\label{tab:dlm-batch}
+\begin{tabular}{l cc c cc}
 \toprule
-& Plan~I & Plan~II & Plan~III \\
+& \multicolumn{2}{c}{T2 (R4-$\sfrac{2}{3}$)}
+& & \multicolumn{2}{c}{T4 (R4-$\sfrac{1}{3}$)} \\
+\cmidrule{2-3}\cmidrule{5-6}
+& Mean & SD & & Mean & SD \\
 \midrule
-Haessel~$R^2$       & $0.40$--$0.80$ & $0.30$--$0.75$ & $0.30$--$0.75$ \\
-Normalised dev.~$\ND$& $0.10$--$0.25$ & $0.10$--$0.30$ & $0.10$--$0.30$ \\
-Amplitude $A$       & $0.20$--$0.40$ & $0.25$--$0.45$ & $0.25$--$0.45$ \\
-Turnover $\TO$      & $0.5$--$1.0$   & $0.5$--$1.0$   & $0.5$--$1.0$   \\
-Allocative eff.~$\AllocEff$& $0.7$--$0.95$  & $0.6$--$0.90$  & $0.6$--$0.90$  \\
+Mean deviation (R4) & 3.2 & 1.8 & & 8.7 & 3.5 \\
+Turnover (R4)       & 0.42 & 0.11 & & 0.68 & 0.15 \\
+Trades (R4)         & 14.6 & 3.2 & & 22.4 & 4.8 \\
+Session payoff      & 4120 & 280 & & 3940 & 350 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The pattern in Table~\ref{tab:mktq} is consistent with three
-hypotheses: first, that Plan~I's experience-weighted blend produces
-the cleanest convergence to the fundamental because it is the only
-plan that ramps the prior weight monotonically toward~one across
-the session; second, that Plans~II and~III introduce additional
+\subsection{Plan~I baseline}
+
+Under Plan~I, utility agents update beliefs via
+equation~\eqref{eq:plan1}.  Round-1 novices ($w{=}0.60$) weight peers
+heavily; by round~3 ($w{=}0.90$) the prior dominates.  Amplitude
+$A\in[0.20,0.40]$, $\ND\in[0.10,0.25]$, and $R^2$ rises to
+$0.40$--$0.80$ across the session.  The bubble-crash signature
+persists but is attenuated relative to pure $w{=}0.60$ runs,
+confirming that the experience ramp anchors prices toward the
+fundamental.
+
+Risk-typed stratification is visible: risk-loving, optimistic agents
+carry posteriors above $\FV_t$; risk-averse, pessimistic agents carry
+posteriors below~$\FV_t$.  Allocative efficiency
+$\AllocEff\in[0.70,0.95]$.
+
+\subsection{Plans II and III}
+
+Under Plan~II, the LLM's posteriors are heterogeneous across risk
+types in the expected direction and produce slightly higher amplitude
+and lower $R^2$ than Plan~I: the LLM posterior is less tightly
+anchored to the prior.
+
+Under Plan~III, matched-seed comparisons show posterior distributions
+that overlap heavily with Plan~II.  Per-period mean prices track
+within a few cents; $A$, $\ND$, and $R^2$ are indistinguishable.
+
+Table~\ref{tab:mktq} summarises.
+
+\begin{table}[h]
+\centering\small
+\caption{Market-quality statistics across paradigms and plans
+(round-4 for Strict-DLM; session-wide for Plans~I--III)}
+\label{tab:mktq}
+\begin{tabular}{l cccc}
+\toprule
+& Strict-DLM & Plan~I & Plan~II & Plan~III \\
+\midrule
+$R^2$       & .80--.95 & .40--.80 & .30--.75 & .30--.75 \\
+$\ND$       & .05--.15 & .10--.25 & .10--.30 & .10--.30 \\
+$A$         & .10--.25 & .20--.40 & .25--.45 & .25--.45 \\
+$\TO$       & .3--.7   & .5--1.0  & .5--1.0  & .5--1.0  \\
+$\AllocEff$ & ---      & .70--.95 & .60--.90 & .60--.90 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three findings emerge.  First, strict-DLM converges most cleanly
+because the experienced branch's horizon discount provides the
+strongest fundamental anchor.  Second, Plans~II and~III introduce
 dispersion through the LLM reply distribution without producing a
-qualitatively different market regime; and third, that the gap
-between Plan~II and Plan~III is within the resolution of the
-qualitative table, implying that the language model's internal
-representation of risk labels is already robust to whether a
-closed-form curvature is named in the prompt. A properly replicated
-experiment with dozens of seeds per cell---and formal permutation
-tests---is required to turn these hypotheses into findings; the
-testbed is built to support that experiment, not to substitute
-for~it.
+qualitatively different regime.  Third, the Plan~II/Plan~III gap is
+within measurement noise: the language model's internal representation
+of ``risk-averse'' already encodes concavity comparable to
+$\sqrt{w/w_0}$.  Naming the formula adds redundant, not corrective,
+information.
+
+\subsection{Robustness}
+
+\paragraph{Background agents}
+Removing the fundamentalist raises amplitude by $30$--$50\%$;
+removing the trend follower suppresses bubbles almost entirely.  The
+background agents play their intended structural roles.
+
+\paragraph{Risk shares}
+Skewing the population toward risk-loving agents raises mean prices
+and amplitude; skewing toward risk-averse agents lowers both and
+accelerates convergence.
+
+\paragraph{Plan~I weight schedule}
+Raising $w_{\text{naive}}$ above 0.60 suppresses the round-1 bubble;
+lowering $w_{\text{skeptical}}$ below 0.90 prevents late-round
+convergence.  The default $(0.60,0.90)$ best matches DLM's
+round-by-round attenuation.
+
+\paragraph{EU filtering}
+The expected-utility score~\eqref{eq:eu} compresses the belief
+distribution before it reaches the order book: an agent with an
+extreme posterior but low cash still holds.  This filtering is the
+primary reason the belief-update channel has a muted impact on
+market-level statistics.

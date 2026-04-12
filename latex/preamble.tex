@@ -1,9 +1,4 @@
-%% preamble.tex — document class, packages, and AER-style layout
-%%
-%% This file is \input{} from main.tex before any section is loaded.
-%% All formatting concerns (margins, fonts, section headings, display
-%% math spacing, hyperref, bibliography style) live here, so that the
-%% section files contain only content and main.tex stays minimal.
+%% preamble.tex — document class, packages, AER-style layout
 
 \documentclass[11pt]{article}
 
@@ -11,27 +6,29 @@
 \usepackage{times}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb,amsthm}
+\usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{multirow}
 \usepackage{caption}
-\usepackage{subcaption}
 \usepackage{setspace}
 \usepackage{titlesec}
 \usepackage{titling}
 \usepackage{natbib}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xfrac}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
-% --- Title block spacing ------------------------------------------
+% --- Title ---
 \setlength{\droptitle}{-36pt}
 
-% --- AER-style heading conventions --------------------------------
+% --- AER headings ---
 \renewcommand{\thesection}{\Roman{section}}
 \renewcommand{\thesubsection}{\Alph{subsection}}
-\renewcommand{\thesubsubsection}{\arabic{subsubsection}}
 \titleformat{\section}{\normalfont\normalsize\bfseries\centering}{\thesection.}{0.5em}{}
 \titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection.}{0.5em}{}
 \titleformat{\paragraph}[runin]{\normalfont\normalsize\itshape}{}{0pt}{}[.]
@@ -39,7 +36,7 @@
 \titlespacing*{\subsection}{0pt}{0.5\baselineskip}{0.25\baselineskip}
 \titlespacing*{\paragraph}{0pt}{0.35\baselineskip}{0.4em}
 
-% --- Paragraph and display-math spacing ---------------------------
+% --- Spacing ---
 \setlength{\parskip}{0pt}
 \setlength{\parindent}{18pt}
 \linespread{0.97}

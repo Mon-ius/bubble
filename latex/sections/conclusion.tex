@@ -2,66 +2,29 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper documents a browser-based replication of the
-experimental asset market of~\citet{dufwenberg2005bubbles},
-populated with the expected-utility messaging agent
-of~\citet{lopezlira2025llm}, and compares three distinct plans for
-the utility agent's per-period belief update: an algorithmic
-experience-weighted blend (\emph{Plan~I}), a language-model call
-whose prompt contains the closed-form risk-utility expression for
-the agent's type (\emph{Plan~II}), and an otherwise-identical
-language-model call whose prompt names only the risk-preference
-category (\emph{Plan~III}). The three plans hold the market
-substrate, the agent population, the starting prior, the
-expected-utility action choice, the order-matching step, the
-dividend credit, and the market-quality instruments strictly fixed,
-so any difference in observed market statistics is attributable to
-the belief-update channel alone. The seeded mulberry32 generator
-ensures that Plan~I replays are byte-identical for a given
-(population, seed) pair, and Plan~II and Plan~III silently degrade
-to Plan~I for any agent whose LLM call fails, so every run can be
-reproduced without network access.
+We replicate the DLM~2005 bubble experiment computationally,
+confirming that a procedural experience counter---not a cognitive
+model of learning---is sufficient to kill the bubble.  Embedding
+Lopez-Lira utility agents into the same market produces similar
+attenuation under an experience-weighted algorithmic blend.
+Replacing the blend with a language-model call yields one clean
+finding: the LLM's internal representation of risk preferences is
+already robust to whether the closed-form utility expression appears
+in the prompt.  Plans~II and~III are indistinguishable in the
+standard bubble statistics.  The downstream expected-utility score
+absorbs most upstream belief variation, so market dynamics depend more
+on the scoring stage and order-book mechanics than on the specific
+belief channel.
 
-The contribution is threefold. First, the testbed constitutes a
-clean vanilla-JavaScript implementation of the DLM~2005 market
-with Lopez-Lira utility agents on top, specified in enough detail
-(Sections~\ref{sec:design}--\ref{sec:agents}) that a reader can
-reconstruct the model from the paper alone. Second, factoring the
-utility agent's belief update into three distinct plans provides
-a narrow but interpretable lever for comparing algorithmic
-decision-making against language-model decision-making at the exact
-point in the pipeline where the difference can be measured: the
-posterior valuation, a single number per agent per period. Third,
-the prompt-structure contrast between Plan~II and Plan~III
-isolates a specific question about language models: does handing
-the model a closed-form utility function change its returned
-valuations in a way that propagates into downstream market
-dynamics?
+Three limitations bound the results.  The qualitative ranges in
+Table~\ref{tab:mktq} require large-$N$ replication with formal
+permutation tests.  The LLM update fires once per period, capping
+within-period effects.  Different model families may encode risk
+differently; cross-model comparisons are needed.
 
-Three caveats shape the preliminary findings. First, the ranges in
-Table~\ref{tab:mktq} are illustrative, not calibrated: a full
-empirical test requires many replications per cell, a pooled
-treatment of the LLM-reply variance, and a formal permutation test
-between plans. Second, the LLM update fires once per period rather
-than once per tick, bounding the within-period effect of the
-plan on quoting behaviour; a faster-clocked variant would be a
-natural extension but would impose a much heavier network load.
-Third, the specific language model used for Plan~II and Plan~III
-affects the within-plan distribution of posteriors; a full study
-would fix a model version and report per-model comparisons
-separately.
-
-The testbed is free of build steps and of third-party dependencies,
-and ships with the architecture diagram, glossary, and slide deck
-used in this paper. Its ``Experiment settings'' panel exposes every
-numerical constant that shapes a run---the population mix, the
-risk-preference share, the passive fill probability, the trust
-learning rate, the bias amplitude, and the valuation noise---and
-the seeded PRNG makes every edit to a constant observable as a
-difference against a matched baseline. The plan switcher opens
-several follow-ups: whether Plan~II and Plan~III agree across
-model families, whether a Plan~IV that replaces the mean-peer term
-with a trust-weighted peer term matches the LLM plans, and whether
-the posterior trajectory under Plan~II or Plan~III predicts the
-holder of the asset at session end any better than the Plan~I
-baseline.
+Several extensions are natural.  A Plan~IV using trust-weighted (rather
+than equal-weighted) peer claims would test whether the trust matrix
+can substitute for the LLM channel.  Running Plans~II and~III across
+model families would establish whether the near-equivalence is
+model-general.  A factorial design crossing deception modes with risk
+shares would decompose their joint effect on bubble formation.

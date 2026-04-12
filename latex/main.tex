@@ -1,34 +1,15 @@
-%% =====================================================================
-%%  main.tex — Bubbles and Beliefs: Three Plans for Utility-Agent
-%%             Belief Update in a Replicated DLM 2005 Market
+%% main.tex — Experience, Utility, and Language Models in Asset Bubbles
 %%
-%%  A replication of Dufwenberg, Lindqvist and Moore (2005) populated
-%%  with the expected-utility agent of Lopez-Lira (2025), and an A/B/C
-%%  comparison of three period-boundary belief-update plans: an
-%%  algorithmic experience-weighted blend (Plan I), an LLM call whose
-%%  prompt contains the closed-form risk-utility expression for the
-%%  agent's type (Plan II), and an otherwise-identical LLM call whose
-%%  prompt names only the risk-preference category (Plan III).
-%%
-%%  This file is intentionally thin. Formatting lives in preamble.tex,
-%%  math macros in macros.tex, and each section is its own file under
-%%  sections/ so individual sections can be edited and diff-reviewed
-%%  without touching the others.
-%%
-%%  Build: cd latex && pdflatex main && bibtex main && pdflatex main
-%%         && pdflatex main
-%% =====================================================================
+%% Build: cd latex && pdflatex main && bibtex main && pdflatex main
+%%        && pdflatex main
 
 \input{preamble}
 \input{macros}
 
-\title{\textbf{Bubbles and Beliefs:\\ Three Plans for Utility-Agent Belief Update}}
+\title{\textbf{Experience, Utility, and Language Models\\in Experimental Asset Bubbles}}
 
-\author{Wang\thanks{Computational replication and source code are
-  available at \url{https://github.com/Mon-ius/bubble}. The author
-  thanks the maintainers of the original DLM and Lopez-Lira
-  testbeds for making their designs easy to re-implement. All
-  errors are the author's own.}}
+\author{Wang\thanks{Source code:
+  \url{https://github.com/Mon-ius/bubble}.  All errors are my own.}}
 
 \date{April~2026}
 
@@ -38,10 +19,8 @@
 \input{sections/abstract}
 
 \input{sections/introduction}
-\input{sections/related_work}
+\input{sections/model}
 \input{sections/design}
-\input{sections/agents}
-\input{sections/anchor}
 \input{sections/results}
 \input{sections/conclusion}
 
@@ -50,5 +29,9 @@
 \bibliographystyle{aer}
 \bibliography{references}
 }
+
+\clearpage
+\appendix
+\input{sections/appendix}
 
 \end{document}

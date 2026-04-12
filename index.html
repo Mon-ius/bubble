@@ -637,63 +637,23 @@
           </foreignObject>
         </g>
 
-        <!-- Group 2 — Strategies -->
+        <!-- Group 2 — Utility agent pipeline (N = 6, all utility) -->
         <g class="arch-group g-strat">
-          <rect x="380" y="20" width="570" height="380" rx="10" ry="10"/>
-          <text x="665" y="44" class="g-label">Agent strategies</text>
+          <rect x="380" y="20" width="570" height="220" rx="10" ry="10"/>
+          <text x="665" y="44" class="g-label">Utility agent pipeline · $N = 6$</text>
         </g>
 
-        <g class="n n-fund" transform="translate(400 60)">
-          <rect width="260" height="68" rx="6" ry="6"/>
-          <foreignObject width="260" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Fundamentalist</div>
-              <div class="fo-s">$\text{ask} \lt 0.98 \cdot \mathrm{FV}_t \Rightarrow \text{buy}$</div>
-              <div class="fo-s">$\text{bid} \gt 1.02 \cdot \mathrm{FV}_t \Rightarrow \text{sell}$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-trend" transform="translate(680 60)">
-          <rect width="250" height="68" rx="6" ry="6"/>
-          <foreignObject width="250" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Trend follower</div>
-              <div class="fo-s">$\text{slope} = \Sigma\,\Delta p$ over last 6</div>
-              <div class="fo-s">$\text{bid}_1 = p + k \cdot \text{slope}$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-zi" transform="translate(400 142)">
-          <rect width="260" height="68" rx="6" ry="6"/>
-          <foreignObject width="260" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Random (ZI)</div>
-              <div class="fo-s">$\text{bid} \sim \mathcal{U}[0.7\,\mathrm{FV},\; 1.1\,\mathrm{FV}]$</div>
-              <div class="fo-s">$\text{ask} \sim \mathcal{U}[0.9\,\mathrm{FV},\; 1.3\,\mathrm{FV}]$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-exp" transform="translate(680 142)">
-          <rect width="250" height="68" rx="6" ry="6"/>
-          <foreignObject width="250" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Experienced (DLM)</div>
-              <div class="fo-s">$\text{prior} = \varphi(h) \cdot \mathrm{FV}_t$</div>
-              <div class="fo-s">refuses overpay in late $h$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-util" transform="translate(400 224)">
+        <g class="n n-util" transform="translate(400 60)">
           <rect width="260" height="72" rx="6" ry="6"/>
           <foreignObject width="260" height="72">
             <div class="fo-node">
-              <div class="fo-t">Utility agent</div>
-              <div class="fo-s">$\text{prior} = \mathrm{FV}_t \cdot (1 + b + \varepsilon)$</div>
+              <div class="fo-t">Utility agent prior</div>
+              <div class="fo-s">$\text{prior} = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$</div>
               <div class="fo-s">risk $U_L$ (convex) / $U_N$ / $U_A$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-eu" transform="translate(680 224)">
+        <g class="n n-eu" transform="translate(680 60)">
           <rect width="250" height="72" rx="6" ry="6"/>
           <foreignObject width="250" height="72">
             <div class="fo-node">
@@ -703,7 +663,7 @@
             </div>
           </foreignObject>
         </g>
-        <g class="n n-msg" transform="translate(400 310)">
+        <g class="n n-msg" transform="translate(400 148)">
           <rect width="260" height="68" rx="6" ry="6"/>
           <foreignObject width="260" height="68">
             <div class="fo-node">
@@ -713,7 +673,7 @@
             </div>
           </foreignObject>
         </g>
-        <g class="n n-trust" transform="translate(680 310)">
+        <g class="n n-trust" transform="translate(680 148)">
           <rect width="250" height="68" rx="6" ry="6"/>
           <foreignObject width="250" height="68">
             <div class="fo-node">
@@ -800,15 +760,13 @@
         </g>
 
         <!-- Connectors -->
-        <path class="link"      d="M 320 152 L 400 94"/>
-        <path class="link"      d="M 320 152 L 400 176"/>
-        <path class="link"      d="M 320 152 L 400 260"/>
-        <path class="link"      d="M 660 260 L 680 260"/>
-        <path class="link"      d="M 530 296 L 530 310"/>
-        <path class="link"      d="M 805 296 L 805 310"/>
-        <path class="link link-wang" d="M 320 306 L 400 260"/>
-        <path class="link"      d="M 530 378 L 530 430"/>
-        <path class="link"      d="M 805 378 L 805 430"/>
+        <path class="link"      d="M 320 152 L 400 96"/>
+        <path class="link"      d="M 660 96 L 680 96"/>
+        <path class="link"      d="M 530 132 L 530 148"/>
+        <path class="link"      d="M 805 132 L 805 148"/>
+        <path class="link link-wang" d="M 320 306 L 400 96"/>
+        <path class="link"      d="M 530 216 L 530 430"/>
+        <path class="link"      d="M 805 216 L 805 430"/>
       </svg>
     </div>
 
@@ -818,34 +776,6 @@
         <p class="role">Market constant</p>
         <div class="formula">$$ \mathrm{FV}_t \;=\; \mathbb{E}[d] \cdot (T - t + 1), \qquad \mathbb{E}[d] = \tfrac{1}{2}(0) + \tfrac{1}{2}(20) = 10 $$</div>
         <p class="body">Risk-neutral price of one share at the start of period $t$ with $T = 10$ periods of remaining life and i.i.d. dividend draws — the DLM 2005 market lives underneath every plan. Every strategy reads $\mathrm{FV}_t$ from <code>market.fundamentalValue()</code>.</p>
-      </div>
-
-      <div class="arch-def-card card-strat">
-        <h4>Fundamentalist · mean-reversion</h4>
-        <p class="role">Strategy</p>
-        <div class="formula">$$ \text{buy if } \text{ask}_t < 0.98 \cdot \mathrm{FV}_t, \quad \text{sell if } \text{bid}_t > 1.02 \cdot \mathrm{FV}_t $$</div>
-        <p class="body">Rational anchor — borrowed from the Smith–Suchanek–Williams lineage. Posts passive quotes near $\mathrm{FV}_t$ when neither side is aggressive.</p>
-      </div>
-
-      <div class="arch-def-card card-strat">
-        <h4>Trend follower · momentum</h4>
-        <p class="role">Strategy</p>
-        <div class="formula">$$ \text{slope}_t \;=\; \sum_{k=1}^{6} (p_{t-k+1} - p_{t-k}), \qquad \text{bid}_1 \;=\; p_t + k \cdot \text{slope}_t $$</div>
-        <p class="body">De Long–Shleifer–Summers–Waldmann positive-feedback trader. Drives bubble inflation when the trend is up.</p>
-      </div>
-
-      <div class="arch-def-card card-strat">
-        <h4>Random · zero-intelligence</h4>
-        <p class="role">Strategy</p>
-        <div class="formula">$$ \text{bid}_t \sim \mathcal{U}[0.7\,\mathrm{FV}_t,\,1.1\,\mathrm{FV}_t], \qquad \text{ask}_t \sim \mathcal{U}[0.9\,\mathrm{FV}_t,\,1.3\,\mathrm{FV}_t] $$</div>
-        <p class="body">Gode–Sunder (1993) liquidity floor. One slot is pinned in every run so the book never goes fully empty.</p>
-      </div>
-
-      <div class="arch-def-card card-strat">
-        <h4>Experienced · DLM horizon discount</h4>
-        <p class="role">Strategy</p>
-        <div class="formula">$$ \text{prior}_t \;=\; \varphi(h) \cdot \mathrm{FV}_t, \qquad h = T - t + 1 $$</div>
-        <p class="body">$\varphi$ is the experience-level horizon discount: naive ≈ 1, veteran ramps to zero in the last three periods. This is DLM 2005's bubble-suppressing channel.</p>
       </div>
 
       <div class="arch-def-card card-ll">
@@ -927,10 +857,7 @@
           <tr><td class="term">Plan II</td><td>LLM update · utility forms</td><td>One chat completion per Utility agent per period. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
           <tr><td class="term">Plan III</td><td>LLM update · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied.</td></tr>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
-          <tr><td class="term">F</td><td>Fundamentalist</td><td>Rational mean-reversion agent anchored on $\mathrm{FV}_t$; the pinned rational background.</td></tr>
-          <tr><td class="term">T</td><td>Trend follower</td><td>Positive-feedback / momentum trader estimating slope from the last six prints.</td></tr>
-          <tr><td class="term">R</td><td>Random (ZI)</td><td>Gode–Sunder zero-intelligence trader that posts uniform bids/asks.</td></tr>
-          <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the class whose per-period belief update is what Plans I, II, and III compare.</td></tr>
+          <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 6$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
           <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
           <tr><td class="term">EU</td><td>Expected utility</td><td>$\mathrm{EU}(a) = p \cdot U(w_1) + (1-p)\cdot U(w_0)$ — the Utility agent's scoring functional.</td></tr>
           <tr><td class="term">VWAP</td><td>Volume-weighted average price</td><td>Per-period average trade price weighted by quantity; baseline for the trust EMA update.</td></tr>
@@ -999,9 +926,7 @@
         <tbody>
           <tr><td class="term">DLM 2005</td><td>Dufwenberg, Lindqvist &amp; Moore, <em>Bubbles and Experience: An Experiment</em>, AER 95(5), 1731–1737</td><td>Market substrate — asset life, dividend shape, $\mathrm{FV}_t$, session loop</td></tr>
           <tr><td class="term">LL 2025</td><td>Lopez-Lira, <em>AI-Agent Expected-Utility Market Makers</em> (working paper)</td><td>Utility agent, EU scoring, risk functionals, trust EMA</td></tr>
-          <tr><td class="term">SSW 1988</td><td>Smith, Suchanek &amp; Williams, <em>Bubbles, Crashes and Endogenous Expectations in Experimental Spot Asset Markets</em>, Econometrica 56(5)</td><td>Fundamentalist rational-anchor lineage</td></tr>
-          <tr><td class="term">DSSW 1990</td><td>De Long, Shleifer, Summers &amp; Waldmann, <em>Positive-Feedback Investment Strategies</em>, JF 45(2)</td><td>Trend-follower momentum lineage</td></tr>
-          <tr><td class="term">GS 1993</td><td>Gode &amp; Sunder, <em>Allocative Efficiency of Markets with Zero-Intelligence Traders</em>, JPE 101(1)</td><td>Zero-intelligence liquidity floor</td></tr>
+          <tr><td class="term">SSW 1988</td><td>Smith, Suchanek &amp; Williams, <em>Bubbles, Crashes and Endogenous Expectations in Experimental Spot Asset Markets</em>, Econometrica 56(5)</td><td>Canonical experimental-bubble design; the asset-life and dividend structure that DLM 2005 inherits</td></tr>
         </tbody>
       </table>
     </div>
@@ -1149,42 +1074,33 @@
         </div>
       </div>
 
-      <!-- ======== Slide 7 — Agent Taxonomy ======== -->
+      <!-- ======== Slide 7 — Agent Design ======== -->
       <div class="slide" data-slide="7">
         <div class="slide-body">
-          <h2 class="slide-heading">Agent taxonomy &amp; market ecology</h2>
+          <h2 class="slide-heading">Agent design · $N = 6$ Utility agents</h2>
+          <div class="slide-card slide-highlight">
+            <h4>U · Utility agent (sole agent class)</h4>
+            <div class="slide-formula">$\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon),\quad a^* = \arg\max_{a \in \mathcal{A}} \mathrm{EU}(a)$</div>
+            <p class="slide-sm">All six agents are EU-maximising Utility agents following the Lopez-Lira (2025) framework. Per-period belief update is the experimental variable — the only dimension that varies across Plans I, II, and III.</p>
+          </div>
           <div class="slide-three-col">
             <div class="slide-card">
-              <h4>F · Fundamentalist</h4>
-              <div class="slide-formula">$\text{ask} \lt 0.98\,\mathrm{FV}_t \Rightarrow \text{buy}$</div>
-              <div class="slide-formula">$\text{bid} \gt 1.02\,\mathrm{FV}_t \Rightarrow \text{sell}$</div>
-              <p class="slide-sm">Rational mean-reversion anchor. SSW lineage.</p>
+              <h4>Risk composition</h4>
+              <div class="slide-formula">$(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%</div>
+              <p class="slide-sm">Risk-loving / neutral / averse mix is the sole composition knob. Controlled by three linked sliders.</p>
             </div>
             <div class="slide-card">
-              <h4>T · Trend follower</h4>
-              <div class="slide-formula">$\text{slope}_t = \sum_{j=1}^{6} \Delta p_{t-j}$</div>
-              <div class="slide-formula">$\text{bid} = p_t + k \cdot \text{slope}_t$</div>
-              <p class="slide-sm">DSSW positive-feedback trader. Drives bubble inflation.</p>
+              <h4>Strategy cube</h4>
+              <div class="slide-formula">$\text{bias} \times \text{belief} \times \text{risk}$</div>
+              <p class="slide-sm">Each agent draws from $b_i \in \{-0.15, 0, +0.15\}$, a belief mode (honest/deceptive), and a risk preference.</p>
             </div>
             <div class="slide-card">
-              <h4>R · Random (ZI)</h4>
-              <div class="slide-formula">$\text{bid} \sim \mathcal{U}[0.7,\, 1.1]\,\mathrm{FV}_t$</div>
-              <div class="slide-formula">$\text{ask} \sim \mathcal{U}[0.9,\, 1.3]\,\mathrm{FV}_t$</div>
-              <p class="slide-sm">Gode–Sunder (1993) liquidity provider.</p>
+              <h4>Endogenous experience</h4>
+              <div class="slide-formula">$k_i = \texttt{roundsPlayed} \in \{0,1,2,\ldots\}$</div>
+              <p class="slide-sm">Experience is procedural: $k_i$ starts at 0, incremented each round. Plan I blend weight $w(k_i)$ ramps from 0.60 to 0.90.</p>
             </div>
           </div>
-          <div class="slide-two-col">
-            <div class="slide-card">
-              <h4>E · Experienced (DLM)</h4>
-              <div class="slide-formula">$\text{prior}_t = \varphi(h) \cdot \mathrm{FV}_t, \quad h = T - t + 1$</div>
-              <p class="slide-sm">Horizon discount $\varphi$: naive $\approx 1$, veteran → 0 in final periods. DLM 2005's bubble-suppressing channel. Counter $k_i$ gates the branch.</p>
-            </div>
-            <div class="slide-card">
-              <h4>U · Utility agent</h4>
-              <div class="slide-formula">$\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon),\; a^* = \arg\max \mathrm{EU}$</div>
-              <p class="slide-sm">EU-maximising agent — the class whose per-period belief update is the experimental variable. Lopez-Lira (2025) framework.</p>
-            </div>
-          </div>
+          <p class="slide-note-sm">DLM 2005 uses $N = 6$ homogeneous human subjects. This simulator replaces them with $N = 6$ heterogeneous Utility agents whose belief formation is the experimental treatment.</p>
         </div>
       </div>
 
@@ -1310,7 +1226,7 @@
               <p class="slide-sm"><strong>Belief channel:</strong> Plan I / Plan II / Plan III</p>
               <p class="slide-sm"><strong>Risk composition:</strong> $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%</p>
               <p class="slide-sm"><strong>Deception:</strong> honest / strategic misreporting</p>
-              <p class="slide-sm"><strong>Population mix:</strong> $(N_F, N_T, N_R, N_E, N_U)$</p>
+              <p class="slide-sm"><strong>Population:</strong> $N = 6$ Utility agents; risk split $(\alpha_L, \alpha_N, \alpha_A)$</p>
               <p class="slide-sm"><strong>Session structure:</strong> $R = 4$ rounds of $T = 10$ periods</p>
             </div>
             <div class="slide-card">

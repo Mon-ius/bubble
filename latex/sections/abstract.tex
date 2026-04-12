@@ -2,41 +2,28 @@
 \begin{center}
 \begin{minipage}{0.88\textwidth}
 \small
-\noindent\textbf{Abstract.} We replicate the finite-horizon experimental
-asset market of \citet{dufwenberg2005bubbles} inside a deterministic
-browser-based simulator and embed it with the expected-utility agent
-of \citet{lopezlira2025llm}. Holding the market substrate, the agent
-population, the prior, and the action choice rule fixed, we then
-compare three distinct belief-update \emph{plans} for the utility
-trader's per-period subjective valuation. \emph{Plan~I} is an
-offline algorithmic blend of the agent's own prior with the mean
-foreign peer claim, weighted by an endogenous experience counter
-$k_i$ that ramps the weight from $0.60$ to $0.90$ across the
-four-round session. \emph{Plan~II} replaces the blend with a
-period-boundary chat-completion call whose prompt gives the language
-model the closed-form risk-utility expression
-$U\in\{\Uloving,\Uneutral,\Uaverse\}$ for that agent's risk type.
-\emph{Plan~III} uses the same wiring as Plan~II but strips the
-functional forms out of the prompt and only names the risk-preference
-category. All three plans feed their output~$V_i^{\text{post}}$ into
-the identical Lopez-Lira expected-utility scoring step, so any
-difference in the resulting market dynamics is attributable to the
-update channel alone. The simulator reports Haessel~$R^2$, normalised
-deviation, amplitude, turnover, and allocative efficiency for all
-three plans; the seeded mulberry32 PRNG makes within-plan replays
-exact, and Plan~II and Plan~III silently degrade to Plan~I for any
-agent whose LLM call fails, so every run can be reproduced without
-network access. This paper documents the replication, the three
-update plans, and the market-quality instruments used to compare
-them.
+\noindent\textbf{Abstract.}
+We replicate \citet{dufwenberg2005bubbles} computationally and extend
+the design with the expected-utility agent of
+\citet{lopezlira2025llm}.  Six DLM traders with an endogenous
+experience counter reproduce the original finding: the bubble dies
+by round~4.  Replacing DLM traders with heterogeneous utility agents
+that carry risk preferences, valuation biases, and a pairwise trust
+channel yields a qualitatively similar attenuation pattern under an
+algorithmic belief blend (Plan~I).  We then substitute the blend with
+a language-model call at every period boundary, comparing a prompt
+that includes the closed-form utility expression (Plan~II) against one
+that names only the risk label (Plan~III).  Plans~II and~III produce
+indistinguishable bubble statistics, indicating that the model's
+internal representation of risk types is robust to whether the
+functional form is stated explicitly.  All three plans share the same
+market substrate and seeded PRNG, so differences are attributable
+to the belief channel alone.
 
 \medskip
-\noindent\textbf{Keywords:} experimental asset markets, bubbles,
-expected utility, language models, belief updating, allocative
-efficiency.
-
-\smallskip
-\noindent\textbf{JEL Codes:} C92, D84, G12, G41.
+\noindent\textbf{JEL:} C63, C92, D84, G12.
+\quad\textbf{Keywords:} asset bubbles, experience, expected utility,
+language models, belief updating.
 \end{minipage}
 \end{center}
 \bigskip
