@@ -2278,7 +2278,7 @@ body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
 }
 .arch-svg-container svg {
   width: 100%;
-  max-width: 980px;
+  max-width: 760px;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -2289,14 +2289,10 @@ body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
    --nb (soft background). Add a new category by defining both vars
    and then the shared .n rect / .n text.t rules below do the work. */
 .arch-diagram .n-paper  { --nc: var(--blue);   --nb: var(--blue-bg); }
-.arch-diagram .n-fund   { --nc: var(--green);  --nb: var(--green-bg); }
-.arch-diagram .n-trend  { --nc: var(--green);  --nb: var(--green-bg); }
-.arch-diagram .n-zi     { --nc: var(--green);  --nb: var(--green-bg); }
-.arch-diagram .n-exp    { --nc: var(--teal);   --nb: var(--teal-bg); }
 .arch-diagram .n-util   { --nc: var(--amber);  --nb: var(--amber-bg); }
 .arch-diagram .n-eu     { --nc: var(--amber);  --nb: var(--amber-bg); }
-.arch-diagram .n-msg    { --nc: var(--amber);  --nb: var(--amber-bg); }
-.arch-diagram .n-trust  { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-msg    { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-trust  { --nc: var(--teal);   --nb: var(--teal-bg); }
 .arch-diagram .n-wang   { --nc: var(--pink);   --nb: var(--pink-bg); }
 .arch-diagram .n-book   { --nc: var(--purple); --nb: var(--purple-bg); }
 .arch-diagram .n-metric { --nc: var(--red);    --nb: var(--red-bg); }
@@ -2364,7 +2360,8 @@ body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
   opacity: 0.85;
 }
 .arch-diagram .arch-group.g-paper  rect { stroke: var(--blue);  fill: color-mix(in srgb, var(--blue-bg)  45%, transparent); }
-.arch-diagram .arch-group.g-strat  rect { stroke: var(--green); fill: color-mix(in srgb, var(--green-bg) 30%, transparent); }
+.arch-diagram .arch-group.g-strat  rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber-bg) 30%, transparent); }
+.arch-diagram .arch-group.g-plan   rect { stroke: var(--green); fill: color-mix(in srgb, var(--green-bg) 25%, transparent); }
 .arch-diagram .arch-group.g-wang   rect { stroke: var(--pink);  fill: color-mix(in srgb, var(--pink-bg)  45%, transparent); stroke-dasharray: 5 4; }
 .arch-diagram .arch-group.g-market rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber-bg) 35%, transparent); }
 .arch-diagram .arch-group .g-label {
@@ -2375,7 +2372,8 @@ body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
   opacity: 0.85;
 }
 .arch-diagram .arch-group.g-paper  .g-label { fill: var(--blue); }
-.arch-diagram .arch-group.g-strat  .g-label { fill: var(--green); }
+.arch-diagram .arch-group.g-strat  .g-label { fill: var(--amber); }
+.arch-diagram .arch-group.g-plan   .g-label { fill: var(--green); }
 .arch-diagram .arch-group.g-wang   .g-label { fill: var(--pink); }
 .arch-diagram .arch-group.g-market .g-label { fill: var(--amber); }
 

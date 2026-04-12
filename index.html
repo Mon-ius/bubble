@@ -638,167 +638,161 @@
     </div>
 
     <div class="arch-svg-container arch-diagram" id="arch-math">
-      <svg viewBox="0 0 980 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mathematical pipeline diagram">
+      <svg viewBox="0 0 760 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mathematical pipeline diagram">
         <defs>
           <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
           </marker>
         </defs>
 
-        <!-- Group 1 — Shared market substrate -->
+        <!-- Layer 1 — Market substrate -->
         <g class="arch-group g-paper">
-          <rect x="30" y="20" width="320" height="180" rx="10" ry="10"/>
-          <text x="190" y="44" class="g-label">Market substrate · DLM 2005</text>
+          <rect x="20" y="10" width="720" height="80" rx="10" ry="10"/>
+          <text x="380" y="32" class="g-label">Market substrate · DLM 2005</text>
         </g>
-        <g class="n n-paper" transform="translate(60 60)">
-          <rect width="260" height="46" rx="6" ry="6"/>
-          <foreignObject width="260" height="46">
+        <g class="n n-paper" transform="translate(40 42)">
+          <rect width="330" height="40" rx="6" ry="6"/>
+          <foreignObject width="330" height="40">
             <div class="fo-node">
-              <div class="fo-t">$T = 10$ periods</div>
-              <div class="fo-s">$d \in \{0,\, 20\}$¢ &nbsp; $\mathbb{E}[d] = 10$¢</div>
+              <div class="fo-t">$T = 10$ periods &nbsp; $d \in \{0, 20\}$¢ &nbsp; $\mathbb{E}[d] = 10$¢</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-paper n-eq" transform="translate(60 122)">
-          <rect width="260" height="62" rx="6" ry="6"/>
-          <foreignObject width="260" height="62">
+        <g class="n n-paper n-eq" transform="translate(390 42)">
+          <rect width="330" height="40" rx="6" ry="6"/>
+          <foreignObject width="330" height="40">
             <div class="fo-node">
               <div class="fo-t">$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$</div>
-              <div class="fo-s">Risk-neutral fundamental value</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Group 2 — Utility agent pipeline (N = 6, all utility) -->
+        <!-- Layer 2 — Utility agent: prior + EU scoring -->
         <g class="arch-group g-strat">
-          <rect x="380" y="20" width="570" height="220" rx="10" ry="10"/>
-          <text x="665" y="44" class="g-label">Utility agent pipeline · $N = 6$</text>
+          <rect x="20" y="120" width="720" height="80" rx="10" ry="10"/>
+          <text x="380" y="142" class="g-label">Utility agent pipeline · $N = 6$</text>
         </g>
-
-        <g class="n n-util" transform="translate(400 60)">
-          <rect width="260" height="72" rx="6" ry="6"/>
-          <foreignObject width="260" height="72">
+        <g class="n n-util" transform="translate(40 152)">
+          <rect width="330" height="40" rx="6" ry="6"/>
+          <foreignObject width="330" height="40">
             <div class="fo-node">
-              <div class="fo-t">Utility agent prior</div>
-              <div class="fo-s">$\text{prior} = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$</div>
-              <div class="fo-s">risk $U_L$ (convex) / $U_N$ / $U_A$</div>
+              <div class="fo-t">Prior &nbsp; $\mathrm{FV}_t \!\cdot\! (1 + b_i + \varepsilon)$ &nbsp; $U_L / U_N / U_A$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-eu" transform="translate(680 60)">
-          <rect width="250" height="72" rx="6" ry="6"/>
-          <foreignObject width="250" height="72">
+        <g class="n n-eu" transform="translate(390 152)">
+          <rect width="330" height="40" rx="6" ry="6"/>
+          <foreignObject width="330" height="40">
             <div class="fo-node">
-              <div class="fo-t">Expected-utility score</div>
-              <div class="fo-s">$\mathrm{EU} = p \!\cdot\! U(w_1) + (1\!-\!p) \!\cdot\! U(w_0)$</div>
-              <div class="fo-s">$a^* = \arg\max \mathrm{EU}$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-msg" transform="translate(400 148)">
-          <rect width="260" height="68" rx="6" ry="6"/>
-          <foreignObject width="260" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Plan I · algorithmic blend</div>
-              <div class="fo-s">$\text{post} = w \!\cdot\! \text{prior} + (1\!-\!w)\!\cdot\!\bar{m}$</div>
-              <div class="fo-s">$w = 0.6 + 0.1 \cdot \min(3,\,k)$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-trust" transform="translate(680 148)">
-          <rect width="250" height="68" rx="6" ry="6"/>
-          <foreignObject width="250" height="68">
-            <div class="fo-node">
-              <div class="fo-t">Trust EMA</div>
-              <div class="fo-s">$\tau_s \leftarrow (1\!-\!\alpha)\,\tau_s \,+$</div>
-              <div class="fo-s">$\alpha\,(1 - |\text{claim} - \text{VWAP}|\,/\,\text{VWAP})$</div>
+              <div class="fo-t">$\mathrm{EU}(a) = p \!\cdot\! U(w_1) + (1\!-\!p)\!\cdot\! U(w_0)$ &nbsp; $a^* = \arg\max$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Group 3 — Plan II / III LLM belief update -->
-        <g class="arch-group g-wang">
-          <rect x="30" y="240" width="320" height="160" rx="10" ry="10"/>
-          <text x="190" y="262" class="g-label">LLM belief update · Plan II / III</text>
+        <!-- Layer 3 — Three belief-update plans -->
+        <g class="arch-group g-plan">
+          <rect x="20" y="230" width="720" height="120" rx="10" ry="10"/>
+          <text x="380" y="252" class="g-label">Belief update · three plans</text>
         </g>
-        <g class="n n-wang n-eq" transform="translate(60 278)">
-          <rect width="260" height="50" rx="6" ry="6"/>
-          <foreignObject width="260" height="50">
+        <g class="n n-msg" transform="translate(40 264)">
+          <rect width="220" height="72" rx="6" ry="6"/>
+          <foreignObject width="220" height="72">
             <div class="fo-node">
-              <div class="fo-t">Plan II · prompt $\supseteq \{U_L, U_N, U_A\}$</div>
-              <div class="fo-s">$V_i^{\text{post}} \leftarrow \text{LLM}(\text{risk} + \text{formulas})$</div>
+              <div class="fo-t">Plan I · algorithmic</div>
+              <div class="fo-s">$V^{\text{post}} = w \!\cdot\! V^{\text{prior}} + (1\!-\!w)\!\cdot\!\bar{m}$</div>
+              <div class="fo-s">$w = 0.6 + 0.1\,\min(3,k)$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-wang" transform="translate(60 340)">
-          <rect width="260" height="50" rx="6" ry="6"/>
-          <foreignObject width="260" height="50">
+        <g class="n n-wang" transform="translate(278 264)">
+          <rect width="220" height="72" rx="6" ry="6"/>
+          <foreignObject width="220" height="72">
             <div class="fo-node">
-              <div class="fo-t">Plan III · prompt $\supseteq$ risk label only</div>
-              <div class="fo-s">$V_i^{\text{post}} \leftarrow \text{LLM}(\text{risk label})$</div>
+              <div class="fo-t">Plan II · LLM + forms</div>
+              <div class="fo-s">prompt $\supseteq \{U_L, U_N, U_A\}$</div>
+              <div class="fo-s">$V^{\text{post}} \!\leftarrow\! \text{LLM}(\pi^{\text{II}})$</div>
+            </div>
+          </foreignObject>
+        </g>
+        <g class="n n-wang" transform="translate(516 264)">
+          <rect width="204" height="72" rx="6" ry="6"/>
+          <foreignObject width="204" height="72">
+            <div class="fo-node">
+              <div class="fo-t">Plan III · LLM + label</div>
+              <div class="fo-s">prompt $\supseteq$ risk label only</div>
+              <div class="fo-s">$V^{\text{post}} \!\leftarrow\! \text{LLM}(\pi^{\text{III}})$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Group 4 — Market matching + metrics -->
+        <!-- Layer 4 — Trust EMA -->
+        <g class="n n-trust" transform="translate(200 378)">
+          <rect width="360" height="40" rx="6" ry="6"/>
+          <foreignObject width="360" height="40">
+            <div class="fo-node">
+              <div class="fo-t">Trust EMA &nbsp; $\tau \!\leftarrow\! (1\!-\!\alpha)\tau + \alpha \!\cdot\! \text{closeness}$ &nbsp; $\alpha\!=\!0.30$</div>
+            </div>
+          </foreignObject>
+        </g>
+
+        <!-- Layer 5 — Market matching + metrics -->
         <g class="arch-group g-market">
-          <rect x="30" y="430" width="920" height="210" rx="10" ry="10"/>
-          <text x="490" y="454" class="g-label">Market matching + quality metrics</text>
+          <rect x="20" y="446" width="720" height="160" rx="10" ry="10"/>
+          <text x="380" y="468" class="g-label">Market matching + quality metrics</text>
         </g>
-        <g class="n n-book" transform="translate(60 472)">
-          <rect width="400" height="52" rx="6" ry="6"/>
-          <foreignObject width="400" height="52">
+        <g class="n n-book" transform="translate(40 480)">
+          <rect width="700" height="40" rx="6" ry="6"/>
+          <foreignObject width="700" height="40">
             <div class="fo-node">
-              <div class="fo-t">Order book (price–time priority)</div>
-              <div class="fo-s">$\text{bid} \geq \text{ask} \Rightarrow$ trade at resting price</div>
+              <div class="fo-t">Order book (price–time priority) &nbsp; $\text{bid} \geq \text{ask} \Rightarrow$ trade at resting price</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(490 472)">
-          <rect width="200" height="52" rx="6" ry="6"/>
-          <foreignObject width="200" height="52">
+        <g class="n n-metric" transform="translate(40 538)">
+          <rect width="168" height="52" rx="6" ry="6"/>
+          <foreignObject width="168" height="52">
             <div class="fo-node">
               <div class="fo-t">Haessel $R^2$</div>
-              <div class="fo-s">fit of $\bar{p}_t$ to $\mathrm{FV}_t$</div>
+              <div class="fo-s">$\bar{p}_t$ vs $\mathrm{FV}_t$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(710 472)">
-          <rect width="210" height="52" rx="6" ry="6"/>
-          <foreignObject width="210" height="52">
+        <g class="n n-metric" transform="translate(222 538)">
+          <rect width="168" height="52" rx="6" ry="6"/>
+          <foreignObject width="168" height="52">
+            <div class="fo-node">
+              <div class="fo-t">Norm. deviation</div>
+              <div class="fo-s">$\Sigma|p\!-\!\mathrm{FV}|/(T\!\cdot\!\mathrm{FV}_0\!\cdot\! Q)$</div>
+            </div>
+          </foreignObject>
+        </g>
+        <g class="n n-metric" transform="translate(404 538)">
+          <rect width="148" height="52" rx="6" ry="6"/>
+          <foreignObject width="148" height="52">
             <div class="fo-node">
               <div class="fo-t">Amplitude</div>
-              <div class="fo-s">$(\max - \min\;\text{residual})\,/\,\mathrm{FV}_0$</div>
+              <div class="fo-s">peak–trough / $\mathrm{FV}_0$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(60 546)">
-          <rect width="400" height="52" rx="6" ry="6"/>
-          <foreignObject width="400" height="52">
+        <g class="n n-metric" transform="translate(566 538)">
+          <rect width="174" height="52" rx="6" ry="6"/>
+          <foreignObject width="174" height="52">
             <div class="fo-node">
-              <div class="fo-t">Normalized deviation</div>
-              <div class="fo-s">$\mathrm{ND} = \Sigma\,|p_t - \mathrm{FV}_t|\,/\,(T \!\cdot\! \mathrm{FV}_0 \!\cdot\! Q)$</div>
-            </div>
-          </foreignObject>
-        </g>
-        <g class="n n-metric" transform="translate(490 546)">
-          <rect width="430" height="52" rx="6" ry="6"/>
-          <foreignObject width="430" height="52">
-            <div class="fo-node">
-              <div class="fo-t">Turnover · Allocative efficiency</div>
-              <div class="fo-s">$\mathrm{TO} = \Sigma\,\text{qty}\,/\,Q$ &nbsp;&nbsp; $\mathrm{AE} = U_{\text{realized}}\,/\,U_{\max}$</div>
+              <div class="fo-t">TO · AE</div>
+              <div class="fo-s">$\Sigma q/Q$ · $U_{\text{real}}/U_{\max}$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Connectors -->
-        <path class="link"      d="M 320 152 L 400 96"/>
-        <path class="link"      d="M 660 96 L 680 96"/>
-        <path class="link"      d="M 530 132 L 530 148"/>
-        <path class="link"      d="M 805 132 L 805 148"/>
-        <path class="link link-wang" d="M 320 306 L 400 96"/>
-        <path class="link"      d="M 530 216 L 530 430"/>
-        <path class="link"      d="M 805 216 L 805 430"/>
+        <!-- Connectors — clean vertical flow -->
+        <path class="link" d="M 380 90  L 380 120"/>
+        <path class="link" d="M 380 200 L 380 230"/>
+        <path class="link" d="M 150 336 L 150 378 L 200 398"/>
+        <path class="link link-wang" d="M 388 336 L 380 378"/>
+        <path class="link link-wang" d="M 618 336 L 560 378"/>
+        <path class="link" d="M 380 418 L 380 446"/>
+        <path class="link" d="M 380 520 L 380 538"/>
       </svg>
     </div>
 
