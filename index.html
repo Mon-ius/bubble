@@ -92,7 +92,7 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="5" step="1" value="1">
           </div>
-          <div class="param-row param-toggle-row" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
+          <div class="param-row param-toggle-pair" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
             <div class="param-head">
               <label>Prior Bias</label>
               <label class="slide-toggle" for="p-applyBias">
@@ -100,8 +100,6 @@
                 <span class="slide-track"><span class="slide-thumb"></span></span>
               </label>
             </div>
-          </div>
-          <div class="param-row param-toggle-row" data-tip="Noise adds i.i.d. per-tick jitter ε ~ U[−valuationNoise, +valuationNoise] to the FV prior. Off → prior = FV exactly.">
             <div class="param-head">
               <label>Prior Noise</label>
               <label class="slide-toggle" for="p-applyNoise">

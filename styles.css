@@ -872,7 +872,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    of a param-head, aligned with the .pval readout position. Track
    dimensions and border-radius echo the custom range-input styling;
    the accent colour scheme matches the slider thumb's active state. */
-.param-toggle-row { gap: 4px; }
+.param-toggle-pair {
+  flex-direction: row;
+  gap: 16px;
+}
+.param-toggle-pair > .param-head { flex: 1; min-width: 0; }
 .slide-toggle {
   position: relative;
   display: inline-flex;
