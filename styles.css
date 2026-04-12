@@ -1619,14 +1619,19 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    flippable class; others render a plain static card. */
 .agent-card-wrap {
   perspective: 800px;
+  display: flex;
 }
 .agent-card-wrap.flippable {
   cursor: pointer;
 }
 .agent-card-inner {
   position: relative;
+  width: 100%;
   transition: transform 0.45s var(--ease);
   transform-style: preserve-3d;
+}
+.agent-card-inner > .card-front {
+  height: 100%;
 }
 .agent-card-wrap.flipped .agent-card-inner {
   transform: rotateY(180deg);
