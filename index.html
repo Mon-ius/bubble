@@ -650,65 +650,72 @@
     </div>
 
     <div class="arch-svg-container arch-diagram" id="arch-math">
-      <svg viewBox="0 0 760 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mathematical pipeline diagram">
+      <svg viewBox="0 0 760 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mathematical pipeline diagram">
         <defs>
           <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
           </marker>
         </defs>
 
-        <!-- Layer 1 — Market substrate -->
+        <!--
+          Layout grid — 30px vertical gap between layers, 20px inset,
+          all groups span x=[20..740] (720w), nodes inset 20px further.
+          Y positions: L1=10, gap, L2=120, gap, L3=230, gap, L4=460.
+        -->
+
+        <!-- Layer 1 — Market substrate (y 10–90) -->
         <g class="arch-group g-paper">
           <rect x="20" y="10" width="720" height="80" rx="10" ry="10"/>
           <text x="380" y="32" class="g-label">Market substrate · DLM 2005</text>
         </g>
-        <g class="n n-paper" transform="translate(40 42)">
-          <rect width="330" height="40" rx="6" ry="6"/>
-          <foreignObject width="330" height="40">
+        <g class="n n-paper" transform="translate(40 44)">
+          <rect width="340" height="40" rx="6" ry="6"/>
+          <foreignObject width="340" height="40">
             <div class="fo-node">
               <div class="fo-t">$T = 10$ periods &nbsp; $d \in \{0, 20\}$¢ &nbsp; $\mathbb{E}[d] = 10$¢</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-paper n-eq" transform="translate(390 42)">
-          <rect width="330" height="40" rx="6" ry="6"/>
-          <foreignObject width="330" height="40">
+        <g class="n n-paper n-eq" transform="translate(400 44)">
+          <rect width="320" height="40" rx="6" ry="6"/>
+          <foreignObject width="320" height="40">
             <div class="fo-node">
               <div class="fo-t">$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Layer 2 — Utility agent: prior + EU scoring -->
+        <!-- Layer 2 — Utility agent pipeline (y 120–200) -->
         <g class="arch-group g-strat">
           <rect x="20" y="120" width="720" height="80" rx="10" ry="10"/>
           <text x="380" y="142" class="g-label">Utility agent pipeline · $N = 6$</text>
         </g>
-        <g class="n n-util" transform="translate(40 152)">
-          <rect width="330" height="40" rx="6" ry="6"/>
-          <foreignObject width="330" height="40">
+        <g class="n n-util" transform="translate(40 154)">
+          <rect width="340" height="40" rx="6" ry="6"/>
+          <foreignObject width="340" height="40">
             <div class="fo-node">
               <div class="fo-t">Prior &nbsp; $\mathrm{FV}_t \!\cdot\! (1 + b_i + \varepsilon)$ &nbsp; $U_L / U_N / U_A$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-eu" transform="translate(390 152)">
-          <rect width="330" height="40" rx="6" ry="6"/>
-          <foreignObject width="330" height="40">
+        <g class="n n-eu" transform="translate(400 154)">
+          <rect width="320" height="40" rx="6" ry="6"/>
+          <foreignObject width="320" height="40">
             <div class="fo-node">
-              <div class="fo-t">$\mathrm{EU}(a) = p \!\cdot\! U(w_1) + (1\!-\!p)\!\cdot\! U(w_0)$ &nbsp; $a^* = \arg\max$</div>
+              <div class="fo-t">$\mathrm{EU}(a) = p \!\cdot\! U(w_1) + (1\!-\!p)\!\cdot\! U(w_0)$ &nbsp; $a^\star\!=\!\arg\max$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Layer 3 — Three belief-update plans -->
+        <!-- Layer 3 — Belief update: plans + trust (y 230–420) -->
         <g class="arch-group g-plan">
-          <rect x="20" y="230" width="720" height="120" rx="10" ry="10"/>
-          <text x="380" y="252" class="g-label">Belief update · three plans</text>
+          <rect x="20" y="230" width="720" height="190" rx="10" ry="10"/>
+          <text x="380" y="252" class="g-label">Belief update · three plans + social learning</text>
         </g>
-        <g class="n n-msg" transform="translate(40 264)">
-          <rect width="220" height="72" rx="6" ry="6"/>
-          <foreignObject width="220" height="72">
+        <!-- Three plan cards — equal width, evenly spaced -->
+        <g class="n n-msg" transform="translate(40 266)">
+          <rect width="224" height="72" rx="6" ry="6"/>
+          <foreignObject width="224" height="72">
             <div class="fo-node">
               <div class="fo-t">Plan I · algorithmic</div>
               <div class="fo-s">$V^{\text{post}} = w \!\cdot\! V^{\text{prior}} + (1\!-\!w)\!\cdot\!\bar{m}$</div>
@@ -716,9 +723,9 @@
             </div>
           </foreignObject>
         </g>
-        <g class="n n-wang" transform="translate(278 264)">
-          <rect width="220" height="72" rx="6" ry="6"/>
-          <foreignObject width="220" height="72">
+        <g class="n n-wang" transform="translate(278 266)">
+          <rect width="224" height="72" rx="6" ry="6"/>
+          <foreignObject width="224" height="72">
             <div class="fo-node">
               <div class="fo-t">Plan II · LLM + forms</div>
               <div class="fo-s">prompt $\supseteq \{U_L, U_N, U_A\}$</div>
@@ -726,7 +733,7 @@
             </div>
           </foreignObject>
         </g>
-        <g class="n n-wang" transform="translate(516 264)">
+        <g class="n n-wang" transform="translate(516 266)">
           <rect width="204" height="72" rx="6" ry="6"/>
           <foreignObject width="204" height="72">
             <div class="fo-node">
@@ -736,23 +743,22 @@
             </div>
           </foreignObject>
         </g>
-
-        <!-- Layer 4 — Trust EMA -->
-        <g class="n n-trust" transform="translate(200 378)">
-          <rect width="360" height="40" rx="6" ry="6"/>
-          <foreignObject width="360" height="40">
+        <!-- Trust EMA — inside the belief-update group -->
+        <g class="n n-trust" transform="translate(140 362)">
+          <rect width="480" height="42" rx="6" ry="6"/>
+          <foreignObject width="480" height="42">
             <div class="fo-node">
-              <div class="fo-t">Trust EMA &nbsp; $\tau \!\leftarrow\! (1\!-\!\alpha)\tau + \alpha \!\cdot\! \text{closeness}$ &nbsp; $\alpha\!=\!0.30$</div>
+              <div class="fo-t">Trust EMA &nbsp; $\tau_{r \to s} \!\leftarrow\! (1\!-\!\alpha)\,\tau + \alpha \!\cdot\! \text{closeness}$ &nbsp; $\alpha\!=\!0.30$</div>
             </div>
           </foreignObject>
         </g>
 
-        <!-- Layer 5 — Market matching + metrics -->
+        <!-- Layer 4 — Market matching + metrics (y 450–630) -->
         <g class="arch-group g-market">
-          <rect x="20" y="446" width="720" height="160" rx="10" ry="10"/>
-          <text x="380" y="468" class="g-label">Market matching + quality metrics</text>
+          <rect x="20" y="450" width="720" height="180" rx="10" ry="10"/>
+          <text x="380" y="472" class="g-label">Market matching + quality metrics</text>
         </g>
-        <g class="n n-book" transform="translate(40 480)">
+        <g class="n n-book" transform="translate(40 486)">
           <rect width="700" height="40" rx="6" ry="6"/>
           <foreignObject width="700" height="40">
             <div class="fo-node">
@@ -760,36 +766,36 @@
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(40 538)">
-          <rect width="168" height="52" rx="6" ry="6"/>
-          <foreignObject width="168" height="52">
+        <g class="n n-metric" transform="translate(40 544)">
+          <rect width="168" height="68" rx="6" ry="6"/>
+          <foreignObject width="168" height="68">
             <div class="fo-node">
               <div class="fo-t">Haessel $R^2$</div>
-              <div class="fo-s">$\bar{p}_t$ vs $\mathrm{FV}_t$</div>
+              <div class="fo-s">fit of $\bar{p}_t$ to $\mathrm{FV}_t$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(222 538)">
-          <rect width="168" height="52" rx="6" ry="6"/>
-          <foreignObject width="168" height="52">
+        <g class="n n-metric" transform="translate(222 544)">
+          <rect width="168" height="68" rx="6" ry="6"/>
+          <foreignObject width="168" height="68">
             <div class="fo-node">
               <div class="fo-t">Norm. deviation</div>
               <div class="fo-s">$\Sigma|p\!-\!\mathrm{FV}|/(T\!\cdot\!\mathrm{FV}_0\!\cdot\! Q)$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(404 538)">
-          <rect width="148" height="52" rx="6" ry="6"/>
-          <foreignObject width="148" height="52">
+        <g class="n n-metric" transform="translate(404 544)">
+          <rect width="168" height="68" rx="6" ry="6"/>
+          <foreignObject width="168" height="68">
             <div class="fo-node">
               <div class="fo-t">Amplitude</div>
               <div class="fo-s">peak–trough / $\mathrm{FV}_0$</div>
             </div>
           </foreignObject>
         </g>
-        <g class="n n-metric" transform="translate(566 538)">
-          <rect width="174" height="52" rx="6" ry="6"/>
-          <foreignObject width="174" height="52">
+        <g class="n n-metric" transform="translate(586 544)">
+          <rect width="154" height="68" rx="6" ry="6"/>
+          <foreignObject width="154" height="68">
             <div class="fo-node">
               <div class="fo-t">TO · AE</div>
               <div class="fo-s">$\Sigma q/Q$ · $U_{\text{real}}/U_{\max}$</div>
@@ -797,14 +803,14 @@
           </foreignObject>
         </g>
 
-        <!-- Connectors — clean vertical flow -->
+        <!-- Connectors — straight vertical flow, 30px gaps -->
         <path class="link" d="M 380 90  L 380 120"/>
         <path class="link" d="M 380 200 L 380 230"/>
-        <path class="link" d="M 150 336 L 150 378 L 200 398"/>
-        <path class="link link-wang" d="M 388 336 L 380 378"/>
-        <path class="link link-wang" d="M 618 336 L 560 378"/>
-        <path class="link" d="M 380 418 L 380 446"/>
-        <path class="link" d="M 380 520 L 380 538"/>
+        <path class="link" d="M 152 338 L 152 362"/>
+        <path class="link link-wang" d="M 390 338 L 390 362"/>
+        <path class="link link-wang" d="M 618 338 L 618 362"/>
+        <path class="link" d="M 380 404 L 380 450"/>
+        <path class="link" d="M 380 526 L 380 544"/>
       </svg>
     </div>
 
