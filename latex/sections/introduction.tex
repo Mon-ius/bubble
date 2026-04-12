@@ -16,11 +16,11 @@ have played the game before, the bubble~disappears. Experience, rather
 than cognition or incentives, is what eventually kills the bubble.
 
 A parallel and much more recent literature replaces the human
-subjects with AI agents. \citet{lopezlira2025llm}
-proposes an expected-utility framework in which each AI-agent
-trader carries a persistent valuation bias $b_i$, a risk preference
-over wealth $U\in\{\Uloving,\Uneutral,\Uaverse\}$, and a belief-blending
-channel that lets agents exchange private valuations and update a
+subjects with AI agents. \citet{lopezlira2025llm} proposes an
+expected-utility framework in which each AI-agent trader carries a
+persistent valuation bias $b_i$, a risk preference over wealth
+$U\in\{\Uloving,\Uneutral,\Uaverse\}$, and a belief-blending channel
+that lets agents exchange private valuations and update a
 trust score for each sender by exponential moving average. Lopez-Lira's
 agents optimise expected utility over a small action set---hold,
 cross the bid, cross the ask, post passively---and the resulting
@@ -28,70 +28,98 @@ population can be dialled between skeptical and naive, truthful and
 deceptive, risk-averse and risk-loving by simple categorical knobs.
 The Lopez-Lira design is a natural vehicle for studying~how a
 heterogeneous AI-agent population prices a DLM asset, but it leaves
-open a psychological question the original DLM protocol never asked:
-if one replaces the deterministic prior~$\FV_t\cdot(1+b_i+\varepsilon)$
-with a private subjective valuation elicited from an AI agent that is
-told who the trader is and what the market looks like, does the asset
-then migrate, over the course of the run, into the hands of the
-agent with the highest such valuation?
+one channel unspecified: \emph{how should each utility agent
+translate its prior and the messages it has received into a
+posterior valuation that it then carries into the next period?}
+Every downstream instrument---the expected-utility score, the
+order chosen, the trust EMA, the order-matching step, the dividend
+credit---consumes that posterior~$V_i^{\text{post}}$ and is
+otherwise unaffected by the belief-update channel.
 
-This paper contributes a computational testbed in which the two
-designs share one continuous double-auction market, and a new
-protocol---\emph{AI-Agent Prior Elicitation} (AIPE)---that seeds
-each utility agent's prior with exactly one AI-agent call at
-run~start. Concretely, when AIPE is enabled and the user supplies
-an API key, the simulator fires one chat completion per utility
-agent in parallel, using a prompt that encodes the agent's risk
-preference, bias mode, and the presence of DLM experienced
-counterparties in the same market. The returned number, clamped to
-$[0.25\,\FV_0,\,1.75\,\FV_0]$, is written to the agent's
-\texttt{psychAnchor} slot and consumed on the first decision tick in
-place of the deterministic prior; subsequent ticks revert to the
-Lopez-Lira prior plus belief~blending. In the notation of the
-replicated model,
+This paper contributes a computational testbed that holds the
+market substrate, the agent population, the starting prior, and the
+action-choice rule strictly fixed, and compares three distinct
+\emph{plans} for the per-period belief update.
+
+\paragraph{Plan I (algorithmic baseline).} The posterior is a
+convex combination of the agent's own prior and the arithmetic
+mean of foreign peer claims received during the period, with a
+weight $w$ that ramps endogenously with experience,
 \begin{equation}
-\hat{V}_i \;\leftarrow\; \mathrm{AIPE}(\text{agent}_i),
-\qquad
-\mathrm{prior}_{t=0}^{(i)} \;=\; \hat{V}_i\cdot(1+\varepsilon_i),
-\qquad \hat{V}_i\in[0.25\,\FV_0,\,1.75\,\FV_0].
-\label{eq:anchor}
+V_i^{\text{post}} \;=\; w\cdot V_i^{\text{prior}}
+\;+\;(1-w)\cdot\frac{1}{|\mathcal{M}_i|}\sum_{m\in\mathcal{M}_i}\hat v_m,
+\qquad w = 0.6 + 0.1\,\min(3,\,k_i),
+\label{eq:plan1}
 \end{equation}
-The deterministic fallback---used when no key is supplied or the
-network call fails---drops equation~\eqref{eq:anchor} and resumes the
-Lopez-Lira prior $\FV_t\cdot(1+b_i+\varepsilon)$ unchanged. Because
-the run then proceeds through a deterministic seeded PRNG, every
-simulation can be replayed identically with or without the anchor
-channel.
+where $k_i$ is the agent's \texttt{roundsPlayed} counter. A novice
+($k_i=0$) moves appreciably toward peers ($w=0.60$), a
+three-round veteran ($k_i\ge3$) barely moves ($w=0.90$). No network
+calls are placed; the update is deterministic under the seeded
+PRNG.
 
-The research question is easy to instrument. Let
-$i^\star=\arg\max_{i\in U}\hat{V}_i$ be the utility agent with the
-highest anchored valuation and
-$j^\star(t)=\arg\max_i\text{inventory}_i(t)$ the top holder at
-tick~$t$; a \emph{match} at~$t$ is
-$\mathbb{1}\{j^\star(t)=i^\star\}$ and the \emph{normalised gap} is
-$g(t)=(\hat V_{i^\star}-\hat V_{j^\star(t)})/\hat V_{i^\star}$.
-Both quantities are reported every tick alongside Haessel~$R^2$,
-normalised deviation, amplitude, turnover, and allocative
-efficiency, so classical bubble statistics stay visible beside the
-new allocation metrics.
+\paragraph{Plan II (LLM update with explicit utility forms).}
+At every period boundary the engine fires one parallel
+\texttt{chat/completions} call per utility agent. The user prompt
+encodes the market constants, the agent's risk preference and bias
+mode, the peer claims accumulated during the period, the agent's
+mark-to-market wealth, and---critically---the \emph{closed-form}
+expression of the agent's risk-utility functional:
+\begin{equation}
+\pi_i^{\text{II}} \;\supset\; \bigl\{\,U_L(w)=(w/w_0)^2,\;U_N(w)=w/w_0,\;U_A(w)=\sqrt{w/w_0}\,\bigr\}.
+\label{eq:plan2-prompt}
+\end{equation}
+The model is asked to return a single number in experimental cents,
+which the engine parses, clamps to a sanity interval, and writes to
+the agent's next-period prior slot. The call is fire-and-forget: if
+the network errors or the parse fails, the agent silently degrades
+to Plan~I for that period, so reproducibility is preserved even
+when the key is absent.
 
-Two features distinguish AIPE from a na\"ive ``AI-as-trader''
-pipeline. First, the AI agent is consulted exactly once at
-run~start; after the anchor is absorbed, the trader is again a
-pure expected-utility maximiser and the mulberry32 RNG alone
-controls the downstream dynamics. Second, the anchor is a
-\emph{valuation} and not an order: the trader's quoting rule, fill
-probability, and utility function are unchanged, and only its starting
-prior is moved. These two choices isolate the specific question
-``does psychology predict ownership'' from the adjacent question
-``does an AI agent trade~well.''
+\paragraph{Plan III (LLM update with risk label only).} Identical
+wiring to Plan~II, but the user prompt strips the closed-form
+expressions out of equation~\eqref{eq:plan2-prompt} and names only
+the risk-preference category:
+\begin{equation}
+\pi_i^{\text{III}} \;\supset\;
+\{\text{risk-loving}\,|\,\text{risk-neutral}\,|\,\text{risk-averse}\}.
+\label{eq:plan3-prompt}
+\end{equation}
+Plan~III therefore isolates a narrow, purely linguistic question:
+does handing the model an explicit functional form for utility
+produce different market dynamics than naming the risk type alone?
+The LLM in Plan~III must translate ``risk-averse'' into an implicit
+curvature internally; the LLM in Plan~II is handed the curvature
+as a formula. Any divergence between the two plans' market statistics
+quantifies the prompt-sensitivity of the model's internal
+expected-utility reasoning.
+
+\paragraph{Research question.} With the market substrate, the agent
+population, the Lopez-Lira prior, the expected-utility action-choice
+rule, the order-matching engine, and the seed all held fixed, the
+question the testbed is built to answer~is
+\begin{equation*}
+\text{Plan~I} \;\overset{?}{\approx}\; \text{Plan~II} \;\overset{?}{\approx}\; \text{Plan~III}
+\quad\text{in classical bubble statistics and posterior trajectory?}
+\end{equation*}
+A null result (all three plans produce indistinguishable market
+dynamics) would imply that the specific belief-update channel is
+absorbed by the downstream expected-utility score and does not
+propagate into observable market behaviour. A divergence between
+Plan~I and the two LLM plans would implicate the LLM itself as a
+source of systematic behavioural difference. A divergence
+\emph{between} Plan~II and Plan~III would implicate prompt
+structure---specifically, whether handing the model a closed-form
+utility function alters its valuation choice---as a source of
+behavioural difference that goes beyond the agent's declared risk
+type.
 
 Section~\ref{sec:related} places the simulator in the literature on
-experimental asset markets and AI-agent traders.
-Section~\ref{sec:design} documents the market structure and the
-sampling stage. Section~\ref{sec:agents} gives the precise decision
-rule for each agent type. Section~\ref{sec:anchor} presents AIPE:
-the elicitation call, the clamp, the consumption path, and the
-research-question instrumentation. Section~\ref{sec:results}
-reports preliminary findings, and Section~\ref{sec:conclusion}
-concludes.
+experimental asset markets, expected-utility AI-agent traders, and
+LLM prompt sensitivity. Section~\ref{sec:design} documents the
+market structure and the sampling stage. Section~\ref{sec:agents}
+gives the precise decision rule for each agent type.
+Section~\ref{sec:anchor} presents the three belief-update plans:
+the algorithmic blend, the two LLM calls, the prompt templates,
+the clamp, the consume-and-cache path, and the
+fallback-to-Plan~I~invariant. Section~\ref{sec:results} reports
+preliminary findings, and Section~\ref{sec:conclusion} concludes.

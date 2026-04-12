@@ -2,18 +2,17 @@
 \section{Agent Model}
 \label{sec:agents}
 
-This section gives the exact decision rule for each of the five
+This section gives the exact decision rule for each of the four
 agent classes in the simulator. All rules read the top of the book
 (best bid $b_t$ and best ask $a_t$), the current fundamental
 value~$\FV_t$, and a seeded pseudo-random draw $r\sim
 \text{Uniform}(0,1)$; the formulas below are the literal rules
 implemented in the source code, with constants exposed to the
 reader so that any experiment can be reconstructed from this page
-alone. The \emph{DLM trader} class (\S\ref{sec:dlm-agent}) has two
-internal decision branches selected by the endogenous
-\texttt{roundsPlayed} counter described in
-\S\ref{sec:endogenous-experience}; every other class has a single
-branch.
+alone. The utility agent~(\S\ref{sec:util-agent}) is the only class
+whose period-boundary belief update differs across the three plans
+of Section~\ref{sec:anchor}; every other class runs an identical
+rule under all three plans and is described once here.
 
 \subsection{Fundamentalist (F)}
 
@@ -76,63 +75,11 @@ in every run so that the book never goes fully empty. One slot of
 this type is part of the fixed background and is invisible to the
 population-composition sliders.
 
-\subsection{DLM trader (D): endogenous experience}
-\label{sec:dlm-agent}
-
-The DLM trader is the \emph{only} agent class instantiated in
-strict-DLM mode and it implements the paper's endogenous-experience
-design exactly: there are no ``naive'', ``once-played'', or
-``veteran'' types to pick between at sampling time; there is one
-class whose \texttt{decide} method reads
-$\texttt{roundsPlayed}\in\{0,1,2,\ldots\}$ and branches.
-
-\paragraph{Inexperienced branch ($\texttt{roundsPlayed}=0$).}
-A newly-instantiated DLM trader has zero information about the
-fundamental horizon and no liquidation urge in the terminal
-periods of a round. The behaviour is deliberately bubble-prone:
-trend-chasing on the most recent trade price with zero-intelligence
-noise layered on top. Let $p_t$ be the most recent trade price
-(with $\FV_1$ used when the book is empty). On each tick the agent
-flips between a unit bid and a unit ask with equal probability; the
-bid is drawn from $\text{Uniform}[0.9\,p_t,\,1.15\,p_t]$ and the
-ask from $\text{Uniform}[0.9\,p_t,\,1.2\,p_t]$, clipped by cash and
-inventory respectively. It never refuses to overpay, never
-liquidates late in a round, and in particular never consults~$\FV_t$.
-
-\paragraph{Experienced branch ($\texttt{roundsPlayed}\ge 1$).}
-Once the engine has incremented the counter (which happens
-exactly at round boundaries in the session loop), the same
-instance switches to an FV-anchored rule. Let $h = T - t + 1$ be
-the number of periods remaining, and let
-$\varphi(h) = \varphi_0 + (h/T)\cdot\varphi_1$ be the horizon
-discount with $\varphi_0 = 0.92$ and $\varphi_1 = 0.06$ (the
-veteran calibration in DLM's terminology). The belief is
-\begin{equation}
-\beta_t \;=\; \FV_t \cdot \varphi(h).
-\label{eq:dlm_belief}
-\end{equation}
-When $h \le 3$ the agent liquidates any remaining inventory into
-the best bid; when $h \le 4$ it refuses to cross any ask priced
-above $0.9\,\beta_t$. Outside the terminal region it behaves like
-a risk-tight fundamentalist: it crosses the ask with a unit bid
-at $a_t$ when $a_t < 0.92\,\beta_t$ and crosses the bid with a
-unit ask at $b_t$ when $b_t > 1.05\,\beta_t$, otherwise posting a
-passive quote near~$\beta_t$.
-
-\paragraph{Instantiation.} Every DLM trader is born with
-$\texttt{roundsPlayed}=0$. There is no pre-assignment knob, no
-sampling distribution over experience, no ``round at which this
-agent became experienced'' field. The only way an agent ever
-reaches the experienced branch is by surviving a round-end
-transition in a live session, which is why the round-4 replacement
-step (Section~\ref{sec:round4}) works: the fresh traders spliced
-in at $r=4$ reset to the inexperienced branch while the survivors
-retain their branch flip from earlier in the session.
-
 \subsection{Utility (U)}
+\label{sec:util-agent}
 
-The utility agent follows \citet{lopezlira2025llm}. Its prior at
-every decision tick is
+The utility agent follows \citet{lopezlira2025llm}. On every
+decision tick its prior is
 \begin{equation}
 V_i^{\text{prior}}\;=\;\FV_t\cdot\bigl(1+b_i+\varepsilon_{i,t}\bigr),\qquad
 b_i\in\{-0.15,\,0,\,+0.15\},\qquad
@@ -144,19 +91,19 @@ optimistic/pessimistic/unbiased'' archetype and is assigned at
 sampling time. The per-tick noise $\varepsilon$ keeps the agent's
 quoting out of lockstep with other agents of the same~type.
 
-The prior is then blended with incoming messages from peers. If
-$\mathcal{M}_i$ denotes the set of claimed valuations received
-during the current period, and $w\in(0,1)$ is a weight, the
-posterior is
-\begin{equation}
-V_i^{\text{post}} \;=\; w\cdot V_i^{\text{prior}}
-\;+\;(1-w)\cdot\frac{1}{|\mathcal{M}_i|}\sum_{m\in\mathcal{M}_i}\hat v_m.
-\label{eq:blend}
-\end{equation}
-Three archetypes determine~$w$: \emph{naive} trusts peers and
-uses $w=0.60$; \emph{skeptical} barely moves and uses $w=0.90$;
-\emph{adaptive} scales $w$ by per-sender trust and caps the move at
-$0.50$, with pairwise trust updated every trade by
+During a period, utility agents exchange private valuations through
+a lightweight messaging bus. Each agent accumulates a
+\texttt{receivedMsgs} array of peer claims $\{\hat v_m\}$ over the
+course of the period. At the period boundary the engine invokes the
+active belief-update plan (Plan~I, II, or~III; see
+Section~\ref{sec:anchor}), which consumes the prior, the message
+set, and the agent's mark-to-market wealth, and returns the
+period-end posterior~$V_i^{\text{post}}$. That posterior becomes the
+next period's~$V_i^{\text{prior}}$.
+
+The trust bookkeeping is unchanged across the three plans. Pairwise
+trust is updated every time a claimed valuation is observed against
+the period's volume-weighted average trade price:
 \begin{equation}
 \tau_{r\to s}\;\leftarrow\;(1-\alpha)\,\tau_{r\to s}
 \;+\;\alpha\cdot\max\!\Bigl(0,\,1-\tfrac{|\hat v_s-\VWAP_t|}{\VWAP_t}\Bigr),\qquad
@@ -164,7 +111,11 @@ $0.50$, with pairwise trust updated every trade by
 \label{eq:trust}
 \end{equation}
 Receiver~$r$'s trust in sender~$s$ is reinforced whenever $s$'s
-claim is close to the period VWAP and attenuated~otherwise.
+claim is close to the period VWAP and attenuated~otherwise. Plan~I
+uses $\tau_{r\to s}$ only indirectly through the
+experience-weighted blend (Section~\ref{sec:plan1}); Plans~II
+and~III can surface it in the prompt as a messaging-context
+variable (Section~\ref{sec:plan2}).
 
 Given the posterior valuation $V_i^{\text{post}}$, the agent scores
 each available action $a\in\{\text{hold},\text{cross bid},\text{cross ask},
@@ -186,21 +137,11 @@ assigned at sampling time and drawn from
 \label{eq:risk}
 \end{equation}
 
-A deceptive variant of the utility rule is available for the
-messaging channel. When enabled, an asset-poor agent (inventory
-below its initial endowment) broadcasts a valuation equal to
-$0.82\cdot V_i^{\text{true}}$, while an asset-rich agent broadcasts
-$1.18\cdot V_i^{\text{true}}$. The lie-gap magnitude
-$|\hat v^{\text{report}}-V^{\text{true}}|$ drives the period-end
-trust update in~\eqref{eq:trust}, which produces the closed-loop
-feedback described in \citet{lopezlira2025llm}.
-
-Equations~\eqref{eq:fund}--\eqref{eq:risk} constitute the complete
-decision model. The market aggregates these orders through a
-price--time-priority order book, mutates cash and inventory on
-every trade, credits dividends per \eqref{eq:dividend} at period
-end, and records every state in append-only history arrays so the
-replay system can reconstruct past ticks without re-running the
-agents. No trader in this model consults an AI agent at decision
-time. The next section adds the first such consultation as the
-\emph{AI-Agent Prior Elicitation} (AIPE) protocol.
+Equations~\eqref{eq:fund}--\eqref{eq:risk} constitute the decision
+step that is shared across all three belief-update plans. The
+market aggregates the resulting orders through a price--time-priority
+order book, mutates cash and inventory on every trade, credits
+dividends per \eqref{eq:dividend} at period end, and records every
+state in append-only history arrays so the replay system can
+reconstruct past ticks without re-running the agents. The next
+section specifies Plan~I, Plan~II, and Plan~III in full.

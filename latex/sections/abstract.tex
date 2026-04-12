@@ -4,31 +4,35 @@
 \small
 \noindent\textbf{Abstract.} We replicate the finite-horizon experimental
 asset market of \citet{dufwenberg2005bubbles} inside a deterministic
-browser-based simulator and extend it with the expected-utility
-messaging population of \citet{lopezlira2025llm}. We then introduce
-\emph{AI-Agent Prior Elicitation}~(AIPE), a protocol in which each
-Lopez-Lira utility agent's starting subjective valuation is drawn,
-once per run, from a live AI-agent call whose prompt encodes the
-agent's risk preference, bias mode, and the presence of experienced
-counterparties. The returned psychological anchor~$\hat{V}_i$ is
-clamped to $[0.25\,\FV_0,\,1.75\,\FV_0]$, seeds the agent's prior on
-its first decision tick, and then yields to the standard Lopez-Lira
-belief-blending channel. The research question is whether the asset
-ultimately ends up in the hands of the agent with the highest anchored
-valuation. The testbed reports per-tick matching, a normalised
-valuation gap, Haessel~$R^2$, normalised deviation, amplitude, turnover
-and allocative efficiency; the merged Experienced-plus-Utility
-population is split as $\lceil (N{-}N_{\text{fixed}})/2\rceil$
-experienced and the remainder utility. The simulator preserves
-reproducibility through a seeded mulberry32 PRNG and a deterministic
-fallback when the AI-agent call fails, so every finding can be
-replayed without network access. This paper documents the replication,
-the new anchor channel, and the market-quality instruments used to
-answer the allocation question.
+browser-based simulator and embed it with the expected-utility agent
+of \citet{lopezlira2025llm}. Holding the market substrate, the agent
+population, the prior, and the action choice rule fixed, we then
+compare three distinct belief-update \emph{plans} for the utility
+trader's per-period subjective valuation. \emph{Plan~I} is an
+offline algorithmic blend of the agent's own prior with the mean
+foreign peer claim, weighted by an endogenous experience counter
+$k_i$ that ramps the weight from $0.60$ to $0.90$ across the
+four-round session. \emph{Plan~II} replaces the blend with a
+period-boundary chat-completion call whose prompt gives the language
+model the closed-form risk-utility expression
+$U\in\{\Uloving,\Uneutral,\Uaverse\}$ for that agent's risk type.
+\emph{Plan~III} uses the same wiring as Plan~II but strips the
+functional forms out of the prompt and only names the risk-preference
+category. All three plans feed their output~$V_i^{\text{post}}$ into
+the identical Lopez-Lira expected-utility scoring step, so any
+difference in the resulting market dynamics is attributable to the
+update channel alone. The simulator reports Haessel~$R^2$, normalised
+deviation, amplitude, turnover, and allocative efficiency for all
+three plans; the seeded mulberry32 PRNG makes within-plan replays
+exact, and Plan~II and Plan~III silently degrade to Plan~I for any
+agent whose LLM call fails, so every run can be reproduced without
+network access. This paper documents the replication, the three
+update plans, and the market-quality instruments used to compare
+them.
 
 \medskip
 \noindent\textbf{Keywords:} experimental asset markets, bubbles,
-expected utility, AI agents, prior elicitation, allocative
+expected utility, language models, belief updating, allocative
 efficiency.
 
 \smallskip

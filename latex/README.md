@@ -1,8 +1,12 @@
-# Bubbles and Priors — LaTeX source
+# Bubbles and Beliefs — LaTeX source
 
-Ten-page AER-style paper on **AI-Agent Prior Elicitation (AIPE)**, an
-extension of the Dufwenberg, Lindqvist and Moore (2005) experimental
-asset market and the Lopez-Lira (2025) utility-agent population.
+Ten-page AER-style paper comparing **three belief-update plans** for the
+Lopez-Lira (2025) utility agent embedded in a replicated Dufwenberg,
+Lindqvist and Moore (2005) experimental asset market. Plan I is an
+algorithmic experience-weighted blend; Plan II and Plan III replace the
+blend with period-boundary LLM calls that differ only in whether the
+prompt names the closed-form risk-utility expression or only the
+risk-preference label.
 
 ## Layout
 
@@ -18,7 +22,7 @@ latex/
 │   ├── related_work.tex
 │   ├── design.tex
 │   ├── agents.tex
-│   ├── anchor.tex       # AI-Agent Prior Elicitation (AIPE) mechanism
+│   ├── anchor.tex       # Plan I / Plan II / Plan III belief-update channels
 │   ├── results.tex
 │   └── conclusion.tex
 └── figures/          # placeholder for figure PDFs

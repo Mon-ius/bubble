@@ -1,10 +1,14 @@
 %% =====================================================================
-%%  main.tex — Bubbles and Priors: An AI-Agent Experiment
+%%  main.tex — Bubbles and Beliefs: Three Plans for Utility-Agent
+%%             Belief Update in a Replicated DLM 2005 Market
 %%
-%%  A merged replication of Dufwenberg, Lindqvist and Moore (2005) and
-%%  Lopez-Lira (2025), extended with AI-Agent Prior Elicitation (AIPE):
-%%  a single-call psychological-anchor step for the utility-agent
-%%  population.
+%%  A replication of Dufwenberg, Lindqvist and Moore (2005) populated
+%%  with the expected-utility agent of Lopez-Lira (2025), and an A/B/C
+%%  comparison of three period-boundary belief-update plans: an
+%%  algorithmic experience-weighted blend (Plan I), an LLM call whose
+%%  prompt contains the closed-form risk-utility expression for the
+%%  agent's type (Plan II), and an otherwise-identical LLM call whose
+%%  prompt names only the risk-preference category (Plan III).
 %%
 %%  This file is intentionally thin. Formatting lives in preamble.tex,
 %%  math macros in macros.tex, and each section is its own file under
@@ -18,7 +22,7 @@
 \input{preamble}
 \input{macros}
 
-\title{\textbf{Bubbles and Priors:\\ An AI-Agent Experiment}}
+\title{\textbf{Bubbles and Beliefs:\\ Three Plans for Utility-Agent Belief Update}}
 
 \author{Wang\thanks{Computational replication and source code are
   available at \url{https://github.com/Mon-ius/bubble}. The author

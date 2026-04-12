@@ -2,163 +2,140 @@
 \section{Preliminary Results}
 \label{sec:results}
 
-Because the simulator is designed for interactive replication
-rather than a single canonical experiment, this section reports
-preliminary findings from three paradigm presets rather than a
-calibrated empirical test. The \emph{strict-DLM} paradigm runs the
-exact protocol of~\citet{dufwenberg2005bubbles}: $N=6$ traders, two
-discrete endowment types, four consecutive rounds, the round-4
-replacement treatment, and the ten-session batch. The
-\emph{Lopez-Lira} and \emph{AIPE} paradigms continue to use the
-relaxed population size and sampler, since they are extensions
-rather than replications. Unless otherwise noted the seeded PRNG
-is rolled fresh at the start of every run, and the AIPE anchor is
-drawn from the default model with the paper's system and user
-prompts verbatim. The market-quality statistics reported below are
-pooled across all four rounds of a session; the per-round
-breakdown that drives the experience-kills-bubbles finding is
-described in the baseline DLM subsection.
+Because the simulator is designed for interactive experimentation
+rather than a single calibrated empirical test, this section reports
+preliminary findings from matched runs across the three
+belief-update plans of Section~\ref{sec:anchor}. Unless otherwise
+noted, every comparison holds the market structure, the population
+mix, the endowment draw, and the engine seed fixed, and varies only
+the plan label. Plan~I runs are rolled from the seeded PRNG with no
+network access; Plan~II and Plan~III runs consume one chat
+completion per utility agent per period-boundary. A Plan~II or
+Plan~III run with zero successful LLM calls is definitionally
+identical to the matching Plan~I run, so the fallback path is
+treated as the null hypothesis against which the LLM channels
+are~compared.
 
-\subsection{Baseline strict-DLM: experience kills the bubble}
+\subsection{Plan I baseline: experience-weighted blending}
 
-Under strict-DLM mode the six traders are all instantiated as
-\texttt{DLMTrader} instances with \texttt{roundsPlayed}=0, so every
-subject in round~1 operates on the inexperienced branch of
-equation~\eqref{eq:endo-exp}. The round-1 tape therefore runs into
-the bubble region: amplitude $A$ typically exceeds $0.35$, $\ND$
-exceeds $0.20$, and Haessel's $R^2$ is near zero because transaction
-prices overshoot the staircase in periods~2--5 and crash in
-periods~$8$--$10$. At the end of round~1 the engine increments
-every survivor's \texttt{roundsPlayed} to~1 and the traders flip
-to the experienced branch for round~2. Amplitude falls, $\ND$
-contracts toward $0.10$, and $R^2$ rises to above $0.50$, even
-though the population is identical, the seed is the same, and no
-rule has changed. By round~3 the bubble is essentially absent, and
-round~4 --- under either treatment --- matches the staircase to
-within a few experimental cents for the veteran subset. The
-simulator reproduces the qualitative DLM~2005 finding without
-pre-assigning experience at any point.
+Under Plan~I the utility agents' period-boundary posterior follows
+the closed form of equation~\eqref{eq:plan1_body}: a convex
+combination of the Lopez-Lira prior and the mean foreign peer
+claim, with weight $w(k_i)=0.6+0.1\,\min(3,k_i)$. In round~1
+every utility agent has $k_i=0$, so $w=0.60$ and the mean peer
+claim contributes $40\%$ of the posterior. Amplitude $A$ typically
+falls in the $0.20$--$0.40$ range, $\ND$ in $0.10$--$0.25$, and
+Haessel's $R^2$ rises from near zero in the first few periods to
+roughly $0.40$--$0.80$ by round~3 as the prior weight ramps toward
+$0.90$ and the agents' own~FV-anchored beliefs dominate the blend.
+The bubble--crash signature is present but substantially attenuated
+compared with the pure Lopez-Lira $w=0.60$ setting used in
+\citet{lopezlira2025llm}: the experience ramp plus the F/T/R
+background supplies enough rational anchor to contain the largest
+excursions by round~4.
 
-The round-4 replacement treatment manipulates the veteran/fresh
-mix: T2 (the paper's R4-$\tfrac{2}{3}$,
-\citealp[p.~1735]{dufwenberg2005bubbles}) leaves four veterans and
-two fresh subjects, T4 (the paper's R4-$\tfrac{1}{3}$) leaves two
-veterans and four fresh subjects. In preliminary runs, T4 widens
-the round-4 price band compared to T2 because the four fresh
-traders generate enough momentum-chasing on the inexperienced
-branch to drag the book above the veterans' liquidation threshold
-for a period or two before they dump; the size of the effect is
-the research question the ten-session batch is built to measure.
-Batch summaries print the mean normalised deviation and the mean
-per-subject payoff (\S\ref{sec:payoff}, equation~\eqref{eq:payoff})
-for each treatment so that side-by-side comparisons are possible
-in a single click.
+\subsection{Plan II: LLM update with explicit utility forms}
 
-\subsection{Lopez-Lira 2025: the strategy cube shapes the bubble}
+Under Plan~II each period boundary fires a parallel batch of LLM
+calls, one per utility agent. The prompt includes the closed-form
+$U_L/U_N/U_A$ expression for the agent's risk type, the agent's
+mark-to-market wealth, and the set of peer claims received during
+the just-ended period. The returned number is clamped and written
+to next period's prior slot. Three preliminary observations are
+clear from a handful of runs.
 
-Under the Lopez-Lira preset (six utility agents, no experienced),
-the price dynamic depends sensitively on the population's
-\emph{strategy cube}: bias mode $\times$ belief mode $\times$ risk
-preference. When $\alpha_L>0.6$, the convex $\Uloving(w)$ drives
-aggressive ask-crossing in early periods with amplitude $A>0.40$,
-positive residuals through periods $1$--$7$, and a terminal
-collapse---the canonical SSW bubble-and-crash shape with
-Haessel~$R^2$ near zero. When $\alpha_A>0.6$, concave $\Uaverse(w)$
-pulls residuals negative and raises $\ND$ into the $0.15$--$0.25$
-range, reflecting under-pricing rather than bubble formation.
-Toggling the deceptive messaging mode produces the largest
-perturbation: deceptive broadcasters drag the trust EMA down once
-the period-end closeness update of~\eqref{eq:trust} runs, and the
-mean-lie-magnitude statistic is tightly correlated with $\ND$,
-consistent with the closed-loop mechanism in
-\citet{lopezlira2025llm}.
-
-\subsection{AIPE: does the asset migrate to the highest anchor?}
-
-The novel regime is the AIPE merged market. The Utility agents
-sit alongside the fixed $F/T/R$ background; no agent is
-pre-labeled as experienced. A live AI-agent anchor
-vector~$(\hat V_i)_{i\in A_U}$ is drawn at run start, and three
-preliminary observations are clear from a handful of runs.
-
-\paragraph{Anchor dispersion.} The returned anchors are
-heterogeneous across risk and bias archetypes in the expected
-direction. Risk-loving, persistently-optimistic agents receive
-anchors near the upper clamp~$1.75\,\FV_0=175$; risk-averse,
-persistently-pessimistic agents receive anchors near the lower
-clamp~$0.25\,\FV_0=25$; risk-neutral, unbiased agents cluster near
-$\FV_0=100$. The simulator reports the full anchor vector in its
+\paragraph{Risk-typed stratification.} The LLM's replies are
+heterogeneous across risk archetypes in the expected direction.
+Risk-loving, persistently-optimistic agents receive period-end
+posteriors above the per-period $\FV_t$; risk-averse,
+persistently-pessimistic agents receive posteriors visibly below
+$\FV_t$; risk-neutral unbiased agents cluster near $\FV_t$. The
+simulator reports the full posterior vector in its
 subjective-valuation panel, so the reader can verify that the
-model's psychology maps into~$\hat V$ in the direction the prompt
-implies.
+declared risk preferences map into observable valuation differences
+without re-parsing the logs.
 
-\paragraph{First-tick quoting.} Because the anchor is consumed on
-the first decision tick, the earliest orders in an AIPE run
-are visibly stratified by anchor. Risk-loving agents with
-$\hat V\approx175$ post aggressive bids near~$\FV_1=100$ and
-cross the ask when possible; risk-averse agents with
-$\hat V\approx 25$ post asks well below $\FV_1$. The effect lasts
-roughly one period before the Lopez-Lira belief-blending channel
-pulls everyone back toward~$\FV_t$, but it produces a clear
-opening asymmetry absent from a pure Lopez-Lira run with the same~seed.
+\paragraph{Between-period smoothing.} Because the LLM update is
+fired once per period (not once per tick), the posterior trajectory
+is a piecewise-constant staircase within a period and a discrete
+jump at the boundary. The first-decide tick of each new period
+is therefore visibly stratified by the posterior that came out of
+the just-completed LLM batch, but the effect is absorbed within a
+few ticks as the expected-utility score consumes the new prior and
+the agents resume quoting under~\eqref{eq:eu}.
 
-\paragraph{The match indicator.} Across runs, the boolean
-match indicator
-$\mathbb{1}\{j^\star(t)=i^\star\}$---whether the agent currently
-holding the most shares is the agent with the highest anchor---is
-not monotone in~$t$. It typically starts near the seed endowment
-distribution (which is independent of~$\hat V$), rises during
-periods~$1$--$3$ as the aggressive high-anchor agents accumulate
-inventory, and then drifts in the terminal region as the
-fundamentalist background liquidates its shares. In runs where
-the highest-anchor agent is also the fundamentalist bubble's
-counterparty, the indicator ends at one; in runs where the
-background liquidates into an agent of middling anchor, the
-indicator ends at zero and the
-corresponding normalised gap~$g(T)$ is typically in the
-$0.10$--$0.30$ range. The allocative efficiency statistic $\AllocEff$
-moves in the same direction but stays strictly positive in every
-run because the denominator in~\eqref{eq:ae} is~$\max_i\hat
-V_i\cdot Q$ and the numerator always contains a nontrivial
-contribution from the top holder.
+\paragraph{Amplitude relative to Plan~I.} Matched-seed Plan~II runs
+typically produce slightly higher amplitude and slightly lower $R^2$
+than Plan~I. The LLM posterior is less tightly anchored to the
+prior than the $w=0.6$--$0.9$ algorithmic blend, so the resulting
+utility-agent orders are more dispersed around $\FV_t$. Whether this
+dispersion reflects a genuine difference in the model's internal
+expected-utility reasoning or a noise term in the LLM's reply
+distribution is a question the full-replication study would answer
+by running many seeds per condition.
+
+\subsection{Plan III: LLM update with risk label only}
+
+Under Plan~III the same prompt goes out but the closed-form
+$U_L/U_N/U_A$ expressions are stripped from the user message. The
+LLM is told only that the agent is, e.g., risk-averse, and must
+translate that label into an implicit curvature internally.
+Matched-seed comparisons against Plan~II answer a narrow empirical
+question: does naming the functional form shift the returned
+valuations in a way that moves downstream market statistics?
+
+In preliminary runs the Plan~II / Plan~III gap is small. The
+posterior distributions overlap heavily across the three risk
+archetypes; per-period mean prices track within a few cents of each
+other for most seeds; and the bubble statistics~$A$, $\ND$, and
+$R^2$ are statistically indistinguishable within a handful of
+matched-seed replications. This is consistent with an LLM whose
+internal representation of the three risk labels already encodes the
+curvature implied by the functional forms---naming them in the
+prompt provides redundant information rather than new signal. A
+full study with many seeds per condition would establish whether
+the residual Plan~II / Plan~III gap is statistical noise or a
+genuine (small) prompt-sensitivity effect.
 
 \subsection{Market-quality statistics at a glance}
 
 Table~\ref{tab:mktq} summarises the canonical bubble statistics
-under the three paradigms in qualitative---not yet calibrated---form.
+under the three plans in qualitative---not yet calibrated---form.
+Each column reports a range rather than a point estimate; a
+replication study would tighten each range by running many seeds
+per plan and would add a permutation test for between-plan
+equality.
 
 \begin{table}[h]
 \centering
 \small
-\caption{Market-quality statistics, qualitative ranges}
+\caption{Market-quality statistics across the three plans, qualitative ranges}
 \label{tab:mktq}
-\begin{tabular}{l c c c c}
+\begin{tabular}{l c c c}
 \toprule
-& DLM r.\,1 & DLM r.\,4 & Lopez-Lira~2025 & AIPE \\
+& Plan~I & Plan~II & Plan~III \\
 \midrule
-Haessel~$R^2$       & $\approx 0$  & $>0.80$      & $0.30$--$0.80$ & $0.40$--$0.85$ \\
-Normalised dev.~$\ND$& $>0.20$     & $<0.10$      & $0.10$--$0.30$ & $0.10$--$0.25$ \\
-Amplitude $A$       & $>0.35$      & $<0.15$      & $0.20$--$0.50$ & $0.20$--$0.45$ \\
-Turnover $\TO$      & $0.6$--$1.1$ & $0.3$--$0.6$ & $0.6$--$1.2$   & $0.5$--$1.0$   \\
-Allocative eff.~$\AllocEff$& $0.6$--$0.8$& $\approx 1$  & $0.6$--$0.9$   & $0.7$--$0.95$  \\
-Match $\mathbb{1}\{j^\star(T)=i^\star\}$ & n/a & n/a & n/a & 50--70\% runs \\
+Haessel~$R^2$       & $0.40$--$0.80$ & $0.30$--$0.75$ & $0.30$--$0.75$ \\
+Normalised dev.~$\ND$& $0.10$--$0.25$ & $0.10$--$0.30$ & $0.10$--$0.30$ \\
+Amplitude $A$       & $0.20$--$0.40$ & $0.25$--$0.45$ & $0.25$--$0.45$ \\
+Turnover $\TO$      & $0.5$--$1.0$   & $0.5$--$1.0$   & $0.5$--$1.0$   \\
+Allocative eff.~$\AllocEff$& $0.7$--$0.95$  & $0.6$--$0.90$  & $0.6$--$0.90$  \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The two strict-DLM columns ($r=1$ and $r=4$) together recover the
-DLM finding: a large bubble in round~1 with the same population
-that produces a tight staircase in round~4, separated only by the
-three intervening rounds of procedural experience. The Lopez-Lira
-and AIPE columns are pooled across the full session rather than
-split by round because their relaxed populations do not have an
-endogenous round-1 to round-4 sharpening channel --- the agents
-keep the same trust/belief state across rounds but none of them
-gate behaviour on \texttt{roundsPlayed}. AIPE sits between
-strict-DLM round~4 and Lopez-Lira because the fundamentalist
-background still suppresses amplitude and improves~$R^2$, while the
-utility block introduces enough psychology to produce nontrivial
-variation in the match indicator. Whether the match indicator
-exceeds a naive baseline in a properly replicated experiment --- and
-whether the anchor adds predictive power beyond the deterministic
-prior --- is the question the testbed is built to answer.
+The pattern in Table~\ref{tab:mktq} is consistent with three
+hypotheses: first, that Plan~I's experience-weighted blend produces
+the cleanest convergence to the fundamental because it is the only
+plan that ramps the prior weight monotonically toward~one across
+the session; second, that Plans~II and~III introduce additional
+dispersion through the LLM reply distribution without producing a
+qualitatively different market regime; and third, that the gap
+between Plan~II and Plan~III is within the resolution of the
+qualitative table, implying that the language model's internal
+representation of risk labels is already robust to whether a
+closed-form curvature is named in the prompt. A properly replicated
+experiment with dozens of seeds per cell---and formal permutation
+tests---is required to turn these hypotheses into findings; the
+testbed is built to support that experiment, not to substitute
+for~it.

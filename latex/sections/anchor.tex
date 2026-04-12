@@ -1,154 +1,196 @@
 %% sections/anchor.tex
-\section{AI-Agent Prior Elicitation}
+\section{Three Belief-Update Plans}
 \label{sec:anchor}
 
 \subsection{Overview}
 
-\emph{AI-Agent Prior Elicitation} (AIPE) adds exactly one new
-moving part to the replicated model of Section~\ref{sec:agents}: a
-private subjective valuation~$\hat{V}_i$, elicited from an AI
-agent, that replaces the utility trader's deterministic prior on
-the very first decision tick. Everything downstream of the first
-tick---belief blending, trust updates, utility maximisation, order
-matching, dividend payments, and all of the market-quality
-instruments---is identical to the pure Lopez-Lira run. The anchor
-is therefore a \emph{minimal} perturbation of the decision model:
-the smallest change in behaviour that still lets the population's
-psychology influence its opening bids.
+This section specifies the three \emph{plans} by which a utility
+agent translates its prior and the messages it has received into
+a posterior valuation each period. Every agent starts with the same
+Lopez-Lira prior of equation~\eqref{eq:util_prior}; every agent
+scores candidate orders with the same expected-utility rule of
+equation~\eqref{eq:eu}; every plan feeds its output---a single
+number $V_i^{\text{post}}$, in experimental cents---into that
+score. The only thing that differs across plans is the function
+that maps the prior plus peer messages into the posterior.
 
-Two design choices make this minimal. First, the call is placed
-once, in parallel across all utility agents, at run start, and the
-result is consumed on the first decision tick and then cleared.
-Second, the call never asks the AI agent for an \emph{order};
-it asks only for a \emph{number}---a valuation per share in
-experimental cents---which is routed through the same prior slot
-used by equation~\eqref{eq:util_prior}. The trader's action is still
-chosen by~\eqref{eq:eu}, using a wealth argument that the AI
-agent never~sees. This construction isolates the psychological
-channel from the trading channel; it also keeps the downstream
-replay deterministic, because after the first tick no trader under
-AIPE depends on external~randomness of any kind.
+Plan~I is deterministic and runs closed-form. Plan~II and Plan~III
+fire a parallel LLM call per utility agent at every period boundary,
+and differ only in the prompt: Plan~II hands the model the
+closed-form risk-utility expression for that agent's type, while
+Plan~III names only the risk-preference category. A failed call in
+Plan~II or Plan~III degrades silently to Plan~I for that agent in
+that period, so every run is replayable even when the key is
+absent and the mulberry32 PRNG alone drives the downstream dynamics.
 
-\subsection{The elicitation call}
+\subsection{Plan I: algorithmic blend with experience-weighted trust}
+\label{sec:plan1}
 
-Let $A_U$ be the set of utility agents in the current population.
-For each $i\in A_U$ the simulator constructs a short prompt
-$\pi_i$ that encodes three facts: the paper constants $(T,\E[d])$,
-the trader's risk preference $U_i\in\{\Uloving,\Uneutral,\Uaverse\}$
-and bias mode $b_i\in\{\text{over},\text{none},\text{under}\}$, and
-the fact that the market is shared with DLM~2005 experienced
-counterparties. The system prompt is fixed and instructs the AI
-agent to return a single number with no explanation, currency
-symbol, or prose. Concretely, the user prompt template reads
+Let $V_i^{\text{prior}}$ denote the agent's Lopez-Lira prior from
+equation~\eqref{eq:util_prior}, let $\mathcal{M}_i$ be the set of
+claimed valuations received from foreign peers during the current
+period (messages from the agent itself are excluded), and let
+$k_i=\texttt{roundsPlayed}_i\in\{0,1,2,\ldots\}$ be the agent's
+endogenous experience counter. Plan~I computes the period-end
+posterior as the convex combination
+\begin{equation}
+V_i^{\text{post}} \;=\; w(k_i)\cdot V_i^{\text{prior}}
+\;+\;\bigl(1-w(k_i)\bigr)\cdot\frac{1}{|\mathcal{M}_i|}\sum_{m\in\mathcal{M}_i}\hat v_m,
+\qquad
+w(k_i) \;=\; 0.6 + 0.1\,\min(3,\,k_i),
+\label{eq:plan1_body}
+\end{equation}
+where the weight $w$ ramps deterministically with experience: a
+novice ($k_i=0$) moves with a substantial peer contribution
+($w=0.60$), a three-round veteran ($k_i\ge 3$) barely moves
+($w=0.90$). The cap at $k_i=3$ matches the four-round session
+structure: after three rounds of experience the agent is at its
+terminal skepticism for the run. When $\mathcal{M}_i$ is empty---no
+peer sent a valid claim during the period---Plan~I keeps the prior
+unchanged, $V_i^{\text{post}}=V_i^{\text{prior}}$.
+
+Plan~I is the offline baseline to which Plans~II and~III are compared.
+Because it consults no external resource, it executes in constant
+time per period and its output is a pure function of the seeded
+PRNG plus the received-message set. Two runs with the same
+(population, seed) pair therefore produce identical trajectories,
+and the downstream \texttt{Market} replay can be reconstructed
+frame-by-frame from the append-only history arrays without
+re-running any agent.
+
+\subsection{Plan II: LLM update with explicit utility forms}
+\label{sec:plan2}
+
+Plan~II replaces equation~\eqref{eq:plan1_body} with a live language
+model call. Let $A_U$ be the set of utility agents in the current
+population. At every period boundary, once the messaging round has
+closed and the trust EMA has updated (Section~\ref{sec:agents}), the
+engine snapshots each agent's received-message set onto the agent
+and fires a single \texttt{chat/completions} call per agent in
+parallel. The system prompt is fixed and instructs the model to
+return a single number with no prose. The user prompt
+$\pi_i^{\text{II}}$ encodes six facts:
+\begin{enumerate}
+\item the paper constants $(T,\E[d])$ and the current period index~$t$;
+\item the agent's risk-preference category~$U_i\in\{\Uloving,\Uneutral,\Uaverse\}$;
+\item the \emph{closed-form} expression of the risk-utility functional~$U_i$;
+\item the agent's bias mode $b_i\in\{\text{over},\text{none},\text{under}\}$;
+\item the agent's current mark-to-market wealth
+$w_i = \text{cash}_i + \text{inventory}_i\cdot p^\star$ with
+$p^\star=\max(\text{last}, \FV_t)$;
+\item the set of peer claims $\{\hat v_m\}_{m\in\mathcal{M}_i}$ received during
+the current period.
+\end{enumerate}
+The third item is the load-bearing element. Concretely the prompt
+reads
 \begin{quote}\small
-Market: $T$ periods. Each share pays 0 or 20 cents with equal
-probability per period, expected dividend $\E[d]$. Risk-neutral
-fundamental value at run start is $\FV_0$ cents (declines by
-$\E[d]$ per period). You, agent $i$, are \emph{risk} and
-\emph{bias}. You share the market with Experienced agents
-(Dufwenberg, Lindqvist and Moore 2005) who know the asset decays
-to zero and refuse to overpay in late periods. What is your
-private subjective valuation per share right now, in cents?
+You, agent $i$, are a \emph{risk} trader. Your expected utility over
+a next-period wealth $w$ takes the closed form
+\[
+U_i(w) \;=\; (w/w_0)^2 \quad\text{/}\quad w/w_0 \quad\text{/}\quad \sqrt{w/w_0}
+\]
+for risk-loving, risk-neutral, or risk-averse, respectively. Your
+current mark-to-market wealth is $w_i$. During the current period
+your peers broadcast the following private valuations:
+$\{\hat v_m\}$. Market: $T$ periods, expected dividend $\E[d]$,
+current fundamental value $\FV_t$ cents. What is your private
+subjective valuation per share for next period, in cents?
 \end{quote}
-where $\text{risk}\in\{\text{risk-loving},\text{risk-neutral},
-\text{risk-averse}\}$ and $\text{bias}\in\{\text{persistently
-optimistic},\text{unbiased},\text{persistently pessimistic}\}$. All
-calls are fired in parallel as a single
-$\texttt{Promise.all}$~batch, so the network latency is one round
-trip rather than $|A_U|$ round trips.
+where \emph{risk} is replaced by the agent's own category. The
+reply is parsed for the first signed decimal, converted to a float,
+clamped to a sanity interval, and written to the agent's
+\texttt{llmBeliefs} slot in the engine context. On the next period's
+first call to \texttt{updateBelief}, the slot is consumed in place
+of equation~\eqref{eq:plan1_body}. If the clamp rejects the reply,
+or the parse fails, or the network errors, the slot is left empty
+and the agent falls through to Plan~I for that period. The next
+period's LLM call then runs fresh, so a missed update never cascades.
 
-The raw reply is parsed for the first signed decimal, parsed as a
-float, and clamped to
-\begin{equation}
-\hat{V}_i\in[\,0.25\,\FV_0,\,1.75\,\FV_0\,]\;=\;[25,\,175],
-\label{eq:clamp}
-\end{equation}
-so that any out-of-range reply is bounded and cannot destabilise
-the downstream engine. A missing reply, a parse failure, or an HTTP
-error silently drops the anchor for that trader; its prior then
-defaults to equation~\eqref{eq:util_prior} on the first tick, and
-the run is otherwise unaffected. This deterministic fallback
-preserves the invariant that AIPE produces a simulation with
-or without network connectivity---a requirement for the design to be
-reproducible and shareable.
+The key feature of Plan~II is that the prompt explicitly contains
+the functional form $(w/w_0)^2$, $w/w_0$, or $\sqrt{w/w_0}$ for
+the agent's assigned risk preference. A language model that
+already knows what a risk-averse agent looks like does not need
+the formula; a language model that does not know (or that
+translates ``risk-averse'' into a qualitatively different
+curvature) behaves differently when the formula is present. The
+contrast between Plan~II and Plan~III measures exactly that.
 
-\subsection{Consumption on the first decision tick}
+\subsection{Plan III: LLM update with risk label only}
+\label{sec:plan3}
 
-On every utility agent's first call to \texttt{updateBelief} after
-the simulation starts, the ``psych anchor'' slot is consulted in a
-\emph{consume-and-clear} step:
-\begin{equation}
-V_i^{\text{prior}} \;=\; \begin{cases}
-\hat{V}_i\cdot(1+\varepsilon_i) & \text{if $\hat V_i\ne\emptyset$,}\\[4pt]
-\FV_t\cdot(1+b_i+\varepsilon_i) & \text{otherwise,}
-\end{cases}
-\qquad \text{then set }\hat V_i\leftarrow\emptyset.
-\label{eq:consume}
-\end{equation}
-The first branch overrides the deterministic prior with the
-AI-agent anchor and keeps the Lopez-Lira noise
-$\varepsilon_i\sim\text{Uniform}[-0.03,0.03]$ so that two utility
-agents assigned identical anchors still draw slightly different
-first quotes. The second branch is the pure Lopez-Lira prior, used
-on every tick after the first and on every tick when no anchor is
-available. The ``clear'' step ensures that a second call to
-\texttt{updateBelief} on the same tick, or the next decision tick
-in the same run, goes through the standard path, so that the
-AI agent's effect is felt at run~start and then decays through
-the belief-blend equation~\eqref{eq:blend} as normal messaging
-proceeds.
+Plan~III uses the same period-boundary wiring as Plan~II with
+identical timing, identical clamping, identical fallback, and the
+same parallel batch of chat completions. The \emph{only} difference
+is the user prompt: the closed-form expressions are deleted. The
+prompt states
+\begin{quote}\small
+You, agent $i$, are a \emph{risk-loving} / \emph{risk-neutral} /
+\emph{risk-averse} trader. Your current mark-to-market wealth is
+$w_i$. During the current period your peers broadcast the following
+private valuations: $\{\hat v_m\}$. Market: $T$ periods, expected
+dividend $\E[d]$, current fundamental value $\FV_t$ cents. What is
+your private subjective valuation per share for next period, in
+cents?
+\end{quote}
+No $U_L / U_N / U_A$ formula is supplied and no reference is made
+to expected utility; the model must translate the risk label into
+an implicit curvature internally. Everything else---the mark-to-market
+wealth, the peer claims, the market constants, the prompt preamble,
+and the single-number return requirement---is byte-for-byte
+identical to Plan~II.
 
-\subsection{Research question and instrumentation}
+If Plan~II and Plan~III produce measurably different distributions
+over $V_i^{\text{post}}$ or over downstream market-quality
+statistics, the difference is attributable to prompt structure
+alone. If they agree, the LLM in use has a stable internal
+representation of the three risk archetypes that is robust to
+whether the functional form is named in the prompt.
 
-Let $i^\star=\arg\max_{i\in A_U}\hat{V}_i$ be the utility agent
-with the highest anchored valuation, and define the top holder at
-tick~$t$ as
-\begin{equation}
-j^\star(t)\;=\;\arg\max_{i\in A_U}\text{inventory}_i(t).
-\label{eq:top}
-\end{equation}
-The research question is simply whether $j^\star(t)\to i^\star$ by
-the end of the~run. The simulator reports, every tick, a boolean
-\emph{match} indicator $\mathbb{1}\{j^\star(t)=i^\star\}$ and a
-\emph{normalised gap}
-\begin{equation}
-g(t)\;=\;\frac{\hat{V}_{i^\star}-\hat{V}_{j^\star(t)}}{\hat{V}_{i^\star}}\;\in\;[0,1],
-\label{eq:gap}
-\end{equation}
-together with the identities of the two agents and their
-valuations. The gap collapses to zero when the asset has reached
-the psychologically-maximal holder; it stays near~one when the
-asset has migrated to an agent whose anchor is much lower than
-the~maximum. Figure placeholders in the \texttt{figures/} directory
-will host time-series plots of $g(t)$ and the match indicator for
-each of the three paradigms.
+\subsection{Consume-and-cache on the period boundary}
 
-The match indicator is related, but not identical, to the
-allocative efficiency statistic
-\begin{equation}
-\AllocEff\;=\;\frac{\sum_i \hat{V}_i\cdot\text{inventory}_i(T)}
-{\max_i\hat{V}_i\cdot Q},
-\label{eq:ae}
-\end{equation}
-in which the numerator is the realised cross-agent utility weighted
-by each agent's anchored valuation and the denominator is the
-best-possible allocation in which every share is held by the
-maximum-valuation agent. When $\AllocEff=1$ the asset has migrated to
-$i^\star$ and the match indicator is true; but $\AllocEff$ can be close to
-one even when the match indicator is false, for example when the
-top holder is different from $i^\star$ but has a nearly-maximal
-anchor. Reporting both statistics together is therefore
-informative: the match indicator captures the identity of the
-eventual owner, while $\AllocEff$ captures the continuous loss relative
-to the psychological~optimum.
+The LLM call in Plan~II and Plan~III is fired \emph{after} the
+period's messaging round closes but \emph{before} the next period's
+first decision tick, so that the prompt can include the peer
+claims observed during the period that just ended. Concretely the
+engine:
+\begin{enumerate}
+\item copies each agent's \texttt{receivedMsgs} array into a
+snapshot field, so the downstream call reads a stable message set;
+\item fires one \texttt{chat/completions} call per agent in a single
+\texttt{Promise.all} batch, so network latency is one round trip
+rather than $|A_U|$ round trips;
+\item merges each successful reply into a context-level
+\texttt{llmBeliefs} map keyed by agent id;
+\item on the next period's first call to \texttt{updateBelief},
+consumes the entry in place of equation~\eqref{eq:plan1_body} and
+clears the map slot so a second call in the same period reverts to
+Plan~I.
+\end{enumerate}
+This \emph{consume-and-cache} pattern keeps the tick loop synchronous
+and non-blocking: agents continue to quote and trade at the usual
+tick cadence while the LLM batch runs in the background, and the
+result is applied on the very next period boundary. If the call is
+still in flight when the next boundary arrives, the
+\texttt{llmBeliefs} slot is empty and the agent runs Plan~I for that
+period, so the engine never stalls waiting for a network response.
 
-\subsection{Determinism, cost, and caching}
+\subsection{Determinism and reproducibility}
 
-A single AIPE run consumes $|A_U|$ chat completions as one
-parallel batch and runs closed-form thereafter. With $|A_U|\le 6$
-in the default preset, network cost is a handful of round trips on
-the first frame and zero afterwards; no caching or retry layer is
-needed because a missing anchor silently degrades to the
-deterministic prior. The seeded PRNG makes identical anchor vectors
-reproduce identical trajectories, so within-model replay is trivial
-and across-model comparisons reduce to toggling the paradigm button.
+Plan~I is fully deterministic under the seeded mulberry32 PRNG: two
+runs with the same (population, seed) pair produce byte-identical
+trace, snapshot, and event logs. Plan~II and Plan~III introduce one
+source of non-determinism---the LLM reply---and the engine handles
+it by keeping the fallback path closed-form. If the same seed is
+run twice under Plan~II, the two runs will in general disagree
+wherever the language model's reply differs between calls, but
+both runs will produce valid simulations and both will respect the
+clamp~and the parse. Reporting therefore always pairs a plan label
+with a seed when comparing statistics across runs.
+
+A missing reply, a parse failure, or an HTTP error silently drops
+the update for that agent in that period, and the agent falls
+through to Plan~I. This preserves the invariant that every run can
+be reproduced without network access---Plan~II with zero successful
+calls is definitionally identical to Plan~I---so the simulator can
+be used as a pedagogical or offline replay tool even when the API
+endpoint is unreachable.
