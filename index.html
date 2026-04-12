@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=20">
+<link rel="stylesheet" href="styles.css?v=21">
 <!--
   KaTeX — client-side math rendering for the Architecture, Glossary,
   and Slides tabs. Mirrors the lying project's setup (same version,
@@ -33,28 +33,19 @@
     main.js on click and the underline is drawn with a 2px bottom
     border reserved on every tab so activation does not shift layout.
   -->
-  <div class="nav-tabs" role="tablist">
-    <button class="nav-tab active" data-tab="experiment"   role="tab">Experiment</button>
-    <button class="nav-tab"        data-tab="architecture" role="tab">Architecture</button>
-    <button class="nav-tab"        data-tab="glossary"     role="tab">Glossary</button>
-    <button class="nav-tab"        data-tab="slides"       role="tab">Slides</button>
-  </div>
-  <!--
-    Research-plan switch — segmented control between the three
-    belief-update variants Plan I / Plan II / Plan III. Plan I is
-    pure algorithm (no LLM). Plans II and III each call an LLM at
-    every period boundary and differ only in whether the prompt
-    spells out the agent's utility function (Plan II) or just the
-    risk-preference label (Plan III); both require an API key in
-    the AI endpoint panel below. Visual style follows the lying
-    project's Math / AI Agent toggle: a rounded bg-2 rail with an
-    elevated active button.
-  -->
-  <div class="plan-switch" role="group" aria-label="Research plan">
-    <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
-    <button class="plan-btn" data-plan="II" title="Plan II — LLM with utility forms. Every period the model is asked for a subjective valuation given the agent's risk preference and the explicit utility function U_L / U_N / U_A that corresponds to it. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan II</button>
-    <button class="plan-btn" data-plan="III" title="Plan III — LLM with risk-preference label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover the utility-aware belief. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan III</button>
-  </div>
+  <nav class="nav-row">
+    <div class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="experiment"   role="tab">Experiment</button>
+      <button class="nav-tab"        data-tab="architecture" role="tab">Architecture</button>
+      <button class="nav-tab"        data-tab="glossary"     role="tab">Glossary</button>
+      <button class="nav-tab"        data-tab="slides"       role="tab">Slides</button>
+    </div>
+    <div class="plan-switch" role="group" aria-label="Research plan">
+      <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
+      <button class="plan-btn" data-plan="II" title="Plan II — LLM with utility forms. Every period the model is asked for a subjective valuation given the agent's risk preference and the explicit utility function U_L / U_N / U_A that corresponds to it. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan II</button>
+      <button class="plan-btn" data-plan="III" title="Plan III — LLM with risk-preference label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover the utility-aware belief. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan III</button>
+    </div>
+  </nav>
   <div class="controls">
     <label>Speed
       <input id="speed" type="range" min="1" max="20" value="14">

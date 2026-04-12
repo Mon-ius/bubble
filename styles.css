@@ -91,7 +91,9 @@ html, body {
   font-family: var(--font-ui);
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
+html { overflow-x: hidden; }
 body { min-height: 100vh; }
 
 h1, h2, h3 { margin: 0; font-weight: 600; }
@@ -157,6 +159,7 @@ math[display="inline"] { white-space: nowrap; }
  * not shift the header baseline. main.js toggles .active on click
  * and on .tab-pane at the same time.
  */
+.nav-row { display: contents; }
 .nav-tabs {
   display: flex;
   gap: 4px;
@@ -1925,21 +1928,72 @@ body.dlm-mode .bg-only          { display: none !important; }
   .agents-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
-  /* Header: shrink paddings and fonts so the title / nav-tabs / plan
-     pills / controls all fit inside a phone width without pushing any
-     element offscreen. flex-wrap on .app-header already handles the
-     row breaks; we just tighten each piece. */
-  .app-header { padding: 10px 12px; gap: 8px; }
-  .title h1   { font-size: 16px; }
-  .nav-tabs   { gap: 2px; flex-wrap: wrap; }
-  .nav-tab    { padding: 6px 8px 5px; font-size: 10px; letter-spacing: 0.04em; }
-  .plan-switch { padding: 2px; }
-  .plan-btn    { padding: 5px 10px; font-size: 10px; letter-spacing: 0.02em; }
-  .controls    { width: 100%; gap: 8px; }
-  .controls label { flex: 1 0 100%; min-width: 0; }
-  .controls input[type=range] { min-width: 0; width: 100%; }
-  .controls button     { padding: 7px 12px; font-size: 11px; }
-  .controls .theme-btn { width: 30px; height: 30px; font-size: 14px; }
+  /* ── Header: 2-row grid matching desktop's visual hierarchy ──
+     Row 1  title (left) + compact icon-only controls (right)
+     Row 2  scrollable tab strip: nav-tabs + plan pills inline
+     The .nav-row wrapper dissolves on desktop (display:contents)
+     and becomes a flex row here. Icon-only buttons + a short
+     inline speed slider keep row 1 compact. */
+  .app-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title controls"
+      "nav   nav";
+    gap: 4px 10px;
+    padding: 8px 12px;
+    align-items: center;
+  }
+  .title       { grid-area: title; min-width: 0; }
+  .title h1    { font-size: 15px; }
+  .nav-row {
+    grid-area: nav;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .nav-row::-webkit-scrollbar { display: none; }
+  .nav-tabs    { gap: 1px; flex-wrap: nowrap; flex-shrink: 0; }
+  .nav-tab     { padding: 5px 7px 4px; font-size: 9px;
+                 letter-spacing: 0.03em; white-space: nowrap; }
+  .plan-switch { padding: 2px; flex-shrink: 0; }
+  .plan-btn    { padding: 4px 9px; font-size: 9px; letter-spacing: 0.01em; }
+  .controls {
+    grid-area: controls;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 5px;
+    width: auto;
+  }
+  .controls label {
+    font-size: 0;
+    flex-direction: row;
+    flex: 0 1 auto;
+    gap: 0;
+    min-width: 0;
+  }
+  .controls input[type=range] { min-width: 40px; width: 60px; }
+  .controls button {
+    font-size: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .controls button::before { font-size: 13px; }
+  #btn-start::before  { content: '\25B6'; }
+  #btn-pause::before  { content: '\23F8'; }
+  #btn-reset::before  { content: '\21BA'; }
+  .controls .theme-btn { width: 28px; height: 28px; font-size: 0; }
+  .controls .theme-btn::before { content: '\25D1'; font-size: 13px; }
 
   /* Experiment grid: collapse to a single column and tighten gutters
      so chart canvases get the full viewport width. */
