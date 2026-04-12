@@ -56,18 +56,14 @@ const AI = {
    */
   MODELS: [
     { id: 'gpt-5.4',       label: 'GPT-5.4' },
-    { id: 'gpt-5.4-mini',  label: 'GPT-5.4 Mini' },
-    { id: 'gpt-5.4-nano',  label: 'GPT-5.4 Nano' },
     { id: 'o3',            label: 'o3' },
     { id: 'o4-mini',       label: 'o4-mini' },
     { id: 'gpt-4.1',       label: 'GPT-4.1' },
-    { id: 'gpt-4.1-mini',  label: 'GPT-4.1 Mini' },
     { id: 'gpt-4o',        label: 'GPT-4o' },
-    { id: 'gpt-4o-mini',   label: 'GPT-4o Mini' },
   ],
 
   /** Default model used when the user leaves the dropdown untouched. */
-  DEFAULT_MODEL: 'gpt-5.4',
+  DEFAULT_MODEL: 'gpt-4o',
 
   /**
    * gpt-5 / o3+ / o1+ families require `max_completion_tokens` in
