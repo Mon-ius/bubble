@@ -864,10 +864,10 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   box-shadow: 0 0 0 8px var(--accent-light);
 }
 
-/* Toggle pill buttons — inline pill pair on the param-head right side,
-   matching the .pval badge shape. Each pill is a clickable label that
-   wraps a hidden checkbox; the checked state flips the pill from the
-   muted off-state to the accent on-state. */
+/* Toggle buttons — inline button pair on the param-head right side.
+   Each button wraps a hidden checkbox; off = outlined muted,
+   on = solid accent fill. Border + shadow give a clear clickable
+   affordance distinct from the passive .pval readout badges. */
 .param-toggle-row { gap: 0; }
 .toggle-pills {
   display: flex;
@@ -877,20 +877,27 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0;
   font-family: var(--font-ui);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  min-width: 0;
-  text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
   cursor: pointer;
   user-select: none;
-  background: var(--bg-3);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
   color: var(--fg-3);
-  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  transition: background 0.18s var(--ease), color 0.18s var(--ease),
+              border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.pill-btn:hover {
+  border-color: var(--fg-3);
+  color: var(--fg-1);
+}
+.pill-btn:active {
+  transform: scale(0.96);
 }
 .pill-btn input {
   position: absolute;
@@ -901,7 +908,12 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 }
 .pill-btn:has(input:checked) {
   background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+.pill-btn:has(input:checked):hover {
+  border-color: var(--accent);
 }
 
 /* Risk-preference composition bar — the three linked sliders push
