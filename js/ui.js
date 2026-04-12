@@ -444,6 +444,8 @@ const UI = {
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flippable').forEach(wrap => {
       wrap.addEventListener('click', (e) => {
         if (e.target.closest('.endow-input')) return;
+        // Don't flip when interacting with scrollable back-face content.
+        if (e.target.closest('.llm-prompt-body')) return;
         const id = Number(wrap.dataset.agentId);
         if (UI._flipped.has(id)) UI._flipped.delete(id);
         else                     UI._flipped.add(id);

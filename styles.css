@@ -1639,6 +1639,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   inset: 0;
   backface-visibility: hidden;
   transform: rotateY(180deg);
+  transform-style: flat;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1647,6 +1648,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .card-back-head {
   display: flex;
