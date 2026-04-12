@@ -61,7 +61,7 @@ const App = {
   // always filled. F and T provide the initial price heterogeneity
   // that bootstraps non-degenerate trading under Plan I's DLM belief
   // model (prior = FV, peer-message blend with experience weight w).
-  mix: { F: 1, T: 1, R: 0, U: 4 },
+  mix: { F: 0, T: 0, R: 0, U: 6 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which

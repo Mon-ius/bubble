@@ -81,16 +81,16 @@
           <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
             <div class="param-head">
               <label for="p-count-f">Fundamentalists <span class="pval-sub">N(F)</span></label>
-              <span class="pval" id="v-count-f">1</span>
+              <span class="pval" id="v-count-f">0</span>
             </div>
-            <input type="range" id="p-count-f" min="0" max="5" step="1" value="1">
+            <input type="range" id="p-count-f" min="0" max="5" step="1" value="0">
           </div>
           <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
             <div class="param-head">
               <label for="p-count-t">Trend followers <span class="pval-sub">N(T)</span></label>
-              <span class="pval" id="v-count-t">1</span>
+              <span class="pval" id="v-count-t">0</span>
             </div>
-            <input type="range" id="p-count-t" min="0" max="5" step="1" value="1">
+            <input type="range" id="p-count-t" min="0" max="5" step="1" value="0">
           </div>
           <div class="param-row param-toggle-pair" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
             <div class="param-head">
