@@ -651,12 +651,16 @@ class UtilityAgent extends Agent {
     const fv   = market.fundamentalValue();
     const plan = (ctx && ctx.plan) || 'I';
 
-    // Plan I's scaffold: prior = FV exactly (no bias, no noise, no
-    // horizon discount) so the only channel of heterogeneity across
-    // agents is the peer-message blend below. The true (pre-blend)
-    // valuation is recorded for the logger so the valuation chart
-    // still has a per-tick point per agent.
-    const prior = Math.max(0, fv);
+    // Prior = FV × (1 + bias_i + ε), where bias_i is the agent's
+    // persistent bias (from biasAmount/biasMode) and ε is i.i.d.
+    // per-tick noise drawn from U[-valuationNoise, +valuationNoise].
+    // This is the DLM-Lopez-Lira belief channel: heterogeneity in
+    // priors is what drives non-degenerate trading.
+    const noise = this.valuationNoise * (2 * rng() - 1);
+    const bias  = this.biasMode === 'over'  ?  this.biasAmount
+                : this.biasMode === 'under' ? -this.biasAmount
+                : 0;
+    const prior = Math.max(0, fv * (1 + bias + noise));
     this.trueValuation = prior;
 
     // Gather last period's messages from the bus (peer channel). These
