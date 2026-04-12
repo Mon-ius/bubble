@@ -76,25 +76,25 @@
     <div class="params-body">
 
       <details class="psec" open>
-        <summary>Population mix <span class="muted" id="mix-total">(N = 6)</span></summary>
+        <summary>Trade settings <span class="muted" id="mix-total">(N = 6)</span></summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="Number of Fundamentalist (mean-reversion) agents. Buy when ask < 0.98·FV, sell when bid > 1.02·FV. Provides a rational anchor that pulls prices toward fundamental value. Can be set to 0 for a pure utility-agent market.">
+          <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
             <div class="param-head">
-              <label for="p-fund">Fundamentalist N(F)</label>
-              <span class="pval" id="v-fund">1</span>
+              <label for="p-count-f">Fundamentalists <span class="pval-sub">N(F)</span></label>
+              <span class="pval" id="v-count-f">1</span>
             </div>
-            <input type="range" id="p-fund" min="0" max="5" step="1" value="1">
+            <input type="range" id="p-count-f" min="0" max="5" step="1" value="1">
           </div>
-          <div class="param-row" data-tip="Number of Trend-follower (momentum) agents. Estimate a price slope from the last 6 prints and chase the trend. Drives bubble inflation when prices are rising. Can be set to 0.">
+          <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
             <div class="param-head">
-              <label for="p-trend">Trend follower N(T)</label>
-              <span class="pval" id="v-trend">1</span>
+              <label for="p-count-t">Trend followers <span class="pval-sub">N(T)</span></label>
+              <span class="pval" id="v-count-t">1</span>
             </div>
-            <input type="range" id="p-trend" min="0" max="5" step="1" value="1">
+            <input type="range" id="p-count-t" min="0" max="5" step="1" value="1">
           </div>
           <div class="param-row">
             <div class="param-head">
-              <label>Utility N(U)</label>
+              <label>Utility <span class="pval-sub">N(U)</span></label>
               <span class="pval" id="v-util">4</span>
             </div>
           </div>

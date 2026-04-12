@@ -239,8 +239,8 @@ const App = {
    */
   _paramMap: {
     // Population mix — F and T are user-adjustable; U is derived.
-    'p-fund':  { target: 'mix.F', out: 'v-fund',  fmt: v => v, int: true },
-    'p-trend': { target: 'mix.T', out: 'v-trend', fmt: v => v, int: true },
+    'p-count-f': { target: 'mix.F', out: 'v-count-f', fmt: v => String(v), int: true },
+    'p-count-t': { target: 'mix.T', out: 'v-count-t', fmt: v => String(v), int: true },
     // Risk preferences — three linked shares summing to 100.
     'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
@@ -597,18 +597,16 @@ const App = {
    */
   _constrainMix() {
     const N = this.TOTAL_N;
-    const elF = document.getElementById('p-fund');
-    const elT = document.getElementById('p-trend');
+    const elF = document.getElementById('p-count-f');
+    const elT = document.getElementById('p-count-t');
     if (!elF || !elT) return;
     const f = this.mix.F | 0;
     const t = this.mix.T | 0;
-    // Clamp: if the sum exceeds N, trim the *other* slider.
+    // Clamp: if the sum exceeds N, trim the other slider.
     if (f + t > N) {
-      // Last-writer-wins: the slider that just moved keeps its value,
-      // but since we don't know which one moved, cap T first.
       this.mix.T = Math.max(0, N - f);
       elT.value = String(this.mix.T);
-      const outT = document.getElementById('v-trend');
+      const outT = document.getElementById('v-count-t');
       if (outT) outT.textContent = this.mix.T;
       this._updateSliderPct(elT);
     }
