@@ -486,7 +486,7 @@ const UI = {
       return `<li class="feed-silent">
         <span class="t-tick">t${r.tick}</span>
         <span class="t-price">—</span>
-        <span class="t-agents">no log</span>
+        <span class="t-agents">no trade</span>
       </li>`;
     }).join('');
   },
