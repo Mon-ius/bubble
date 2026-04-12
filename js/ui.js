@@ -101,6 +101,9 @@ const UI = {
     }
   },
 
+  // Agent ids whose card is currently flipped to the back face.
+  _flipped: new Set(),
+
   init() {
     this.refreshTheme();
     // Stat cells
@@ -406,8 +409,9 @@ const UI = {
                   value="${a.inventory}">`
         : a.inventory;
 
+      const isFlipped = UI._flipped.has(a.id);
       return `
-        <div class="agent-card-wrap flippable">
+        <div class="agent-card-wrap flippable${isFlipped ? ' flipped' : ''}" data-agent-id="${a.id}">
           <div class="agent-card-inner">
             <div class="agent-card card-front ${a.type}"${borderStyle}>
               <div class="agent-header">
@@ -435,10 +439,14 @@ const UI = {
     }).join('');
     this.els.agentsGrid.innerHTML = html;
 
-    // Flip-card click handlers for Plan II/III LLM prompt cards.
+    // Flip-card click handlers — persist state in _flipped so it
+    // survives the per-frame innerHTML rebuild.
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flippable').forEach(wrap => {
       wrap.addEventListener('click', (e) => {
         if (e.target.closest('.endow-input')) return;
+        const id = Number(wrap.dataset.agentId);
+        if (UI._flipped.has(id)) UI._flipped.delete(id);
+        else                     UI._flipped.add(id);
         wrap.classList.toggle('flipped');
       });
     });
