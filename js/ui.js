@@ -351,25 +351,29 @@ const UI = {
           <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>` : '';
 
-      // LLM prompt/response block — shown only for utility agents under Plan II/III
-      const llmBlock = (isUtil && a.lastLLMPrompt) ? `
-          <details class="llm-prompt-block">
-            <summary>LLM prompt · Plan ${a.lastLLMPrompt.plan || '?'}</summary>
-            <div class="llm-prompt-body">
-              <div class="llm-section">
-                <div class="llm-label">System</div>
-                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
-              </div>
-              <div class="llm-section">
-                <div class="llm-label">User</div>
-                <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
-              </div>
-              <div class="llm-section">
-                <div class="llm-label">Response</div>
-                <pre class="llm-text llm-response">${UI._escHtml(String(a.lastLLMResponse || '—'))}</pre>
-              </div>
+      // LLM prompt back-face — rendered on the flip side of the card.
+      const hasLLM = isUtil && a.lastLLMPrompt;
+      const llmBack = hasLLM ? `
+        <div class="card-back">
+          <div class="card-back-head">
+            <span class="card-back-title">LLM · Plan ${a.lastLLMPrompt.plan || '?'}</span>
+            <span class="card-back-hint">click to flip back</span>
+          </div>
+          <div class="llm-prompt-body">
+            <div class="llm-section">
+              <div class="llm-label">System</div>
+              <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.system || '')}</pre>
             </div>
-          </details>` : '';
+            <div class="llm-section">
+              <div class="llm-label">User</div>
+              <pre class="llm-text">${UI._escHtml(a.lastLLMPrompt.user || '')}</pre>
+            </div>
+            <div class="llm-section">
+              <div class="llm-label">Response</div>
+              <pre class="llm-text llm-response">${UI._escHtml(String(a.lastLLMResponse || '—'))}</pre>
+            </div>
+          </div>
+        </div>` : '';
 
       const cashCell = editable
         ? `<input class="endow-input" type="number" min="0" step="10"
@@ -382,28 +386,43 @@ const UI = {
                   value="${a.inventory}">`
         : a.inventory;
 
+      const flipClass = hasLLM ? ' flippable' : '';
       return `
-        <div class="agent-card ${a.type}"${borderStyle}>
-          <div class="agent-header">
-            <div class="agent-head-left">
-              <div class="agent-name">${displayName}</div>
-              <div class="agent-type">${subtitle}${subtitleSym ? ` <span class="sym">${subtitleSym}</span>` : ''}</div>
+        <div class="agent-card-wrap${flipClass}">
+          <div class="agent-card-inner">
+            <div class="agent-card card-front ${a.type}"${borderStyle}>
+              <div class="agent-header">
+                <div class="agent-head-left">
+                  <div class="agent-name">${displayName}</div>
+                  <div class="agent-type">${subtitle}${subtitleSym ? ` <span class="sym">${subtitleSym}</span>` : ''}</div>
+                </div>
+                <div class="agent-head-right">
+                  <span class="last-action ${action}">${action}</span>
+                  <span class="sym action-sym">${sym.action || ''}</span>
+                </div>
+              </div>
+              ${dlmBadgeRow}
+              <div class="metrics">
+                <span class="metric">Cash <span class="sym">${sym.cash || ''}</span></span>    <span class="metric-val">${cashCell}</span>
+                <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>
+                <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
+                <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
+              </div>
+              ${hasLLM ? '<div class="card-flip-hint">click to view prompt</div>' : ''}
             </div>
-            <div class="agent-head-right">
-              <span class="last-action ${action}">${action}</span>
-              <span class="sym action-sym">${sym.action || ''}</span>
-            </div>
+            ${llmBack}
           </div>
-          ${dlmBadgeRow}
-          <div class="metrics">
-            <span class="metric">Cash <span class="sym">${sym.cash || ''}</span></span>    <span class="metric-val">${cashCell}</span>
-            <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>
-            <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
-            <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
-          </div>${llmBlock}
         </div>`;
     }).join('');
     this.els.agentsGrid.innerHTML = html;
+
+    // Flip-card click handlers for Plan II/III LLM prompt cards.
+    this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flippable').forEach(wrap => {
+      wrap.addEventListener('click', (e) => {
+        if (e.target.closest('.endow-input')) return;
+        wrap.classList.toggle('flipped');
+      });
+    });
 
     if (editable) this._wireEndowmentInputs();
   },

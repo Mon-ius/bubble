@@ -1613,39 +1613,70 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   border-color: color-mix(in srgb, var(--red) 30%, transparent);
 }
 
-/* LLM prompt/response block — collapsible <details> inside each agent
-   card, shown only for Utility agents under Plan II/III after the first
-   period boundary fires an LLM call. */
-.llm-prompt-block {
-  margin-top: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 6px;
+/* Flip-card wrapper — click to flip between agent metrics (front)
+   and LLM prompt (back). Only agents with Plan II/III data get the
+   flippable class; others render a plain static card. */
+.agent-card-wrap {
+  perspective: 800px;
 }
-.llm-prompt-block summary {
+.agent-card-wrap.flippable {
   cursor: pointer;
-  list-style: none;
-  font-size: 9px;
-  font-weight: 600;
+}
+.agent-card-inner {
+  position: relative;
+  transition: transform 0.45s var(--ease);
+  transform-style: preserve-3d;
+}
+.agent-card-wrap.flipped .agent-card-inner {
+  transform: rotateY(180deg);
+}
+.card-front {
+  backface-visibility: hidden;
+}
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.card-back-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-back-title {
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--pink);
-  user-select: none;
-  padding: 2px 0;
 }
-.llm-prompt-block summary::-webkit-details-marker { display: none; }
-.llm-prompt-block summary::marker { display: none; }
-.llm-prompt-block summary::before {
-  content: '▸ ';
+.card-back-hint {
   font-size: 8px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.llm-prompt-block[open] summary::before {
-  content: '▾ ';
+.card-flip-hint {
+  font-size: 8px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: right;
+  margin-top: 2px;
 }
 .llm-prompt-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 6px;
 }
 .llm-section .llm-label {
   font-size: 8px;
@@ -1661,13 +1692,13 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   font-size: 10px;
   line-height: 1.5;
   color: var(--fg-1);
-  background: var(--bg-2);
+  background: var(--bg-1);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 160px;
+  max-height: 140px;
   overflow-y: auto;
 }
 .llm-text.llm-response {
