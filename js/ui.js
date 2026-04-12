@@ -1580,6 +1580,14 @@ const UI = {
               </div>`).join('')}
           </div>` : '';
 
+      // Prior adjustment flags.
+      const priorFlags = [];
+      if (r.biasActive)  priorFlags.push(`bias:${r.biasMode || '—'}(${r.biasAmount != null ? r.biasAmount.toFixed(2) : '—'})`);
+      if (r.noiseActive) priorFlags.push('noise');
+      const priorBlock = priorFlags.length
+        ? `<div class="trace-row muted">prior adj: ${priorFlags.join(' + ')}</div>`
+        : '';
+
       // Extended: messages heard this period.
       const msgBlock = (r.receivedMsgs && r.receivedMsgs.length)
         ? `<div class="trace-row muted">heard ${r.receivedMsgs.map(m => `${m.from}:${m.claim.toFixed(0)}(${m.sig})`).join(', ')}</div>`
@@ -1596,6 +1604,7 @@ const UI = {
           <div class="trace-row">est value <strong>${valStr}</strong> · E[π] <strong>${profitStr}</strong></div>
           <div class="trace-row">cash <strong>${t.state.cash.toFixed(0)}</strong> · inv <strong>${t.state.inventory}</strong></div>
           ${uBlock}
+          ${priorBlock}
           ${msgBlock}
         </div>`;
     }).join('');

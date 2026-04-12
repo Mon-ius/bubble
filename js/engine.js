@@ -536,6 +536,10 @@ class Engine {
       evaluationLength:   this.logger.decisionEvaluations.length,
       trustLength:        this.logger.trustHistory.length,
       trust:              this.ctx.trustTracker ? this.ctx.trustTracker.copy() : null,
+      tunables: {
+        applyBias:  !!(this.ctx.tunables && this.ctx.tunables.applyBias),
+        applyNoise: !!(this.ctx.tunables && this.ctx.tunables.applyNoise),
+      },
     };
   }
 }

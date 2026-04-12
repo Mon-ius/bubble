@@ -75,6 +75,10 @@ const Replay = {
       utilityHistory:      logger.utilityHistory,
       decisionEvaluations: logger.decisionEvaluations,
       trust:               ctx && ctx.trustTracker ? ctx.trustTracker.copy() : null,
+      tunables: {
+        applyBias:  !!(ctx && ctx.tunables && ctx.tunables.applyBias),
+        applyNoise: !!(ctx && ctx.tunables && ctx.tunables.applyNoise),
+      },
       isReplay:            false,
     };
   },
@@ -102,6 +106,7 @@ const Replay = {
         utilityHistory:      [],
         decisionEvaluations: [],
         trust:               null,
+        tunables:            { applyBias: false, applyNoise: false },
         isReplay:            true,
       };
     }
@@ -124,6 +129,7 @@ const Replay = {
       utilityHistory:       logger.utilityHistory.slice(0, snap.utilityLength || 0),
       decisionEvaluations:  logger.decisionEvaluations.slice(0, snap.evaluationLength || 0),
       trust:                snap.trust || null,
+      tunables:             snap.tunables || { applyBias: false, applyNoise: false },
       isReplay:             true,
     };
   },

@@ -838,6 +838,10 @@ class UtilityAgent extends Agent {
         })),
         chosen: chosen.label,
       },
+      biasActive:   !!(ctx && ctx.tunables && ctx.tunables.applyBias),
+      noiseActive:  !!(ctx && ctx.tunables && ctx.tunables.applyNoise),
+      biasMode:     this.biasMode,
+      biasAmount:   this.biasAmount,
       beliefMode:   this.beliefMode,
       receivedMsgs: this.receivedMsgs.map(m => ({
         from:  m.senderName,

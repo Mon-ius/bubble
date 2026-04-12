@@ -117,6 +117,18 @@ The engine and agents read from `ctx.tunables` when present and fall back to
 `UTILITY_DEFAULTS` via the `tunable()` helper when a key is missing — so
 tunables that aren't exposed as sliders still have a safe default.
 
+The **Prior adjustments** row in Trade Settings exposes two boolean
+toggles — **Prior Bias** and **Prior Noise** — wired to
+`App.tunables.applyBias` / `App.tunables.applyNoise`. When a toggle
+is on the UtilityAgent prior becomes `FV × (1 + bias + noise)` where
+`bias` is the agent's persistent `biasMode × biasAmount` tilt and
+`noise` is an i.i.d. per-tick draw from `U[-valuationNoise, +valuationNoise]`.
+When both are off the prior collapses to FV exactly (pure Plan I
+baseline). The toggle state is captured in every engine snapshot and
+surfaces in the reasoning trace (fields `biasActive`, `noiseActive`),
+the replay view (`v.tunables`), and the Plan II/III LLM prompt
+(under "YOUR PRIVATE STATE").
+
 The **Risk preferences** subsection uses three linked sliders
 (α<sub>L</sub>/α<sub>N</sub>/α<sub>A</sub>) that always sum to 100 and drive
 a composition bar (`#comp-bar`) above them. `App.riskMix` holds the current
