@@ -319,11 +319,13 @@ const App = {
       const models = AI.getModels(providerKey);
       const def    = AI.getDefaultModel(providerKey);
       const ep     = AI.getDefaultEndpoint(providerKey);
+      const kp     = AI.getKeyPlaceholder(providerKey);
       const optHtml = models
         .map(m => `<option value="${m.id}">${m.label}</option>`)
         .join('');
       aiModels.forEach(sel => { sel.innerHTML = optHtml; sel.value = def; });
       aiEndpoints.forEach(el => el.placeholder = ep);
+      aiKeys.forEach(el => el.placeholder = kp);
       this.aiConfig.model = def;
       this.aiConfig.provider = providerKey;
     };

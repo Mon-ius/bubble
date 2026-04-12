@@ -47,6 +47,7 @@ const AI = {
     openai: {
       label: 'OpenAI ChatGPT',
       endpoint: 'https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions',
+      keyPlaceholder: 'sk-...',
       models: [
         { id: 'gpt-4o',        label: 'GPT-4o' },
         { id: 'gpt-4.1',       label: 'GPT-4.1' },
@@ -59,6 +60,7 @@ const AI = {
     gemini: {
       label: 'Google Gemini',
       endpoint: 'https://gemini-20250719-bdb3d11b.rootdirectorylab.com/v1beta',
+      keyPlaceholder: 'AIza...',
       models: [
         { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash' },
         { id: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro' },
@@ -69,6 +71,7 @@ const AI = {
     claude: {
       label: 'Anthropic Claude',
       endpoint: 'https://anthropic-20250719-b6006324.rootdirectorylab.com/v1/messages',
+      keyPlaceholder: 'sk-ant-...',
       models: [
         { id: 'claude-sonnet-4-5-20250514', label: 'Claude Sonnet 4.5' },
         { id: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
@@ -87,6 +90,7 @@ const AI = {
   getModels(providerKey) { return this.getProvider(providerKey).models; },
   getDefaultModel(providerKey) { return this.getProvider(providerKey).default; },
   getDefaultEndpoint(providerKey) { return this.getProvider(providerKey).endpoint; },
+  getKeyPlaceholder(providerKey) { return this.getProvider(providerKey).keyPlaceholder; },
 
   /**
    * gpt-5 / o3+ / o1+ families require `max_completion_tokens` in
