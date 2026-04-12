@@ -545,6 +545,10 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 /* Mirror for strict-DLM: the DLM replication psec (treatment radios
    + batch runner) is only visible when the DLM paradigm is active. */
 body:not(.dlm-mode) .dlm-only   { display: none !important; }
+/* Hide the background-count sliders (F/T) in strict-DLM mode — DLM
+   §I pins the population at six DLM traders with no F/T background.
+   Outside of DLM mode they are always visible and editable (min 0). */
+body.dlm-mode .bg-only          { display: none !important; }
 
 /* ---------- Parameters panel ---------- */
 /*
@@ -1019,6 +1023,39 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
 .dlm-treatment-opt:has(input:checked) {
   border-color: var(--blue, #3b82f6);
   background: color-mix(in srgb, var(--blue, #3b82f6) 10%, var(--bg-1));
+  color: var(--fg-0);
+}
+/* Research-plan radio stack — same tile styling as the DLM treatment
+   row, but vertical so each option can spell out the plan clearly. */
+.plan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.plan-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg-1);
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.plan-opt:hover {
+  border-color: var(--accent, #3b82f6);
+}
+.plan-opt input[type="radio"] {
+  accent-color: var(--accent, #3b82f6);
+  margin: 0;
+}
+.plan-opt:has(input:checked) {
+  border-color: var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 10%, var(--bg-1));
   color: var(--fg-0);
 }
 .btn-dlm-batch {

@@ -416,6 +416,63 @@ class Engine {
       trust.snapshot(this.market.tick);
       this.logger.logTrust({ tick: this.market.tick, period, trust: trust.copy() });
     }
+    // Plan II / Plan III — period-boundary LLM belief refresh. This
+    // call is fire-and-forget: the tick loop continues immediately
+    // while the network request runs in the background. When the
+    // promise resolves, `ctx.llmBeliefs` is populated with subjective
+    // valuations that updateBelief will consume on the next period's
+    // first tick. If the LLM is slower than the next period boundary,
+    // the affected agents simply fall back to Plan I for that period
+    // (updateBelief treats a missing cache key as "use the algorithmic
+    // branch"). Plan I ignores this block entirely.
+    this._schedulePlanLLM();
+  }
+
+  /**
+   * Fire-and-forget period-boundary LLM call for Plans II and III.
+   *
+   * Reads ctx.plan and ctx.aiConfig; no-op unless plan is II or III
+   * AND an API key is present AND the global AI object is available
+   * (it's not in Node smoke tests). Results are merged into
+   * ctx.llmBeliefs as soon as the promise resolves, overwriting any
+   * previous per-agent entry so the next period sees the freshest
+   * belief. Errors surface only to the console — the engine does not
+   * await or retry.
+   */
+  _schedulePlanLLM() {
+    const plan   = this.ctx && this.ctx.plan;
+    const aiCfg  = this.ctx && this.ctx.aiConfig;
+    if (plan !== 'II' && plan !== 'III') return;
+    if (!aiCfg || !aiCfg.apiKey) return;
+    if (typeof AI === 'undefined' || !AI.getPlanBeliefs) return;
+    const market = this.market;
+    const cfg    = this.config;
+    const agents = this.agents;
+    const ctx    = this.ctx;
+    // Snapshot peer messages into each agent's `receivedMsgs` field
+    // now so the prompt builder reads a stable last-period view even
+    // if the next tick mutates the bus before the network call runs.
+    const bus = ctx.messageBus;
+    if (bus && bus.byPeriod) {
+      const prev = market.period;
+      for (const id of Object.keys(agents)) {
+        const a = agents[id];
+        if (!a || a.type !== 'utility') continue;
+        const msgs = bus.byPeriod(prev) || [];
+        a.receivedMsgs = msgs.filter(m => m.senderId !== a.id);
+      }
+    }
+    Promise.resolve().then(async () => {
+      try {
+        const beliefs = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan);
+        if (!beliefs) return;
+        for (const k of Object.keys(beliefs)) {
+          ctx.llmBeliefs[k] = beliefs[k];
+        }
+      } catch (err) {
+        console.warn('[engine._schedulePlanLLM]', err && err.message || err);
+      }
+    });
   }
 
   isFinished() {

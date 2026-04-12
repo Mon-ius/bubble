@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual Trading Platform</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="stylesheet" href="styles.css?v=17">
 <!--
   KaTeX — client-side math rendering for the Architecture, Glossary,
   and Slides tabs. Mirrors the lying project's setup (same version,
@@ -88,12 +88,26 @@
       <details class="psec" open>
         <summary>Trade settings <span class="muted" id="mix-total">(total 10)</span></summary>
         <div class="psec-body">
-          <div class="param-row" data-tip="N — total population size. In Lopez-Lira and AIPE mode N = N_fixed + N(U) where N_fixed = 4 is the pinned F/T/R background (see Hidden Constants); moving the slider rescales the U slot and re-samples on release. In strict-DLM mode the slider is pinned at 6 and disabled — DLM 2005 §I specifies exactly six traders per session.">
+          <div class="param-row" data-tip="N — total population size. In non-DLM modes N = N(F) + N(T) + N(R) + N(U); moving the slider rescales the U slot and re-samples on release. In strict-DLM mode the slider is pinned at 6 and disabled — DLM 2005 §I specifies exactly six traders per session.">
             <div class="param-head">
               <label for="p-total">Number of Agent <span data-sym="agentI"></span>(N)</label>
               <span class="pval" id="v-total">10</span>
             </div>
             <input type="range" id="p-total" min="4" max="30" step="1" value="10">
+          </div>
+          <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot and re-samples on release.">
+            <div class="param-head">
+              <label for="p-count-f">Fundamentalists <span class="pval-sub">N(F)</span></label>
+              <span class="pval" id="v-count-f">2</span>
+            </div>
+            <input type="range" id="p-count-f" min="0" max="10" step="1" value="2">
+          </div>
+          <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot and re-samples on release.">
+            <div class="param-head">
+              <label for="p-count-t">Trend followers <span class="pval-sub">N(T)</span></label>
+              <span class="pval" id="v-count-t">1</span>
+            </div>
+            <input type="range" id="p-count-t" min="0" max="10" step="1" value="1">
           </div>
         </div>
       </details>
@@ -131,6 +145,32 @@
             <div class="dlm-batch-status" id="dlm-batch-status" aria-live="polite"></div>
           </div>
           <div id="dlm-batch-results" class="dlm-batch-results"></div>
+        </div>
+      </details>
+
+      <details class="psec ext-only" open>
+        <summary>Research plan</summary>
+        <div class="psec-body">
+          <div class="param-row" data-tip="Plan I — algorithm-only. Each utility agent forms a prior equal to the current FV and blends peer messages with weight w = 0.6 + 0.1·min(3, roundsPlayed), so agents grow less susceptible to peer influence as they accumulate rounds of experience. No LLM calls. Plan II — same FV prior, but every period an LLM is asked for a new belief given the agent's risk preference AND the explicit utility-function form (U_L, U_N, or U_A) corresponding to that preference. Plan III — same as Plan II but the LLM is only told the risk-preference label (risk-loving / risk-neutral / risk-averse) without any utility-function formulas, testing whether the label alone is sufficient to recover the utility-aware belief. Plans II and III fall back to Plan I on network/API errors.">
+            <div class="param-head">
+              <label>Plan</label>
+              <span class="pval" id="v-plan">Plan I</span>
+            </div>
+            <div class="plan-row">
+              <label class="plan-opt">
+                <input type="radio" name="plan" value="I" checked>
+                <span>Plan I — algorithm (FV prior, w by rounds)</span>
+              </label>
+              <label class="plan-opt">
+                <input type="radio" name="plan" value="II">
+                <span>Plan II — LLM with utility forms (U_L / U_N / U_A)</span>
+              </label>
+              <label class="plan-opt">
+                <input type="radio" name="plan" value="III">
+                <span>Plan III — LLM with risk preference only</span>
+              </label>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -298,19 +338,9 @@
         <dd class="const-note">DLM 2005 runs a continuous 2-minute z-Tree double auction per period; this simulator discretizes that window into 18 decision rounds (≈ one agent turn every 6.7 real-time seconds) so the engine loop can step deterministically. 18 is dense enough to reproduce the bubble-crash pattern while keeping the replay buffer compact.<span class="const-src">engine.js — period-boundary trigger</span></dd>
       </div>
       <div class="const-item">
-        <dt>N(F) Fundamentalist <span class="const-val">= 2</span></dt>
-        <dd class="const-label">Pinned rational-anchor background</dd>
-        <dd class="const-note">Two Fundamentalist agents are seeded into every run as the rational mean-reversion anchor. They buy when the ask is more than 2% below FV, sell when the bid is more than 2% above FV, and otherwise post passive quotes near FV. Not proposed by DLM 2005, which only studies human subjects, but borrowed from the Smith–Suchanek–Williams (1988) lineage that DLM replicates so the market always has an FV-aware counterparty.<span class="const-src">main.js — App.FIXED_BACKGROUND.F</span></dd>
-      </div>
-      <div class="const-item">
-        <dt>N(T) Trend follower <span class="const-val">= 1</span></dt>
-        <dd class="const-label">Pinned momentum / positive-feedback trader</dd>
-        <dd class="const-note">A single Trend follower carries momentum into every run, detecting slope from the last 6 prints and bidding above (or asking below) the last trade accordingly. Not in DLM 2005; drawn from the De Long–Shleifer–Summers–Waldmann (1990) positive-feedback literature that explains why SSW-style bubbles inflate. Provides the bubble-inflation channel without dominating the population.<span class="const-src">main.js — App.FIXED_BACKGROUND.T</span></dd>
-      </div>
-      <div class="const-item">
         <dt>N(R) Random (ZI) <span class="const-val">= 1</span></dt>
         <dd class="const-label">Pinned zero-intelligence liquidity floor</dd>
-        <dd class="const-note">A single Gode–Sunder (1993) zero-intelligence trader is seeded into every run to provide a thin but persistent liquidity floor: each tick it flips a coin and posts a uniform bid in [0.7·FV, 1.1·FV] or a uniform ask in [0.9·FV, 1.3·FV]. Not in DLM 2005; pinned at one slot so that books never go fully empty even when E and U agents abstain.<span class="const-src">main.js — App.FIXED_BACKGROUND.R</span></dd>
+        <dd class="const-note">A single Gode–Sunder (1993) zero-intelligence trader is seeded into every run to provide a thin but persistent liquidity floor: each tick it flips a coin and posts a uniform bid in [0.7·FV, 1.1·FV] or a uniform ask in [0.9·FV, 1.3·FV]. Not in DLM 2005; pinned at one slot so that books never go fully empty even when F/T and U agents abstain. N(F) and N(T) are now editable from the Trade settings panel (min 0 each).<span class="const-src">main.js — App.FIXED_BACKGROUND.R</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>naive prior weight <span class="const-val">= 0.60</span></dt>
@@ -1218,17 +1248,17 @@
   </div>
 </section>
 
-<script data-cfasync="false" src="js/mathml.js?v=14"></script>
-<script data-cfasync="false" src="js/utility.js?v=14"></script>
-<script data-cfasync="false" src="js/messaging.js?v=14"></script>
-<script data-cfasync="false" src="js/market.js?v=14"></script>
-<script data-cfasync="false" src="js/agents.js?v=14"></script>
-<script data-cfasync="false" src="js/logger.js?v=14"></script>
-<script data-cfasync="false" src="js/viz.js?v=14"></script>
-<script data-cfasync="false" src="js/engine.js?v=14"></script>
-<script data-cfasync="false" src="js/ai.js?v=14"></script>
-<script data-cfasync="false" src="js/ui.js?v=14"></script>
-<script data-cfasync="false" src="js/replay.js?v=14"></script>
-<script data-cfasync="false" src="js/main.js?v=14"></script>
+<script data-cfasync="false" src="js/mathml.js?v=18"></script>
+<script data-cfasync="false" src="js/utility.js?v=18"></script>
+<script data-cfasync="false" src="js/messaging.js?v=18"></script>
+<script data-cfasync="false" src="js/market.js?v=18"></script>
+<script data-cfasync="false" src="js/agents.js?v=18"></script>
+<script data-cfasync="false" src="js/logger.js?v=18"></script>
+<script data-cfasync="false" src="js/viz.js?v=18"></script>
+<script data-cfasync="false" src="js/ai.js?v=18"></script>
+<script data-cfasync="false" src="js/engine.js?v=18"></script>
+<script data-cfasync="false" src="js/ui.js?v=18"></script>
+<script data-cfasync="false" src="js/replay.js?v=18"></script>
+<script data-cfasync="false" src="js/main.js?v=18"></script>
 </body>
 </html>

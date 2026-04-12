@@ -210,6 +210,138 @@ const AI = {
     for (const r of results) if (r) anchors[r.id] = r;
     return anchors;
   },
+
+  /**
+   * Period-boundary LLM belief update for Plans II and III.
+   *
+   * Fires one chat completion per utility agent in parallel and
+   * returns a { [agentId]: subjectiveValuation } map, which the
+   * engine writes into `ctx.llmBeliefs` for the next period's
+   * `updateBelief` pass to consume.
+   *
+   * The prompt differs between the two plans by exactly one block:
+   *
+   *   Plan II  — the three utility formulas U_L, U_N, U_A are
+   *              printed out and the agent is told which of the
+   *              three applies to it. The model can then reason
+   *              about wealth-to-utility mapping explicitly and
+   *              return a subjective valuation that internalizes
+   *              the curvature.
+   *
+   *   Plan III — the formulas are omitted. The agent is told only
+   *              its risk-preference label ("risk-loving",
+   *              "risk-neutral", "risk-averse") and must infer the
+   *              behavioral implication on its own. This is the
+   *              ablation that tests whether the label alone is
+   *              sufficient to recover the utility-aware belief.
+   *
+   * Every call is independent; failures are logged and the agent
+   * is simply skipped in the returned map — the engine treats a
+   * missing key as "fall back to Plan I's algorithm next period"
+   * so the run never stalls waiting for the network.
+   *
+   * @param {{[id:string]: object}} agents
+   * @param {Market} market
+   * @param {{periods:number, dividendMean:number}} config
+   * @param {{apiKey:string, endpoint?:string, model?:string}} aiCfg
+   * @param {'II'|'III'} plan
+   * @returns {Promise<{[id:number]: number}>}
+   */
+  async getPlanBeliefs(agents, market, config, aiCfg, plan) {
+    if (!aiCfg || !aiCfg.apiKey) return {};
+    if (plan !== 'II' && plan !== 'III') return {};
+    const utilityAgents = Object.values(agents).filter(
+      a => a && (a.type === 'utility' || a.constructor?.name === 'UtilityAgent'),
+    );
+    if (!utilityAgents.length) return {};
+
+    const fv0          = config.dividendMean * config.periods;
+    const fvNow        = market.fundamentalValue();
+    const periods      = config.periods;
+    const periodNow    = market.period;
+    const round        = market.round;
+    const dividendAvg  = config.dividendMean;
+    const lastPrice    = market.lastPrice != null ? market.lastPrice : fvNow;
+    const lo           = 0;
+    const hi           = fv0 * 2;
+
+    const system =
+      'You are a trader in a finite-horizon experimental asset market ' +
+      '(Dufwenberg, Lindqvist & Moore 2005). Respond with ONE number only ' +
+      '— your private subjective valuation per share for the next period, ' +
+      'in experimental cents. No explanation, no units, no currency symbols, ' +
+      'no text, just a single decimal number.';
+
+    const labelOf = (risk) =>
+      risk === 'loving' ? 'risk-loving' :
+      risk === 'averse' ? 'risk-averse' :
+                          'risk-neutral';
+    // Plan II only — print the utility form that corresponds to the
+    // agent's risk preference so the model has the explicit curvature.
+    const formulaOf = (risk) =>
+      risk === 'loving' ? 'U_L(w) = (w / w0)^2  (strictly convex, upside-seeking)' :
+      risk === 'averse' ? 'U_A(w) = sqrt(w / w0)  (strictly concave, downside-fearing)' :
+                          'U_N(w) = w / w0  (linear, EV-indifferent)';
+
+    const promptFor = (a) => {
+      const lines = [
+        `Market: asset lives ${periods} periods. Each period every share pays`,
+        `a dividend of 0 or 20 cents with equal probability, so the expected`,
+        `dividend per period is ${dividendAvg} cents. Risk-neutral fundamental`,
+        `value at the start of period t is dividendMean × (${periods} − t + 1).`,
+        `\n\nCurrent state: round ${round}, period ${periodNow}. FV right now is`,
+        `${fvNow} cents. Last trade printed at ${lastPrice.toFixed(2)} cents.`,
+        `\n\nYou, agent ${a.id}, currently hold ${a.inventory} shares and`,
+        `${Math.round(a.cash)} cents in cash. You have played`,
+        `${a.roundsPlayed | 0} previous rounds of this market`,
+        `(experience in DLM 2005 dampens bubble-chasing).`,
+        `\n\nYour risk preference is ${labelOf(a.riskPref)}.`,
+      ];
+      if (plan === 'II') {
+        lines.push(
+          `Your utility function is ${formulaOf(a.riskPref)}.`,
+          `Every trade you consider will be scored by expected utility under`,
+          `this curvature relative to your current wealth.`,
+        );
+      }
+      // Peer messages from the last period — each utility agent
+      // broadcasts its trueValuation at every period boundary and the
+      // model should be allowed to blend them under its preference.
+      const msgs = (a.receivedMsgs || []).filter(m => m.senderId !== a.id);
+      if (msgs.length) {
+        lines.push(
+          `\n\nLast period, other traders reported these subjective valuations:`,
+        );
+        for (const m of msgs) {
+          lines.push(
+            `  - ${m.senderName || ('agent ' + m.senderId)}: ${Number(m.claimedValuation).toFixed(1)} cents`,
+          );
+        }
+      }
+      lines.push(
+        `\n\nGiven the DLM fundamental-value pattern, your experience, your`,
+        `risk preference, and the peer claims above, what is your subjective`,
+        `valuation per share for the next period? Answer with ONE number in`,
+        `experimental cents, nothing else.`,
+      );
+      return lines.join(' ').replace(/\s+\n\s+/g, '\n');
+    };
+
+    const tasks = utilityAgents.map(async (a) => {
+      try {
+        const raw = await this.call(aiCfg, system, promptFor(a));
+        const v   = this.parseValuation(raw, lo, hi);
+        return v == null ? null : { id: a.id, valuation: v };
+      } catch (err) {
+        console.warn('[ai.getPlanBeliefs]', a.id, err.message || err);
+        return null;
+      }
+    });
+    const results = await Promise.all(tasks);
+    const out = {};
+    for (const r of results) if (r) out[r.id] = r.valuation;
+    return out;
+  },
 };
 
 if (typeof window !== 'undefined') window.AI = AI;

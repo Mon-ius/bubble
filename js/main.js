@@ -50,20 +50,18 @@ const App = {
   },
 
   // Population composition — feeds the sampling stage in agents.js,
-  // which turns each per-type count into a per-agent spec. Only the E
-  // and U slots are exposed as Population sliders; F/T/R are pinned
-  // by FIXED_BACKGROUND below to a "common SSW market" mix and are
-  // surfaced read-only in the Hidden Constants panel. Defaults pair
-  // the fixed background with the original Utility preset so the
-  // extended panels light up on first load.
+  // which turns each per-type count into a per-agent spec. Every
+  // per-type count is user-adjustable from the Experiment-settings
+  // panel; defaults pair a light SSW-style F/T/R background with
+  // enough utility slots that the extended panels light up on
+  // first load.
   mix: { F: 2, T: 1, R: 1, E: 0, U: 6 },
 
-  // Pinned counts for the F/T/R background. They are not adjustable
-  // from the UI: 2 Fundamentalists supply a rational anchor, 1 Trend
-  // follower carries momentum, 1 Random ZI provides liquidity/noise.
-  // Together they reproduce the non-experienced portion of the Mixed
-  // preset documented in CLAUDE.md and act as a stable scaffold for
-  // every run regardless of the user's E/U choices.
+  // Starting defaults for the F/T/R background. Editable from the
+  // Experiment-settings panel (min 0 each), so a run with zero
+  // Fundamentalists or zero Trend followers is reachable — the
+  // research plans added on top of this scaffold want to study the
+  // effect of removing the rational/momentum anchors entirely.
   FIXED_BACKGROUND: { F: 2, T: 1, R: 1 },
 
   // Simulator-invented numeric constants consumed by the engine and
@@ -86,6 +84,17 @@ const App = {
     valuationNoise:       0.03,
     biasAmount:           0.15,
   },
+
+  // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only
+  // baseline: each utility agent's prior equals the current FV and it
+  // blends peer messages with weight w = 0.6 + 0.1·min(3, roundsPlayed),
+  // so the agent grows less susceptible to influence as rounds of
+  // experience accumulate. Plan II calls an LLM every period and
+  // includes the explicit utility-function forms (U_L, U_N, U_A) that
+  // correspond to each agent's risk preference. Plan III calls the
+  // same LLM but only tells it the risk-preference label. On network
+  // or API failure, Plans II and III fall back to Plan I's algorithm.
+  plan: 'I',
 
   // Research paradigm tag — surfaced in the navbar as a segmented
   // switch between 'dlm' (Dufwenberg, Lindqvist & Moore 2005, human
@@ -256,8 +265,14 @@ const App = {
    * a new slider only requires extending this map and the HTML.
    */
   _paramMap: {
+    // Background population counts — editable per-type sliders with
+    // min 0, so a run with zero Fundamentalists or zero Trend followers
+    // is reachable. Changing either slider rescales the U slot so the
+    // total-N stays consistent. Structural, so they reseed on release.
+    'p-count-f':     { target: 'FIXED_BACKGROUND.F', out: 'v-count-f',    fmt: v => String(v), int: true, bg: true },
+    'p-count-t':     { target: 'FIXED_BACKGROUND.T', out: 'v-count-t',    fmt: v => String(v), int: true, bg: true },
     // Risk preferences — three linked shares summing to 100. Only
-    // consumed by the Lopez-Lira and AIPE paradigms.
+    // consumed by the non-DLM paradigms.
     'p-risk-loving': { target: 'riskMix.loving',  out: 'v-risk-loving',  fmt: v => v + '%', int: true },
     'p-risk-neutral':{ target: 'riskMix.neutral', out: 'v-risk-neutral', fmt: v => v + '%', int: true },
     'p-risk-averse': { target: 'riskMix.averse',  out: 'v-risk-averse',  fmt: v => v + '%', int: true },
@@ -280,7 +295,8 @@ const App = {
       if (!input) continue;
       const structural =
         spec.target.startsWith('mix.') ||
-        spec.target.startsWith('riskMix.');
+        spec.target.startsWith('riskMix.') ||
+        spec.target.startsWith('FIXED_BACKGROUND.');
       input.addEventListener('input', e => {
         const raw = Number(e.target.value);
         const val = spec.int ? (raw | 0) : raw;
@@ -289,12 +305,23 @@ const App = {
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
+        // Editing a background-count slider rescales U on the current
+        // total-N so the total stays consistent, and refreshes the
+        // readout — the reseed itself happens on `change` below.
+        if (spec.bg) {
+          this.mix.F = this.FIXED_BACKGROUND.F | 0;
+          this.mix.T = this.FIXED_BACKGROUND.T | 0;
+          const totalSlider = document.getElementById('p-total');
+          const total = totalSlider ? (Number(totalSlider.value) | 0) : ((this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0));
+          this._rescaleMixToTotal(total);
+          this._refreshMixTotal();
+        }
       });
       input.addEventListener('change', () => {
-        // Structural edits (population mix counts, risk-share shares)
-        // ask for a fresh draw, so they roll a new seed via reset().
-        // Everything else is a soft change that keeps the current
-        // draw and just rebuilds the market/engine.
+        // Structural edits (population mix counts, risk-share shares,
+        // background counts) ask for a fresh draw, so they roll a new
+        // seed via reset(). Everything else is a soft change that
+        // keeps the current draw and just rebuilds the market/engine.
         if (structural) this.reset();
         else            this.rebuild();
       });
@@ -328,6 +355,26 @@ const App = {
         if (this.paradigm !== 'dlm') this.reset();
       });
     }
+
+    // Research-plan radio selector. Three mutually-exclusive options
+    // (I/II/III) drive the UtilityAgent's belief-update pipeline on
+    // `ctx.plan`. The label in the header updates on selection; the
+    // engine ctx picks it up on the next rebuild().
+    const planRadios = document.querySelectorAll('input[name="plan"]');
+    planRadios.forEach(r => {
+      r.addEventListener('change', e => {
+        if (!e.target.checked) return;
+        const v = e.target.value;
+        if (v !== 'I' && v !== 'II' && v !== 'III') return;
+        this.plan = v;
+        const label = document.getElementById('v-plan');
+        if (label) label.textContent = 'Plan ' + v;
+        this.rebuild();
+      });
+    });
+    // Sync the header readout with the initial value.
+    const initialPlanLabel = document.getElementById('v-plan');
+    if (initialPlanLabel) initialPlanLabel.textContent = 'Plan ' + this.plan;
 
     // Strict-DLM treatment selector + multi-session batch button.
     // Both controls are only visible in DLM mode (gated by the
@@ -780,18 +827,18 @@ const App = {
 
   /**
    * Rescale the population to a new total N (only meaningful in
-   * Lopez-Lira / AIPE mode — DLM mode pins N at 6). F/T/R are pinned
-   * by FIXED_BACKGROUND, U absorbs the slack. The E slot is gone in
-   * the strict-experience refactor, so there is no longer an
-   * "experienced count" to preserve.
+   * non-DLM modes — DLM mode pins N at 6). F/T/R counts come from
+   * FIXED_BACKGROUND (now editable per-slider with min 0); U absorbs
+   * whatever slack remains after F + T + R. If the background total
+   * exceeds N, U collapses to zero rather than going negative.
    */
   _rescaleMixToTotal(newTotal) {
     if (this.paradigm === 'dlm') return;
     const FIXED    = this.FIXED_BACKGROUND;
-    const fixedSum = FIXED.F + FIXED.T + FIXED.R;
-    newTotal = Math.max(newTotal | 0, fixedSum);
-    const U = newTotal - fixedSum;
-    this.mix = { F: FIXED.F, T: FIXED.T, R: FIXED.R, E: 0, U };
+    const bgSum    = (FIXED.F | 0) + (FIXED.T | 0) + (FIXED.R | 0);
+    newTotal = Math.max(newTotal | 0, bgSum);
+    const U = Math.max(0, newTotal - bgSum);
+    this.mix = { F: FIXED.F | 0, T: FIXED.T | 0, R: FIXED.R | 0, E: 0, U };
   },
 
   _getByPath(path) {
@@ -898,6 +945,15 @@ const App = {
       // notation on p. 1735).
       strictDLM:     this.paradigm === 'dlm',
       treatmentSize: this.paradigm === 'dlm' ? this.dlmConfig.treatment : 0,
+      // Research plan drives the UtilityAgent belief-update branch.
+      // Plans II and III also read aiConfig so they can reach the LLM
+      // endpoint at period boundary; Plan I ignores both.
+      plan:          this.plan,
+      aiConfig:      this.aiConfig,
+      // Period-boundary LLM cache: { [agentId]: subjectiveValuation }.
+      // Populated asynchronously by the engine's comms round when
+      // plan ∈ {II, III}, consumed next period by updateBelief.
+      llmBeliefs:    {},
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();

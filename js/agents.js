@@ -577,20 +577,24 @@ class UtilityAgent extends Agent {
     // ticks return to the normal prior + message-update flow.
     this.psychAnchor = null;
 
-    // Frozen baseline — used to normalize utility so U(w0) = 1.
+    // Frozen baseline — used to normalize utility so U(w0) = 1. The
+    // initial price reference is FV at the top of period 1 of round 1
+    // (= dividendMean × periods, usually 100¢), which matches the
+    // mark-to-market wealth the agent would compute on the very first
+    // tick if the first trade printed at FV.
     this.initialWealth = this.cash + this.inventory * 100;
   }
 
   /**
    * Re-initialise transient per-round state at the start of round r+1.
-   * The DLM round-end reset has already rewound cash/inventory to the
-   * spec values, so we rebase initialWealth against the *new* endowment
+   * The round-end reset has already rewound cash/inventory to the spec
+   * values, so we rebase initialWealth against the *new* endowment
    * (otherwise U(w₀) ≠ 1 at the start of round 2, which would distort
    * the EU ranking across rounds). Subjective and reported valuations
    * are cleared so the first decide() of the new round reseeds them
    * from the freshly reset FV prior. Learned state — trust EMAs kept
-   * in the TrustTracker, beliefMode, riskPref, biasMode — is left
-   * alone: that is the cross-round experience channel DLM relies on.
+   * in the TrustTracker, riskPref, biasMode — is left alone: that is
+   * the cross-round experience channel DLM relies on.
    */
   onRoundStart() {
     this.initialWealth       = this.cash + this.inventory * 100;
@@ -614,80 +618,106 @@ class UtilityAgent extends Agent {
     };
   }
 
-  /* ---- Pipeline step 2: update belief ---- */
+  /* ---- Pipeline step 2: update belief ----
+   *
+   * The three research plans share one scaffold:
+   *   prior = FV (both experienced and inexperienced traders know the
+   *   fundamental-value pattern per DLM 2005, so neither branch does a
+   *   horizon discount)
+   *   posterior = blend(prior, peer messages from last period)
+   *
+   * They differ only in how the blend is computed:
+   *
+   *   Plan I   — algorithmic. posterior = w·prior + (1 − w)·avg(foreign),
+   *              with w = 0.6 + 0.1·min(3, roundsPlayed). A fresh agent
+   *              starts at w = 0.6 (easy to influence) and hardens
+   *              toward w = 0.9 by the fourth round, matching the
+   *              DLM stylized fact that experienced traders are less
+   *              susceptible to peer influence.
+   *
+   *   Plan II  — LLM with utility form. ctx.llmBeliefs[agentId] holds
+   *              the subjective valuation returned by the last
+   *              period-boundary LLM call, which was prompted with
+   *              the agent's risk preference AND the explicit utility
+   *              form (U_L, U_N, or U_A). If absent (first period, API
+   *              error, missing key), Plan II falls back to Plan I.
+   *
+   *   Plan III — LLM with label only. Same channel as Plan II but the
+   *              prompt omits the utility formulas and only states the
+   *              risk-preference label. Tests whether the label alone
+   *              is sufficient to recover the utility-aware belief.
+   */
   updateBelief(market, ctx, rng) {
-    const fv          = market.fundamentalValue();
-    const noiseAmp    = tunable(ctx, 'valuationNoise');
-    const sign        = this.biasMode === 'over'  ?  1
-                      : this.biasMode === 'under' ? -1
-                      : 0;
-    const bias  = sign * this.biasAmount;
-    const noise = (rng() - 0.5) * 2 * noiseAmp;
-    // AIPE: on the first tick where a psychological anchor is set,
-    // use it as the prior instead of the deterministic FV-based
-    // formula. The noise jitter is still applied so agents with the
-    // same anchor do not lock-step. The anchor is cleared after use
-    // so the belief model decays back to the normal Lopez-Lira path
-    // as soon as peer messages start arriving.
-    let prior;
-    if (this.psychAnchor != null) {
-      prior = Math.max(0, this.psychAnchor * (1 + noise));
-      this.psychAnchor = null;
-    } else {
-      prior = Math.max(0, fv * (1 + bias + noise));
-    }
+    const fv   = market.fundamentalValue();
+    const plan = (ctx && ctx.plan) || 'I';
+
+    // Plan I's scaffold: prior = FV exactly (no bias, no noise, no
+    // horizon discount) so the only channel of heterogeneity across
+    // agents is the peer-message blend below. The true (pre-blend)
+    // valuation is recorded for the logger so the valuation chart
+    // still has a per-tick point per agent.
+    const prior = Math.max(0, fv);
     this.trueValuation = prior;
 
-    let subjective = prior;
+    // Gather last period's messages from the bus (peer channel). These
+    // drive the blend in Plan I and feed the next period-boundary LLM
+    // call in Plans II/III.
     const bus        = ctx && ctx.messageBus;
-    const trust      = ctx && ctx.trustTracker;
     const ext        = ctx && ctx.extended;
     const canListen  = !ext || ext.communication !== false;
     const prevPeriod = market.period - 1;
     const msgs       = (bus && canListen && prevPeriod >= 1) ? bus.byPeriod(prevPeriod) : [];
     this.receivedMsgs = msgs;
+    const foreign = msgs.filter(m => m.senderId !== this.id);
 
-    if (msgs.length) {
-      const foreign = msgs.filter(m => m.senderId !== this.id);
-      if (foreign.length) {
-        if (this.beliefMode === 'naive') {
-          const w   = tunable(ctx, 'naivePriorWeight');
-          const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
-          subjective = w * prior + (1 - w) * avg;
-        } else if (this.beliefMode === 'skeptical') {
-          const w   = tunable(ctx, 'skepticalPriorWeight');
-          const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
-          subjective = w * prior + (1 - w) * avg;
-        } else if (this.beliefMode === 'adaptive' && trust) {
-          // Weighted by per-sender trust, capped so that even with full
-          // trust in every sender the prior still carries (1 − cap)·weight.
-          const cap = tunable(ctx, 'adaptiveWeightCap');
-          let wsum = 0, acc = 0;
-          for (const m of foreign) {
-            const w = trust.get(this.id, m.senderId);
-            wsum += w;
-            acc  += w * m.claimedValuation;
-          }
-          if (wsum > 0) {
-            const msgAvg = acc / wsum;
-            const weight = Math.min(cap, wsum / Math.max(1, foreign.length * 2));
-            subjective   = (1 - weight) * prior + weight * msgAvg;
-          }
-        }
+    // Plans II and III consume a cached LLM belief first — it's already
+    // blended on the model side so the algorithmic fallback is skipped
+    // when a fresh cached value is available. The cache is keyed by
+    // agent id and refreshed at period boundary by Engine._runPlanLLM.
+    let subjective = null;
+    if (plan === 'II' || plan === 'III') {
+      const cache = ctx && ctx.llmBeliefs;
+      if (cache && cache[this.id] != null) {
+        subjective = cache[this.id];
       }
     }
+
+    // Algorithmic fallback (and Plan I's primary path). Prior weight
+    // grows with accumulated experience: w ∈ {0.6, 0.7, 0.8, 0.9} for
+    // roundsPlayed ∈ {0, 1, 2, ≥3}. With an empty message set the
+    // posterior collapses to the prior.
+    if (subjective == null) {
+      const w = 0.6 + 0.1 * Math.min(3, this.roundsPlayed | 0);
+      if (foreign.length) {
+        const avg = foreign.reduce((s, m) => s + m.claimedValuation, 0) / foreign.length;
+        subjective = w * prior + (1 - w) * avg;
+      } else {
+        subjective = prior;
+      }
+    }
+
     this.subjectiveValuation = Math.max(0, subjective);
     return { trueV: this.trueValuation, subjectiveV: this.subjectiveValuation };
   }
 
-  /* ---- Pipeline step 3: evaluate candidate actions ---- */
+  /* ---- Pipeline step 3: evaluate candidate actions ----
+   *
+   * Wealth is mark-to-market: every inventory share is valued at the
+   * market's most recent print (with FV as the fallback before the
+   * first trade). The agent's subjective valuation `v` is still used
+   * to *price* the passive quotes it posts — that is the channel by
+   * which Plan I/II/III belief differences affect trading — but wealth
+   * itself always reflects the external price the market is willing
+   * to pay right now.
+   */
   evaluate(market, rng, ctx) {
     const v    = this.subjectiveValuation;
+    const mp   = markPrice(market);
     const bid  = market.book.bestBid();
     const ask  = market.book.bestAsk();
     const cash = this.cash;
     const inv  = this.inventory;
-    const w0   = cash + inv * v;
+    const w0   = cash + inv * mp;
     const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth);
     const U0   = U(w0);
     const pFill       = tunable(ctx, 'passiveFillProb');
@@ -706,9 +736,13 @@ class UtilityAgent extends Agent {
       eu:       U0,
     });
 
-    // Cross the book: hit best ask (buy). Deterministic fill.
+    // Cross the book: hit best ask (buy). Deterministic fill. The
+    // post-trade inventory is still marked at `mp` (the market's most
+    // recent print at decision time), so a buy is profitable iff
+    // mp > ask.price — i.e. the agent is acquiring a share the market
+    // currently values above what the agent is paying for it.
     if (ask && cash >= ask.price) {
-      const w1 = (cash - ask.price) + (inv + 1) * v;
+      const w1 = (cash - ask.price) + (inv + 1) * mp;
       candidates.push({
         label:    `buy@ask ${ask.price.toFixed(2)}`,
         type:     'bid',
@@ -718,9 +752,10 @@ class UtilityAgent extends Agent {
         eu:       U(w1),
       });
     }
-    // Lift best bid (sell). Deterministic fill.
+    // Lift best bid (sell). Deterministic fill. Symmetrically, a sell
+    // is profitable iff bid.price > mp.
     if (bid && inv > 0) {
-      const w1 = (cash + bid.price) + (inv - 1) * v;
+      const w1 = (cash + bid.price) + (inv - 1) * mp;
       candidates.push({
         label:    `sell@bid ${bid.price.toFixed(2)}`,
         type:     'ask',
@@ -734,7 +769,7 @@ class UtilityAgent extends Agent {
     {
       const price = round2(v * (passiveBidLo + rng() * Math.max(0, passiveBidHi - passiveBidLo)));
       if (price > 0 && cash >= price) {
-        const w1 = (cash - price) + (inv + 1) * v;
+        const w1 = (cash - price) + (inv + 1) * mp;
         const eu = pFill * U(w1) + (1 - pFill) * U0;
         candidates.push({
           label:    `passive bid ${price.toFixed(2)}`,
@@ -751,7 +786,7 @@ class UtilityAgent extends Agent {
     // Passive ask at v × [passiveAskLo, passiveAskHi]. Probabilistic fill.
     if (inv > 0) {
       const price = round2(v * (passiveAskLo + rng() * Math.max(0, passiveAskHi - passiveAskLo)));
-      const w1 = (cash + price) + (inv - 1) * v;
+      const w1 = (cash + price) + (inv - 1) * mp;
       const eu = pFill * U(w1) + (1 - pFill) * U0;
       candidates.push({
         label:    `passive ask ${price.toFixed(2)}`,
@@ -1052,21 +1087,28 @@ function sampleAgents(mix, rng, options = {}) {
   for (let i = 0; i < (mix.T || 0); i++) pushBasic('trend',         'T', i + 1);
   for (let i = 0; i < (mix.R || 0); i++) pushBasic('random',        'R', i + 1);
 
+  // Under Plans I/II/III every utility agent is honest, unbiased, and
+  // distinguished from its peers only by risk preference (drawn from
+  // the riskMix slider). The old strategy cube's bias/deception axes
+  // are out of scope for the plan-based experiments, so sampleAgents
+  // pins bias='none'/deception='honest' and reads risk preference
+  // directly from the distributeRiskPrefs sequence.
   for (let i = 0; i < uCount; i++) {
-    const slot  = UTILITY_SLOTS[i % UTILITY_SLOTS.length];
-    const cycle = Math.floor(i / UTILITY_SLOTS.length);
+    const risk  = riskSeq.length ? riskSeq[i] : 'neutral';
+    const cycle = Math.floor(i / 6);
+    const slotTag = `U${(i % 6) + 1}`;
     const e = sampleEndowment(rng, dist);
     specs.push({
       id, slot: id, type: 'utility',
-      typeLabel:     cycle > 0 ? `${slot.name}·${cycle + 1}` : slot.name,
+      typeLabel:     cycle > 0 ? `${slotTag}·${cycle + 1}` : slotTag,
       name:          names[nameIdx++],
       cash:          e.cash,
       inventory:     e.inventory,
-      riskPref:      riskSeq.length ? riskSeq[i] : slot.riskPref,
-      biasMode:      slot.biasMode,
-      biasAmount:    slot.biasAmount,
-      deceptionMode: slot.deceptionMode,
-      beliefMode:    slot.beliefMode,
+      riskPref:      risk,
+      biasMode:      'none',
+      biasAmount:    0,
+      deceptionMode: 'honest',
+      beliefMode:    'plan',
     });
     id++;
   }
