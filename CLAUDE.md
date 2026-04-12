@@ -162,8 +162,8 @@ When adding a new tunable:
 4. Read it from `ctx.tunables` in the consuming agent/engine code with a
    fallback to the hard-coded default so legacy callers still work.
 
-The "Total agents (N)" slider proportionally rescales the population mix
-rather than editing individual counts.
+Total population is fixed at N = 6 per DLM 2005 §I. The F/T background
+sliders redistribute within this fixed total; U absorbs the remainder.
 
 ## Paradigms
 

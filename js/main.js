@@ -49,20 +49,23 @@ const App = {
     tickInterval:     340,
   },
 
+  // Total population size, fixed at N = 6 per DLM 2005 §I.
+  // Not user-adjustable — the paper pins six subjects and all
+  // results are calibrated to this market size.
+  TOTAL_N: 6,
+
   // Population composition — feeds the sampling stage in agents.js,
-  // which turns each per-type count into a per-agent spec. Every
-  // per-type count is user-adjustable from the Experiment-settings
-  // panel; defaults pair a light SSW-style F/T/R background with
-  // enough utility slots that the extended panels light up on
-  // first load.
-  mix: { F: 2, T: 1, R: 1, E: 0, U: 6 },
+  // which turns each per-type count into a per-agent spec. Defaults
+  // to six utility agents (pure Lopez-Lira / AIPE). The F/T background
+  // sliders redistribute within the fixed N = 6 total.
+  mix: { F: 0, T: 0, R: 0, E: 0, U: 6 },
 
   // Starting defaults for the F/T/R background. Editable from the
-  // Experiment-settings panel (min 0 each), so a run with zero
-  // Fundamentalists or zero Trend followers is reachable — the
-  // research plans added on top of this scaffold want to study the
-  // effect of removing the rational/momentum anchors entirely.
-  FIXED_BACKGROUND: { F: 2, T: 1, R: 1 },
+  // Experiment-settings panel (min 0 each), so a run with some
+  // Fundamentalists or Trend followers is reachable — the research
+  // plans want to study the effect of adding rational/momentum
+  // anchors. Capped so F + T + R never exceeds TOTAL_N.
+  FIXED_BACKGROUND: { F: 0, T: 0, R: 0 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which
@@ -279,15 +282,24 @@ const App = {
         if (out) out.textContent = spec.fmt(val);
         this._updateSliderPct(e.target);
         if (spec.target.startsWith('riskMix.')) this._constrainRiskMix(inputId);
-        // Editing a background-count slider rescales U on the current
-        // total-N so the total stays consistent, and refreshes the
-        // readout — the reseed itself happens on `change` below.
+        // Editing a background-count slider rescales U within the
+        // fixed N = 6 total. Clamp background sum so it never exceeds
+        // TOTAL_N — the just-changed slider is reduced if needed.
         if (spec.bg) {
+          const bgKey = spec.target.split('.')[1]; // 'F' or 'T'
+          const others = Object.entries(this.FIXED_BACKGROUND)
+            .filter(([k]) => k !== bgKey)
+            .reduce((s, [, v]) => s + (v | 0), 0);
+          if ((this.FIXED_BACKGROUND[bgKey] | 0) + others > this.TOTAL_N) {
+            this.FIXED_BACKGROUND[bgKey] = Math.max(0, this.TOTAL_N - others);
+            e.target.value = String(this.FIXED_BACKGROUND[bgKey]);
+            const out = document.getElementById(spec.out);
+            if (out) out.textContent = spec.fmt(this.FIXED_BACKGROUND[bgKey]);
+            this._updateSliderPct(e.target);
+          }
           this.mix.F = this.FIXED_BACKGROUND.F | 0;
           this.mix.T = this.FIXED_BACKGROUND.T | 0;
-          const totalSlider = document.getElementById('p-total');
-          const total = totalSlider ? (Number(totalSlider.value) | 0) : ((this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0));
-          this._rescaleMixToTotal(total);
+          this._rescaleMixToTotal(this.TOTAL_N);
           this._refreshMixTotal();
         }
       });
@@ -301,22 +313,6 @@ const App = {
       });
     }
     this._updateCompBar();
-
-    // Total-agents slider — proportionally rescales the per-type
-    // counts when the user moves it, then triggers a population
-    // rebuild on release. Wired separately because it doesn't map
-    // to a single mix/tunables key.
-    const totalSlider = document.getElementById('p-total');
-    if (totalSlider) {
-      totalSlider.addEventListener('input', e => {
-        const newTotal = Number(e.target.value) | 0;
-        this._rescaleMixToTotal(newTotal);
-        this._pushStateToSliders();
-        this._refreshMixTotal();
-        this._updateSliderPct(e.target);
-      });
-      totalSlider.addEventListener('change', () => this.reset());
-    }
 
     // Plan switch — the three segmented buttons Plan I / Plan II /
     // Plan III in the navbar drive App.plan, a matching body class
@@ -704,26 +700,15 @@ const App = {
     const m = this.mix;
     const total = (m.F | 0) + (m.T | 0) + (m.R | 0) + (m.U | 0);
     const el = document.getElementById('mix-total');
-    if (el) el.textContent = `(total ${total})`;
-    // Keep the Total agents slider and its readout in sync with the
-    // sum of the per-type sliders so editing either side stays
-    // consistent. Clamped to the slider's max so a manual sum that
-    // exceeds the cap still leaves the slider at its rail.
-    const totalSlider  = document.getElementById('p-total');
-    const totalReadout = document.getElementById('v-total');
-    if (totalSlider) {
-      const max = Number(totalSlider.max) || total;
-      totalSlider.value = String(Math.min(total, max));
-      this._updateSliderPct(totalSlider);
-    }
-    if (totalReadout) totalReadout.textContent = String(total);
+    if (el) el.textContent = `(N = ${total})`;
   },
 
   /**
-   * Rescale the population to a new total N. F/T/R counts come from
-   * FIXED_BACKGROUND (editable per-slider with min 0); U absorbs
-   * whatever slack remains after F + T + R. If the background total
-   * exceeds N, U collapses to zero rather than going negative.
+   * Rescale the population to total N (fixed at TOTAL_N = 6 per DLM
+   * 2005). F/T/R counts come from FIXED_BACKGROUND (editable per-slider
+   * with min 0); U absorbs whatever slack remains after F + T + R.
+   * Background sum is clamped to TOTAL_N in the slider input handler
+   * so U never goes negative.
    */
   _rescaleMixToTotal(newTotal) {
     const FIXED    = this.FIXED_BACKGROUND;
