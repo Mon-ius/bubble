@@ -1928,46 +1928,42 @@ body.dlm-mode .bg-only          { display: none !important; }
   .agents-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
-  /* ── Header: 2-row grid matching desktop's visual hierarchy ──
-     Row 1  title (left) + compact icon-only controls (right)
-     Row 2  scrollable tab strip: nav-tabs + plan pills inline
-     The .nav-row wrapper dissolves on desktop (display:contents)
-     and becomes a flex row here. Icon-only buttons + a short
-     inline speed slider keep row 1 compact. */
+  /* ── Modern mobile header ──
+     Two compact rows: brand + controls, then a tab bar.
+     Title never wraps (ellipsis). Controls are icon-only with an
+     inline speed slider. Tabs use title-case and flex-fill so all
+     four share the row evenly; plan pills show just the roman
+     numeral and anchor at the trailing edge. No horizontal scroll
+     needed — everything fits at 375px. */
   .app-header {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "title controls"
       "nav   nav";
-    gap: 4px 10px;
-    padding: 8px 12px;
+    gap: 0;
+    padding: 0;
     align-items: center;
   }
-  .title       { grid-area: title; min-width: 0; }
-  .title h1    { font-size: 15px; }
-  .nav-row {
-    grid-area: nav;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+  .title {
+    grid-area: title;
+    padding: 8px 0 8px 14px;
+    min-width: 0;
+    overflow: hidden;
   }
-  .nav-row::-webkit-scrollbar { display: none; }
-  .nav-tabs    { gap: 1px; flex-wrap: nowrap; flex-shrink: 0; }
-  .nav-tab     { padding: 5px 7px 4px; font-size: 9px;
-                 letter-spacing: 0.03em; white-space: nowrap; }
-  .plan-switch { padding: 2px; flex-shrink: 0; }
-  .plan-btn    { padding: 4px 9px; font-size: 9px; letter-spacing: 0.01em; }
+  .title h1 {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .controls {
     grid-area: controls;
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
+    padding: 6px 12px 6px 6px;
     width: auto;
   }
   .controls label {
@@ -1977,23 +1973,74 @@ body.dlm-mode .bg-only          { display: none !important; }
     gap: 0;
     min-width: 0;
   }
-  .controls input[type=range] { min-width: 40px; width: 60px; }
+  .controls input[type=range] { min-width: 36px; width: 52px; }
   .controls button {
     font-size: 0;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    border-radius: 8px;
   }
-  .controls button::before { font-size: 13px; }
+  .controls button::before { font-size: 14px; }
   #btn-start::before  { content: '\25B6'; }
   #btn-pause::before  { content: '\23F8'; }
   #btn-reset::before  { content: '\21BA'; }
-  .controls .theme-btn { width: 28px; height: 28px; font-size: 0; }
-  .controls .theme-btn::before { content: '\25D1'; font-size: 13px; }
+  .controls .theme-btn { width: 32px; height: 32px; font-size: 0; border-radius: 8px; }
+  .controls .theme-btn::before { content: '\25D1'; font-size: 14px; }
+
+  /* Tab bar: tabs flex-fill evenly, plan pills show just I/II/III */
+  .nav-row {
+    grid-area: nav;
+    display: flex;
+    align-items: stretch;
+    padding: 0 10px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-tabs {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .nav-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 2px 8px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .plan-switch {
+    flex: 0 0 auto;
+    padding: 2px;
+    margin: 5px 0 5px 6px;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+    border-radius: 0;
+  }
+  .plan-btn {
+    font-size: 0;
+    padding: 5px 10px;
+    letter-spacing: 0;
+  }
+  .plan-btn::after {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .plan-btn[data-plan="I"]::after   { content: 'I'; }
+  .plan-btn[data-plan="II"]::after  { content: 'II'; }
+  .plan-btn[data-plan="III"]::after { content: 'III'; }
 
   /* Experiment grid: collapse to a single column and tighten gutters
      so chart canvases get the full viewport width. */
