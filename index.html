@@ -109,39 +109,71 @@
         </div>
       </details>
 
-      <details class="psec llm-plan-only" open>
-        <summary>AI endpoint <span class="muted" id="ai-panel-label">ChatGPT · Plan II</span></summary>
+      <details class="psec plan-ii-only" open>
+        <summary>AI endpoint <span class="muted">Plan II · LLM + utility forms</span></summary>
         <div class="psec-body ai-config">
           <p class="ai-config-note">
-            <strong id="ai-panel-required">Required for Plan II.</strong> Every period boundary,
-            each Utility agent calls the AI agent for a fresh subjective valuation
-            given its risk preference (Plan III) or its risk preference + explicit
-            utility function form U_L / U_N / U_A (Plan II). Provider list and
-            endpoint match the lying project's GPT provider
-            (<code>PROVIDERS.gpt</code> in <code>lying/js/ai-agent.js</code>). Fields
-            are read fresh from the DOM on every run (no localStorage); if the key
-            field is empty the active Plan cannot run and the Start button will
-            refuse to launch the engine until a key is supplied.
+            <strong>Required for Plan II.</strong> Every period boundary, each Utility
+            agent calls the LLM for a fresh subjective valuation. The prompt includes
+            the agent's risk preference <em>and</em> the explicit closed-form utility
+            function (U<sub>L</sub>, U<sub>N</sub>, U<sub>A</sub>) so the model can
+            reason about convexity, linearity, or concavity of the agent's risk type.
+            Fields are read fresh from the DOM on every run (no localStorage); if the
+            key is empty the Start button will refuse to launch.
           </p>
           <div class="param-row">
             <div class="param-head">
-              <label for="ai-key">API key</label>
+              <label for="ai-key-ii">API key</label>
             </div>
-            <input type="password" id="ai-key" class="input-text input-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+            <input type="password" id="ai-key-ii" class="input-text input-key ai-shared-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
           </div>
           <div class="param-row">
             <div class="param-head">
-              <label for="ai-endpoint">Endpoint (optional)</label>
+              <label for="ai-endpoint-ii">Endpoint (optional)</label>
             </div>
-            <input type="text" id="ai-endpoint" class="input-text input-endpoint" placeholder="https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+            <input type="text" id="ai-endpoint-ii" class="input-text input-endpoint ai-shared-endpoint" placeholder="https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions" autocomplete="off" spellcheck="false">
           </div>
           <div class="param-row">
             <div class="param-head">
-              <label for="ai-model">Model</label>
+              <label for="ai-model-ii">Model</label>
             </div>
-            <select id="ai-model" class="input-text input-model"></select>
+            <select id="ai-model-ii" class="input-text input-model ai-shared-model"></select>
           </div>
-          <div class="ai-status" id="ai-status" aria-live="polite"></div>
+          <div class="ai-status" id="ai-status-ii" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <details class="psec plan-iii-only" open>
+        <summary>AI endpoint <span class="muted">Plan III · LLM + risk label only</span></summary>
+        <div class="psec-body ai-config">
+          <p class="ai-config-note">
+            <strong>Required for Plan III.</strong> Every period boundary, each Utility
+            agent calls the LLM for a fresh subjective valuation. The prompt supplies
+            only a natural-language risk-preference label (risk-loving, risk-neutral,
+            or risk-averse) — no closed-form utility function is provided. The LLM
+            must rely on its implicit understanding of risk preferences.
+            Fields are read fresh from the DOM on every run (no localStorage); if the
+            key is empty the Start button will refuse to launch.
+          </p>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-key-iii">API key</label>
+            </div>
+            <input type="password" id="ai-key-iii" class="input-text input-key ai-shared-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-endpoint-iii">Endpoint (optional)</label>
+            </div>
+            <input type="text" id="ai-endpoint-iii" class="input-text input-endpoint ai-shared-endpoint" placeholder="https://openai-20250719-f7491cbb.rootdirectorylab.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-model-iii">Model</label>
+            </div>
+            <select id="ai-model-iii" class="input-text input-model ai-shared-model"></select>
+          </div>
+          <div class="ai-status" id="ai-status-iii" aria-live="polite"></div>
         </div>
       </details>
 

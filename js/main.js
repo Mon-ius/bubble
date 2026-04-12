@@ -147,9 +147,8 @@ const App = {
   init() {
     this._initTheme();
     UI.init();
-    // Seed the plan body class so the LLM endpoint panel gating
-    // (plan-i hides .llm-plan-only) is correct before _wireControls
-    // attaches the plan-button handlers.
+    // Seed the plan body class so the per-plan AI endpoint panel
+    // visibility is correct before _wireControls attaches handlers.
     document.body.classList.add('plan-' + this.plan.toLowerCase());
     this._wireControls();
     this.reset();
@@ -312,31 +311,37 @@ const App = {
     // The #ai-model element is a <select> populated from AI.MODELS
     // (which mirrors the lying project's PROVIDERS.gpt.models list),
     // so the set of allowed model ids is single-sourced in ai.js.
-    const aiKey      = document.getElementById('ai-key');
-    const aiEndpoint = document.getElementById('ai-endpoint');
-    const aiModel    = document.getElementById('ai-model');
-    if (aiModel && typeof AI !== 'undefined') {
-      aiModel.innerHTML = AI.MODELS
+    // Wire both AI endpoint panels (Plan II and Plan III) to the
+    // shared aiConfig.  Inputs are synced: typing in one panel copies
+    // the value to the other so a plan switch preserves credentials.
+    const aiKeys      = document.querySelectorAll('.ai-shared-key');
+    const aiEndpoints = document.querySelectorAll('.ai-shared-endpoint');
+    const aiModels    = document.querySelectorAll('.ai-shared-model');
+    if (aiModels.length && typeof AI !== 'undefined') {
+      const optHtml = AI.MODELS
         .map(m => `<option value="${m.id}">${m.label}</option>`)
         .join('');
-      aiModel.value        = AI.DEFAULT_MODEL;
-      this.aiConfig.model  = AI.DEFAULT_MODEL;
-    }
-    if (aiKey) {
-      aiKey.addEventListener('input', e => {
-        this.aiConfig.apiKey = (e.target.value || '').trim();
+      aiModels.forEach(sel => {
+        sel.innerHTML = optHtml;
+        sel.value = AI.DEFAULT_MODEL;
       });
+      this.aiConfig.model = AI.DEFAULT_MODEL;
     }
-    if (aiEndpoint) {
-      aiEndpoint.addEventListener('input', e => {
-        this.aiConfig.endpoint = (e.target.value || '').trim();
-      });
-    }
-    if (aiModel) {
-      aiModel.addEventListener('change', e => {
-        this.aiConfig.model = (e.target.value || '').trim() || AI.DEFAULT_MODEL;
-      });
-    }
+    aiKeys.forEach(el => el.addEventListener('input', e => {
+      const v = (e.target.value || '').trim();
+      this.aiConfig.apiKey = v;
+      aiKeys.forEach(o => { if (o !== e.target) o.value = e.target.value; });
+    }));
+    aiEndpoints.forEach(el => el.addEventListener('input', e => {
+      const v = (e.target.value || '').trim();
+      this.aiConfig.endpoint = v;
+      aiEndpoints.forEach(o => { if (o !== e.target) o.value = e.target.value; });
+    }));
+    aiModels.forEach(el => el.addEventListener('change', e => {
+      const v = (e.target.value || '').trim() || AI.DEFAULT_MODEL;
+      this.aiConfig.model = v;
+      aiModels.forEach(o => { if (o !== e.target) o.value = e.target.value; });
+    }));
 
     // Nav-tab click handler — swaps which .tab-pane is visible and
     // mirrors the active state onto the tab button. Re-runs KaTeX
@@ -553,10 +558,6 @@ const App = {
     document.querySelectorAll('.plan-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.plan === active);
     });
-    const lbl = document.getElementById('ai-panel-label');
-    const req = document.getElementById('ai-panel-required');
-    if (lbl) lbl.textContent = 'ChatGPT \u00b7 Plan ' + active;
-    if (req) req.textContent = 'Required for Plan ' + active + '.';
   },
 
   /**
@@ -824,8 +825,9 @@ const App = {
    * and the message is silently dropped if the psec is not mounted.
    */
   _setAiStatus(msg) {
-    const el = document.getElementById('ai-status');
-    if (el) el.textContent = msg;
+    document.querySelectorAll('[id^="ai-status"]').forEach(el => {
+      el.textContent = msg;
+    });
   },
 
 
