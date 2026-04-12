@@ -602,7 +602,7 @@ body:not(.dlm-mode) .dlm-only   { display: none !important; }
 /* Plan-specific AI endpoint panels: each visible only under its plan */
 body:not(.plan-ii)  .plan-ii-only  { display: none !important; }
 body:not(.plan-iii) .plan-iii-only { display: none !important; }
-body.plan-i .psec.ext-only      { grid-column: 1 / -1; }
+.psec.ext-only                  { grid-column: 1 / -1; }
 
 /* ---------- Parameters panel ---------- */
 /*
