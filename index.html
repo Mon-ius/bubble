@@ -108,10 +108,20 @@
               </label>
             </div>
           </div>
+          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 round-4 replacement treatment. At the round 3→4 boundary, the engine randomly selects and replaces experienced agents with fresh inexperienced ones. T2 (R4-⅔) replaces 2, T4 (R4-⅓) replaces 4.">
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="2" checked>
+              <span><strong>T2</strong> · R4-&#8532;</span>
+            </label>
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="4">
+              <span><strong>T4</strong> · R4-&#8531;</span>
+            </label>
+          </div>
         </div>
       </details>
 
-      <details class="psec" open>
+      <details class="psec ext-only" open>
         <summary>Risk preferences</summary>
         <div class="psec-body">
           <div class="param-row">
@@ -142,25 +152,6 @@
             </div>
             <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
           </div>
-        </div>
-      </details>
-
-      <details class="psec" open>
-        <summary>DLM treatment <span class="muted">Round-4 replacement</span></summary>
-        <div class="psec-body">
-          <div class="dlm-treatment-row">
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="2" checked>
-              <span><strong>T2</strong> · R4-&#8532; &mdash; two fresh, four veterans</span>
-            </label>
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="4">
-              <span><strong>T4</strong> · R4-&#8531; &mdash; four fresh, two veterans</span>
-            </label>
-          </div>
-          <button class="btn-dlm-batch" id="btn-dlm-batch">Run 10-session batch</button>
-          <div class="dlm-batch-status" id="dlm-batch-status"></div>
-          <div class="dlm-batch-results" id="dlm-batch-results"></div>
         </div>
       </details>
 

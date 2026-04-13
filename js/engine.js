@@ -332,17 +332,28 @@ class Engine {
     );
     const replacements = [];
     for (const oldId of removeIds) {
-      const freshSpec = dlmSampleReplacementAgent(oldId, this._rng, usedNames);
-      usedNames.add(freshSpec.name);
-      // Preserve the spec slot index so replay/UI keys still line up.
+      const oldSpec = specs.find(s => s.id === oldId);
+      // Pick a fresh unique name.
+      const namePool = AGENT_NAMES.filter(n => !usedNames.has(n));
+      for (let ni = namePool.length - 1; ni > 0; ni--) {
+        const nj = Math.floor(this._rng() * (ni + 1));
+        [namePool[ni], namePool[nj]] = [namePool[nj], namePool[ni]];
+      }
+      const freshName = namePool[0] || ('R' + oldId);
+      usedNames.add(freshName);
+      // Clone the removed agent's spec but reset to a fresh newcomer.
+      const freshSpec = Object.assign({}, oldSpec, {
+        name:        freshName,
+        replacement: true,
+      });
       const idx = specs.findIndex(s => s.id === oldId);
       if (idx >= 0) specs[idx] = freshSpec;
-      const fresh = new DLMTrader(oldId, `#${oldId} ${freshSpec.name}`, freshSpec.cash, freshSpec.inventory);
-      fresh.typeLabel        = freshSpec.typeLabel;
+      const built = buildAgentsFromSpecs([freshSpec]);
+      const fresh = built[oldId];
       fresh.replacementFresh = true;
-      fresh.endowmentType    = freshSpec.endowmentType;
+      fresh.roundsPlayed     = 0;
       this.agents[oldId]     = fresh;
-      replacements.push({ id: oldId, name: freshSpec.name, endowmentType: freshSpec.endowmentType });
+      replacements.push({ id: oldId, name: freshName, type: freshSpec.type });
     }
     this.logger.logEvent({
       tick:           this.market.tick,
@@ -456,7 +467,7 @@ class Engine {
       const prev = market.period;
       for (const id of Object.keys(agents)) {
         const a = agents[id];
-        if (!a || (a.type !== 'utility' && a.type !== 'dlm')) continue;
+        if (!a || a.type !== 'utility') continue;
         const msgs = bus.byPeriod(prev, market.round) || [];
         a.receivedMsgs = msgs.filter(m => m.senderId !== a.id);
       }

@@ -308,57 +308,12 @@ const DLM_VETERAN = {
 class DLMTrader extends Agent {
   constructor(id, name, cash, inventory) {
     super(id, 'dlm', cash, inventory, name);
-    this.riskPref = 'neutral';
   }
 
-  decide(market, rng, ctx) {
-    // Plan II / III — LLM direct action override. Consumed once.
-    const plan = ctx && ctx.plan;
-    const llmEntry = ctx && ctx.llmActions && ctx.llmActions[this.id];
-    if ((plan === 'II' || plan === 'III') && llmEntry) {
-      const result = this._translateLLMAction(llmEntry, market);
-      delete ctx.llmActions[this.id];
-      if (result) return result;
-    }
-    // Plan I algorithmic fallback.
+  decide(market, rng) {
     return this.roundsPlayed === 0
       ? this._decideInexperienced(market, rng)
       : this._decideExperienced(market, rng);
-  }
-
-  _translateLLMAction(llmEntry, market) {
-    const { action, reason } = llmEntry;
-    const bid  = market.book.bestBid();
-    const ask  = market.book.bestAsk();
-    const reasoning = {
-      ruleUsed:         'llm_action',
-      estimatedValue:   market.fundamentalValue(),
-      expectedProfit:   null,
-      triggerCondition: `LLM chose ${action}`,
-      llmReason:        reason,
-    };
-    if (action === 'BUY_NOW' && ask && this.cash >= ask.price) {
-      return { type: 'bid', price: ask.price, quantity: 1, reasoning };
-    }
-    if (action === 'SELL_NOW' && bid && this.inventory > 0) {
-      return { type: 'ask', price: bid.price, quantity: 1, reasoning };
-    }
-    if (action === 'BID_1' && bid && this.cash >= bid.price + 1) {
-      return { type: 'bid', price: round2(bid.price + 1), quantity: 1, reasoning };
-    }
-    if (action === 'BID_3' && bid && this.cash >= bid.price + 3) {
-      return { type: 'bid', price: round2(bid.price + 3), quantity: 1, reasoning };
-    }
-    if (action === 'ASK_1' && ask && this.inventory > 0) {
-      return { type: 'ask', price: round2(ask.price - 1), quantity: 1, reasoning };
-    }
-    if (action === 'ASK_3' && ask && this.inventory > 0) {
-      return { type: 'ask', price: round2(ask.price - 3), quantity: 1, reasoning };
-    }
-    if (action === 'HOLD') {
-      return { type: 'hold', reasoning };
-    }
-    return null;
   }
 
   /* Round-1 fresh-undergrad behaviour: chase momentum, anchor weakly
@@ -1258,7 +1213,7 @@ const DLM_ENDOWMENT_TYPES = [
 ];
 const DLM_N = 6;
 
-function dlmSampleAgents(rng, options = {}) {
+function dlmSampleAgents(rng) {
   const names = pickNames(DLM_N, rng);
   // Assign three slots type A (200,6) and three slots type B (600,2)
   // by Fisher-Yates shuffling a deterministic [A,A,A,B,B,B] sequence.
@@ -1267,10 +1222,6 @@ function dlmSampleAgents(rng, options = {}) {
     const j = Math.floor(rng() * (i + 1));
     [types[i], types[j]] = [types[j], types[i]];
   }
-  // Distribute risk preferences across the 6 slots using the same
-  // largest-remainder logic as the UtilityAgent sampler, so the αL/αN/αA
-  // sliders control DLMTrader risk labels for Plans II/III.
-  const riskSeq = distributeRiskPrefs(DLM_N, options.riskMix);
   const specs = [];
   for (let i = 0; i < DLM_N; i++) {
     const e = DLM_ENDOWMENT_TYPES[types[i]];
@@ -1282,7 +1233,9 @@ function dlmSampleAgents(rng, options = {}) {
       name:      names[i],
       cash:      e.cash,
       inventory: e.inventory,
-      riskPref:  riskSeq[i] || 'neutral',
+      // Both endowment types and the DLMTrader behaviour itself are
+      // round-end-reset to these values; recorded here so the engine
+      // can rewind cash + inventory between rounds.
       endowmentType: types[i] === 0 ? 'A' : 'B',
     });
   }
@@ -1353,7 +1306,6 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
         agent = new RandomAgent(s.id, label, cash, inv);    break;
       case 'dlm':
         agent = new DLMTrader(s.id, label, cash, inv);
-        if (s.riskPref) agent.riskPref = s.riskPref;
         if (s.replacement) agent.replacementFresh = true;
         break;
       case 'utility': {

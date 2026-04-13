@@ -208,7 +208,6 @@ math[display="inline"] { white-space: nowrap; }
 .paradigm-switch {
   display: flex;
   gap: 2px;
-  margin-right: 8px;
   padding: 3px;
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -596,8 +595,6 @@ body:not(.wang-mode) .wang-only { display: none !important; }
 /* Mirror for strict-DLM: the DLM replication psec (treatment radios
    + batch runner) is only visible when the DLM paradigm is active. */
 body:not(.dlm-mode) .dlm-only   { display: none !important; }
-/* F/T population sliders are not part of the DLM design (N=6 fixed). */
-body.dlm-mode .bg-only          { display: none !important; }
 /* The AI endpoint psec is only meaningful for Plan II / Plan III
    because Plan I never touches the network. Shown when body has
    either plan-ii or plan-iii, hidden for plan-i. main.js sets the

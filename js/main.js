@@ -159,7 +159,6 @@ const App = {
     // Seed the plan body class so the per-plan AI endpoint panel
     // visibility is correct before _wireControls attaches handlers.
     document.body.classList.add('plan-' + this.plan.toLowerCase());
-    document.body.classList.add('dlm-mode');
     this._wireControls();
     this.reset();
   },
@@ -812,13 +811,19 @@ const App = {
 
     // Sampling RNG is independent of the engine RNG so that editing
     // endowments (which skips the re-sample path) leaves the engine's
-    // tick-level draws unchanged. Always uses the DLM 2005 sampling
-    // stage: 6 DLMTraders, 3 type A + 3 type B, paper-exact endowments.
-    if (!this.agentSpecs || this.agentSpecs[0]?.type !== 'dlm') {
+    // tick-level draws unchanged.
+    const totalN =
+      (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0);
+    if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
       const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-      this.agentSpecs = dlmSampleAgents(sampleRng, { riskMix: this.riskMix });
+      this.agentSpecs = sampleAgents(this.mix, sampleRng, {
+        riskMix: this.riskMix,
+      });
     }
-    this.agents = buildAgentsFromSpecs(this.agentSpecs);
+    this.agents = buildAgentsFromSpecs(this.agentSpecs, {
+      biasAmount:     this.tunables.biasAmount,
+      valuationNoise: this.tunables.valuationNoise,
+    });
     this.market = new Market(this.config);
     this.logger = new Logger();
     // Message bus + trust tracker live for every run. With a mix that
@@ -848,7 +853,8 @@ const App = {
       // Populated asynchronously by the engine's comms round when
       // plan ∈ {II, III}, consumed next tick by decide().
       llmActions:    {},
-      // Strict-DLM mode — gates the round-4 replacement step.
+      // DLM round-4 replacement — always enabled so the 4-round
+      // session structure fires the treatment-controlled swap.
       strictDLM:     true,
       treatmentSize: this.treatmentSize,
     };
@@ -860,7 +866,7 @@ const App = {
     // Toggle the extended-panel visibility class whenever any utility
     // agents are present, then re-measure canvases that were previously
     // display:none.
-    document.body.classList.remove('extended');
+    document.body.classList.toggle('extended', (this.mix.U | 0) > 0);
     UI.resizeCanvases();
     this.requestRender();
   },
