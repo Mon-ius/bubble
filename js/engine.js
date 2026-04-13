@@ -60,13 +60,17 @@ class Engine {
   }
   _loop() {
     if (!this.running) return;
-    this.step();
-    if (this.onTick) this.onTick();
-    if (this.isFinished()) {
-      this.running = false;
-      if (this.onEnd) this.onEnd();
-      return;
+    const batch = this.config.ticksPerFrame || 1;
+    for (let i = 0; i < batch; i++) {
+      this.step();
+      if (this.isFinished()) {
+        this.running = false;
+        if (this.onTick) this.onTick();
+        if (this.onEnd) this.onEnd();
+        return;
+      }
     }
+    if (this.onTick) this.onTick();
     this._timer = setTimeout(() => this._loop(), this.tickInterval);
   }
 

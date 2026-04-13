@@ -47,6 +47,7 @@ const App = {
     ticksPerPeriod:   18,
     dividendMean:     10,
     tickInterval:     340,
+    ticksPerFrame:    1,
   },
 
   // Total population size, fixed at N = 6 per DLM 2005 §I.
@@ -213,9 +214,17 @@ const App = {
     if (themeBtn) themeBtn.addEventListener('click', () => this._cycleTheme());
 
     document.getElementById('speed').addEventListener('input', e => {
-      // speed 1 → ~953ms, speed 20 → ~60ms
+      // speed 1 → ~953ms, speed 20 → ~60ms (single tick per frame).
+      // speed 21-50 → fixed 16ms interval, batching multiple ticks per
+      // frame so the simulation accelerates smoothly up to 50×.
       const s = Number(e.target.value);
-      this.config.tickInterval = Math.max(40, Math.round(1000 - s * 47));
+      if (s <= 20) {
+        this.config.tickInterval = Math.max(40, Math.round(1000 - s * 47));
+        this.config.ticksPerFrame = 1;
+      } else {
+        this.config.tickInterval = 16;  // ~60 fps
+        this.config.ticksPerFrame = Math.round(1 + (s - 20) * 1.5);  // 2-46 ticks/frame
+      }
     });
 
     this._wireParamsPanel();
@@ -889,13 +898,14 @@ const App = {
    * Run the full DLM 2005 10-session batch. Sessions 1-5 use the
    * first treatment (selected by the radio), sessions 6-10 use the
    * other. Each session is a fresh 4-round game with a new seed and
-   * fresh agents, run synchronously via Engine.runToEnd(). The final
-   * session's state is left on screen for inspection and replay.
+   * fresh agents, animated at the current Speed setting. The onEnd
+   * callback chains to the next session automatically.
    *
    * Plan II/III require an API key; Plan I runs immediately.
    */
   start() {
     if (this.replayMode) this.exitReplay();
+    if (this._batchRunning) return;   // don't re-enter mid-batch
     if (this.plan === 'II' || this.plan === 'III') {
       const key = this.aiConfig && (this.aiConfig.apiKey || '').trim();
       if (!key) {
@@ -908,43 +918,50 @@ const App = {
     }
 
     const SESSIONS = 10;
-    const firstTreatment  = this.treatmentSize;          // 2 or 4
+    const firstTreatment  = this.treatmentSize;
     const secondTreatment = firstTreatment === 2 ? 4 : 2;
     this.batchResults = [];
+    this._batchRunning = true;
 
-    for (let s = 0; s < SESSIONS; s++) {
+    const runSession = (s) => {
+      if (s >= SESSIONS) {
+        this._batchRunning = false;
+        this.treatmentSize = firstTreatment;
+        console.table(this.batchResults);
+        return;
+      }
       const treatment = s < 5 ? firstTreatment : secondTreatment;
       this.treatmentSize = treatment;
-      this.reset();                    // new seed + fresh agents + rebuild
+      this.reset();
 
-      this.engine.runToEnd();
+      this.engine.onEnd = () => {
+        // Collect per-session summary.
+        const trades = this.market.trades;
+        const prices = trades.map(t => t.price);
+        const fvAtTrade = trades.map(t => {
+          const p = t.period != null ? t.period : 1;
+          return this.config.dividendMean * (this.config.periods - p + 1);
+        });
+        const absDev = prices.map((p, i) => Math.abs(p - fvAtTrade[i]));
+        const meanDev = absDev.length ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
+        const totalShares = this.TOTAL_N * 3;
+        const turnover = trades.length / totalShares;
+        this.batchResults.push({
+          session:   s + 1,
+          treatment: treatment === 2 ? 'T2' : 'T4',
+          treatmentSize: treatment,
+          trades:    trades.length,
+          meanDev:   Math.round(meanDev * 100) / 100,
+          turnover:  Math.round(turnover * 100) / 100,
+        });
+        this.requestRender();
+        // Chain to next session.
+        setTimeout(() => runSession(s + 1), 50);
+      };
+      this.engine.start();
+    };
 
-      // Collect per-session summary.
-      const trades = this.market.trades;
-      const prices = trades.map(t => t.price);
-      const fvAtTrade = trades.map(t => {
-        const p = t.period != null ? t.period : 1;
-        return this.config.dividendMean * (this.config.periods - p + 1);
-      });
-      const absDev = prices.map((p, i) => Math.abs(p - fvAtTrade[i]));
-      const meanDev = absDev.length ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
-      const totalShares = this.TOTAL_N * 3;  // average inventory ≈ 3
-      const turnover = trades.length / totalShares;
-      this.batchResults.push({
-        session:   s + 1,
-        treatment: treatment === 2 ? 'T2' : 'T4',
-        treatmentSize: treatment,
-        trades:    trades.length,
-        meanDev:   Math.round(meanDev * 100) / 100,
-        turnover:  Math.round(turnover * 100) / 100,
-      });
-    }
-
-    // Restore the original treatmentSize setting.
-    this.treatmentSize = firstTreatment;
-    // Log batch results to console for inspection.
-    console.table(this.batchResults);
-    this.requestRender();
+    runSession(0);
   },
 
   /**
@@ -960,6 +977,7 @@ const App = {
 
 
   pause() {
+    this._batchRunning = false;
     this.engine.pause();
     this.requestRender();
   },
