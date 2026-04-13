@@ -642,6 +642,63 @@ const UI = {
     return 'R' + r;
   },
 
+  /**
+   * Draw round dividers and highlight the R3→R4 replacement boundary.
+   * Used by every chart that spans the full session tick range.
+   *
+   * Normal round boundaries get a thin solid line in `frame` colour.
+   * The R3→R4 boundary (round === 3) gets a thicker dashed red line
+   * with a small "R4 swap" label so the replacement step is visible
+   * in every chart at a glance.
+   *
+   * @param {CanvasRenderingContext2D} cx  — chart canvas context
+   * @param {object} rect   — plot rectangle {x, y, w, h}
+   * @param {object} config — App.config
+   * @param {number} xMin
+   * @param {number} xMax
+   * @param {object} v      — view (v.events carries round_4_replacement)
+   */
+  _drawRoundDividers(cx, rect, config, xMin, xMax, v) {
+    const rounds = config.roundsPerSession || 1;
+    if (rounds <= 1) return;
+    const ticksPerRnd = config.periods * config.ticksPerPeriod;
+
+    // Check whether a replacement actually fired (the event may not
+    // exist yet if the session hasn't reached round 4).
+    const hasReplacement = (v.events || []).some(e => e.type === 'round_4_replacement');
+
+    cx.save();
+    for (let r = 1; r < rounds; r++) {
+      const x = Viz.mapX(rect, r * ticksPerRnd, xMin, xMax);
+      if (r === 3 && hasReplacement) {
+        // R3→R4 replacement boundary: dashed red line + label.
+        cx.strokeStyle = this.theme.red;
+        cx.lineWidth   = 1.5;
+        cx.setLineDash([5, 3]);
+        cx.beginPath();
+        cx.moveTo(x + 0.5, rect.y);
+        cx.lineTo(x + 0.5, rect.y + rect.h);
+        cx.stroke();
+        cx.setLineDash([]);
+        // Small annotation at the top.
+        cx.font      = '9px "Helvetica Neue", Helvetica, Arial, sans-serif';
+        cx.fillStyle = this.theme.red;
+        cx.textAlign = 'center';
+        cx.textBaseline = 'bottom';
+        cx.fillText('R4 swap', x, rect.y - 2);
+      } else {
+        // Normal round boundary.
+        cx.strokeStyle = this.theme.frame;
+        cx.lineWidth   = 1;
+        cx.beginPath();
+        cx.moveTo(x + 0.5, rect.y);
+        cx.lineTo(x + 0.5, rect.y + rect.h);
+        cx.stroke();
+      }
+    }
+    cx.restore();
+  },
+
   /* -------- Price vs FV chart -------- */
 
   renderPriceChart(v, config) {
@@ -679,22 +736,7 @@ const UI = {
       yFmt: y => y.toFixed(0),
     });
 
-    // Round dividers — a thin vertical rule at every round boundary
-    // except the run endpoints, so the saw-tooth is visually anchored
-    // to the round that produced it (DLM Figure 1 uses the same cut).
-    if (rounds > 1) {
-      ctx.save();
-      ctx.strokeStyle = this.theme.frame;
-      ctx.lineWidth   = 1;
-      for (let r = 1; r < rounds; r++) {
-        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, xMin, xMax);
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, rect.y);
-        ctx.lineTo(x + 0.5, rect.y + rect.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    this._drawRoundDividers(ctx, rect, config, xMin, xMax, v);
 
     // Deterministic FV saw-tooth — FV_t = (T − t + 1)·μ_d resets at
     // each round start, so the line climbs back to maxFV at every
@@ -778,19 +820,7 @@ const UI = {
     Viz.line(ctx, rect, bridgePts, { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red + '55', width: 1, dashed: true });
     Viz.line(ctx, rect, pts,       { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.theme.red, width: 2 });
 
-    if (rounds > 1) {
-      ctx.save();
-      ctx.strokeStyle = this.theme.frame;
-      ctx.lineWidth   = 1;
-      for (let r = 1; r < rounds; r++) {
-        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, rect.y);
-        ctx.lineTo(x + 0.5, rect.y + rect.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
     Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
@@ -850,19 +880,7 @@ const UI = {
       barWidth: barW,
     });
 
-    if (rounds > 1) {
-      ctx.save();
-      ctx.strokeStyle = this.theme.frame;
-      ctx.lineWidth   = 1;
-      for (let r = 1; r < rounds; r++) {
-        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, xMin, xMax);
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, rect.y);
-        ctx.lineTo(x + 0.5, rect.y + rect.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    this._drawRoundDividers(ctx, rect, config, xMin, xMax, v);
 
     Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
@@ -913,6 +931,32 @@ const UI = {
     ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
 
+    // Round dividers within the period-indexed grid. The R3→R4
+    // boundary gets the same replacement marker as tick-based charts.
+    const hasReplacement = (v.events || []).some(e => e.type === 'round_4_replacement');
+    if (rounds > 1) {
+      ctx.save();
+      for (let r = 1; r < rounds; r++) {
+        const x = rect.x + r * config.periods * cellW;
+        if (r === 3 && hasReplacement) {
+          ctx.strokeStyle = this.theme.red;
+          ctx.lineWidth   = 1.5;
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath(); ctx.moveTo(x + 0.5, rect.y); ctx.lineTo(x + 0.5, rect.y + rect.h); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font      = '9px "Helvetica Neue", Helvetica, Arial, sans-serif';
+          ctx.fillStyle = this.theme.red;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          ctx.fillText('R4 swap', x, rect.y - 2);
+        } else {
+          ctx.strokeStyle = this.theme.frame;
+          ctx.lineWidth   = 1;
+          ctx.beginPath(); ctx.moveTo(x + 0.5, rect.y); ctx.lineTo(x + 0.5, rect.y + rect.h); ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
     // Price axis labels (left)
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -925,15 +969,13 @@ const UI = {
       ctx.fillText(val.toFixed(0), rect.x - 5, y);
     }
     // Round labels (bottom) — one label per round, centred above that
-    // round's block of period columns. The heatmap still buckets trades
-    // at period resolution, but period-level labels would crowd for a
-    // session of 40 columns so we elide them.
+    // round's block of period columns.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (let r = 1; r <= rounds; r++) {
       const mid = (r - 0.5) * config.periods;
       const x   = rect.x + mid * cellW;
-      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
+      ctx.fillText(this._roundLabel(v, config, (r - 0.5) * config.periods * config.ticksPerPeriod), x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
@@ -986,19 +1028,7 @@ const UI = {
       ctx.stroke();
     }
     ctx.restore();
-    if (rounds > 1) {
-      ctx.save();
-      ctx.strokeStyle = this.theme.frame;
-      ctx.lineWidth   = 1;
-      for (let r = 1; r < rounds; r++) {
-        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, rect.y);
-        ctx.lineTo(x + 0.5, rect.y + rect.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
     // One rect per agent decision, colored by action type.
     const colors = { bid: this.theme.green, ask: this.theme.red, hold: this.theme.fg3 };
@@ -1031,7 +1061,7 @@ const UI = {
     for (let r = 1; r <= rounds; r++) {
       const mid = (r - 0.5) * config.periods * config.ticksPerPeriod;
       const x   = Viz.mapX(rect, mid, 0, totalTicks);
-      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
+      ctx.fillText(this._roundLabel(v, config, mid), x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
@@ -1091,6 +1121,8 @@ const UI = {
       fvPoints.push({ x:  g      * config.ticksPerPeriod, y: fv });
     }
     Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.theme.amber, width: 2, dashed: true });
+
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
     // One subjective-valuation line per agent.
     const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
@@ -1190,6 +1222,8 @@ const UI = {
     ctx.setLineDash([]);
     ctx.restore();
 
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
+
     const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
     for (const id of ids) {
       Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
@@ -1240,19 +1274,7 @@ const UI = {
       ctx.beginPath(); ctx.moveTo(x, rect.y); ctx.lineTo(x, rect.y + rect.h); ctx.stroke();
     }
     ctx.restore();
-    if (rounds > 1) {
-      ctx.save();
-      ctx.strokeStyle = this.theme.frame;
-      ctx.lineWidth   = 1;
-      for (let r = 1; r < rounds; r++) {
-        const x = Viz.mapX(rect, r * config.periods * config.ticksPerPeriod, 0, totalTicks);
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, rect.y);
-        ctx.lineTo(x + 0.5, rect.y + rect.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
     // Messages: one dot per broadcast, colored by signal, ringed red if deceptive.
     const msgs = v.messages || [];
@@ -1283,7 +1305,7 @@ const UI = {
     for (let r = 1; r <= rounds; r++) {
       const mid = (r - 0.5) * config.periods * config.ticksPerPeriod;
       const x   = Viz.mapX(rect, mid, 0, totalTicks);
-      ctx.fillText('R' + r, x, rect.y + rect.h + 6);
+      ctx.fillText(this._roundLabel(v, config, mid), x, rect.y + rect.h + 6);
     }
     ctx.restore();
 
@@ -1431,6 +1453,7 @@ const UI = {
       points: invByTick.map((m, tick) => ({ x: tick, y: Math.max(0, m[id] || 0) })),
     }));
     Viz.stackedArea(ctx, rect, series, { xMin: 0, xMax: totalTicks, yMin: 0, yMax });
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
     // Inline legend above the plot. Per-entry advance is measured
     // from the rendered name so long names can't overlap.
