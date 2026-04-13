@@ -675,7 +675,7 @@ class UtilityAgent extends Agent {
     const ext        = ctx && ctx.extended;
     const canListen  = !ext || ext.communication !== false;
     const prevPeriod = market.period - 1;
-    const msgs       = (bus && canListen && prevPeriod >= 1) ? bus.byPeriod(prevPeriod) : [];
+    const msgs       = (bus && canListen && prevPeriod >= 1) ? bus.byPeriod(prevPeriod, market.round) : [];
     this.receivedMsgs = msgs;
     const foreign = msgs.filter(m => m.senderId !== this.id);
 
@@ -968,6 +968,7 @@ class UtilityAgent extends Agent {
     return {
       senderId:         this.id,
       senderName:       this.displayName,
+      round:            market.round,
       period:           market.period,
       tick:             market.tick,
       trueValuation:    v,

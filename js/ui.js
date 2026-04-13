@@ -945,7 +945,7 @@ const UI = {
         ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
-      ctx.fillStyle = this.theme.fg3;
+      ctx.fillStyle = this.agentColor(ids[i]);
       ctx.fillText(v.agents[ids[i]]?.name || ('A' + ids[i]), rect.x - 6, y + rowH / 2);
     }
     ctx.strokeStyle = this.theme.frame;

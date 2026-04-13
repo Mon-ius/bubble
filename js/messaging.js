@@ -30,7 +30,7 @@
    Message shape:
    {
      senderId, senderName,
-     period, tick,
+     round, period, tick,
      trueValuation,         // the sender's actual belief
      claimedValuation,      // what the sender broadcast
      signal,                // 'buy' | 'sell' | 'hold'
@@ -48,9 +48,13 @@ class MessageBus {
     this.messages.push(msg);
   }
 
-  byPeriod(period) {
+  byPeriod(period, round) {
     const out = [];
-    for (const m of this.messages) if (m.period === period) out.push(m);
+    for (const m of this.messages) {
+      if (m.period !== period) continue;
+      if (round != null && m.round !== round) continue;
+      out.push(m);
+    }
     return out;
   }
 
@@ -90,11 +94,12 @@ class TrustTracker {
    * rate α. Self-trust is never updated.
    */
   update(messageBus, market, period, alpha = 0.3) {
-    const msgs = messageBus.byPeriod(period);
+    const round = market.round;
+    const msgs = messageBus.byPeriod(period, round);
     if (!msgs.length) return;
     let vwap = 0, qw = 0;
     for (const t of market.trades) {
-      if (t.period !== period) continue;
+      if (t.period !== period || t.round !== round) continue;
       vwap += t.price * t.quantity;
       qw   += t.quantity;
     }
