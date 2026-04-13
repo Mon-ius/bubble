@@ -1271,6 +1271,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   letter-spacing: 0.04em;
   font-size: 9px;
 }
+.batch-table th:first-child { text-align: left; }
 .batch-table .batch-label { text-align: left; font-weight: 600; color: var(--accent); }
 .batch-table .batch-metric-name { text-align: left; color: var(--fg-2); }
 .batch-table .batch-metric-name em {
@@ -2251,9 +2252,13 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-bubble, .chart-volume, .chart-heatmap,
   .chart-timeline, .panel-agents, .panel-feed,
   .panel-replay { grid-column: span 1; }
-  .chart-valuation, .panel-metrics,
+  .chart-valuation, .panel-metrics, .panel-batch,
   .chart-utility, .chart-ownership,
   .chart-messages, .chart-trust { grid-column: span 1; }
+
+  /* Batch tables: horizontal scroll when columns exceed viewport */
+  .panel-metrics, .panel-batch { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .batch-table { min-width: 360px; }
 
   /* Stats: 3-col on phones so all 6 fit in 2 rows */
   .panel-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
