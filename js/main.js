@@ -97,6 +97,10 @@ const App = {
   // or API failure, Plans II and III fall back to Plan I's algorithm.
   plan: 'I',
 
+  // DLM treatment size for the round-4 replacement step. 2 = T2
+  // (R4-⅔, two fresh), 4 = T4 (R4-⅓, four fresh).
+  treatmentSize: 2,
+
   // LLM endpoint state for Plans II and III. Populated from the
   // #ai-key / #ai-endpoint / #ai-model inputs on every change event
   // and consumed by start() to gate the run (both plans refuse to
@@ -155,6 +159,7 @@ const App = {
     // Seed the plan body class so the per-plan AI endpoint panel
     // visibility is correct before _wireControls attaches handlers.
     document.body.classList.add('plan-' + this.plan.toLowerCase());
+    document.body.classList.add('dlm-mode');
     this._wireControls();
     this.reset();
   },
@@ -308,6 +313,14 @@ const App = {
       btn.addEventListener('click', () => this._setPlan(btn.dataset.plan));
     });
     this._syncPlanButtons();
+
+    // DLM treatment radio buttons (T2 / T4).
+    document.querySelectorAll('input[name="dlm-treatment"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        this.treatmentSize = Number(e.target.value);
+        this.reset();
+      });
+    });
 
     // Prime the custom --pct on every slider so the filled portion of
     // the track matches the initial value before any interaction.
@@ -799,19 +812,13 @@ const App = {
 
     // Sampling RNG is independent of the engine RNG so that editing
     // endowments (which skips the re-sample path) leaves the engine's
-    // tick-level draws unchanged.
-    const totalN =
-      (this.mix.F | 0) + (this.mix.T | 0) + (this.mix.R | 0) + (this.mix.U | 0);
-    if (!this.agentSpecs || this.agentSpecs.length !== totalN) {
+    // tick-level draws unchanged. Always uses the DLM 2005 sampling
+    // stage: 6 DLMTraders, 3 type A + 3 type B, paper-exact endowments.
+    if (!this.agentSpecs || this.agentSpecs[0]?.type !== 'dlm') {
       const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-      this.agentSpecs = sampleAgents(this.mix, sampleRng, {
-        riskMix: this.riskMix,
-      });
+      this.agentSpecs = dlmSampleAgents(sampleRng);
     }
-    this.agents = buildAgentsFromSpecs(this.agentSpecs, {
-      biasAmount:     this.tunables.biasAmount,
-      valuationNoise: this.tunables.valuationNoise,
-    });
+    this.agents = buildAgentsFromSpecs(this.agentSpecs);
     this.market = new Market(this.config);
     this.logger = new Logger();
     // Message bus + trust tracker live for every run. With a mix that
@@ -841,6 +848,9 @@ const App = {
       // Populated asynchronously by the engine's comms round when
       // plan ∈ {II, III}, consumed next tick by decide().
       llmActions:    {},
+      // Strict-DLM mode — gates the round-4 replacement step.
+      strictDLM:     true,
+      treatmentSize: this.treatmentSize,
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();
@@ -850,7 +860,7 @@ const App = {
     // Toggle the extended-panel visibility class whenever any utility
     // agents are present, then re-measure canvases that were previously
     // display:none.
-    document.body.classList.toggle('extended', (this.mix.U | 0) > 0);
+    document.body.classList.remove('extended');
     UI.resizeCanvases();
     this.requestRender();
   },

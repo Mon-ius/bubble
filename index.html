@@ -145,6 +145,25 @@
         </div>
       </details>
 
+      <details class="psec" open>
+        <summary>DLM treatment <span class="muted">Round-4 replacement</span></summary>
+        <div class="psec-body">
+          <div class="dlm-treatment-row">
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="2" checked>
+              <span><strong>T2</strong> · R4-&#8532; &mdash; two fresh, four veterans</span>
+            </label>
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="4">
+              <span><strong>T4</strong> · R4-&#8531; &mdash; four fresh, two veterans</span>
+            </label>
+          </div>
+          <button class="btn-dlm-batch" id="btn-dlm-batch">Run 10-session batch</button>
+          <div class="dlm-batch-status" id="dlm-batch-status"></div>
+          <div class="dlm-batch-results" id="dlm-batch-results"></div>
+        </div>
+      </details>
+
       <details class="psec plan-ii-only" open>
         <summary>AI endpoint <span class="muted">Plan II · LLM + utility forms</span></summary>
         <div class="psec-body ai-config">
