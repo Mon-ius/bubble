@@ -438,24 +438,45 @@ const UI = {
         </div>`;
     }).join('');
 
-    // Detach flipped card DOM nodes before innerHTML so their scroll
-    // state and any active interactions (scrollbar hold, text selection)
-    // survive the per-frame rebuild. The back face is static between
-    // period boundaries, so keeping the old node is correct.
+    // Detach flipped card DOM nodes before innerHTML so their
+    // interactions (text selection, etc.) survive the per-frame rebuild.
+    // The back face is static between period boundaries, so keeping the
+    // old node is correct.  Scroll positions are snapshotted explicitly
+    // because some browsers reset scrollTop on absolutely-positioned
+    // overflow elements when the node is removed from / reinserted into
+    // the DOM tree.
     const preserved = {};
+    const scrollSnap = {};
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flipped').forEach(wrap => {
-      preserved[wrap.dataset.agentId] = wrap;
+      const aid = wrap.dataset.agentId;
+      preserved[aid] = wrap;
+      const back = wrap.querySelector('.card-back');
+      scrollSnap[aid] = {
+        back: back ? back.scrollTop : 0,
+        texts: [...wrap.querySelectorAll('.llm-text')].map(el => el.scrollTop),
+      };
       wrap.remove();
     });
 
     this.els.agentsGrid.innerHTML = html;
 
-    // Re-insert preserved flipped cards in place of their new copies.
+    // Re-insert preserved flipped cards and restore scroll positions.
     for (const [id, oldWrap] of Object.entries(preserved)) {
       const fresh = this.els.agentsGrid.querySelector(
         `.agent-card-wrap[data-agent-id="${id}"]`,
       );
-      if (fresh) fresh.replaceWith(oldWrap);
+      if (fresh) {
+        fresh.replaceWith(oldWrap);
+        const ss = scrollSnap[id];
+        if (ss) {
+          const back = oldWrap.querySelector('.card-back');
+          if (back) back.scrollTop = ss.back;
+          const texts = oldWrap.querySelectorAll('.llm-text');
+          ss.texts.forEach((top, i) => {
+            if (texts[i]) texts[i].scrollTop = top;
+          });
+        }
+      }
     }
 
     // Wire event delegation once — avoids per-card handler accumulation.
