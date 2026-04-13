@@ -1,0 +1,49 @@
+%% preamble.tex — document class, packages, AER-style layout
+
+\documentclass[11pt]{article}
+
+\usepackage[top=0.85in,bottom=0.9in,left=0.95in,right=0.95in]{geometry}
+\usepackage{times}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{titling}
+\usepackage{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xfrac}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% tikz removed — figures use \includegraphics from exported PNGs
+
+% --- Title ---
+\setlength{\droptitle}{-36pt}
+
+% --- AER headings ---
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+\titleformat{\section}{\normalfont\normalsize\bfseries\centering}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\paragraph}[runin]{\normalfont\normalsize\itshape}{}{0pt}{}[.]
+\titlespacing*{\section}{0pt}{0.8\baselineskip}{0.35\baselineskip}
+\titlespacing*{\subsection}{0pt}{0.5\baselineskip}{0.25\baselineskip}
+\titlespacing*{\paragraph}{0pt}{0.35\baselineskip}{0.4em}
+
+% --- Spacing ---
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{18pt}
+\linespread{0.97}
+\AtBeginDocument{%
+  \setlength{\abovedisplayskip}{4pt}%
+  \setlength{\belowdisplayskip}{4pt}%
+  \setlength{\abovedisplayshortskip}{2pt}%
+  \setlength{\belowdisplayshortskip}{2pt}%
+}

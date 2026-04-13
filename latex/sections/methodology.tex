@@ -14,141 +14,9 @@ application.  Data flows strictly downward: the market substrate
 feeds the utility-agent pipeline, which routes through the matching
 engine into the append-only logger.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\resizebox{\columnwidth}{!}{%
-\begin{tikzpicture}[
-  every node/.style={font=\small},
-  arr/.style={-{Stealth[length=5pt]}, thick},
-  darr/.style={-{Stealth[length=5pt]}, thick, dashed},
-]
-
-% ============================================================
-% Group backgrounds (drawn first so nodes sit on top)
-% ============================================================
-% G1: Market substrate
-\fill[blue!6, rounded corners=8pt]  (-2.2, 1.8) rectangle (2.2,-2.2);
-\draw[rounded corners=8pt]          (-2.2, 1.8) rectangle (2.2,-2.2);
-\node[font=\footnotesize\bfseries] at (0, 1.45) {Market substrate $\cdot$ DLM 2005};
-
-% G2: Utility agent pipeline
-\fill[green!6, rounded corners=8pt] (2.8, 1.8) rectangle (11.6,-2.2);
-\draw[rounded corners=8pt]          (2.8, 1.8) rectangle (11.6,-2.2);
-\node[font=\footnotesize\bfseries] at (7.2, 1.45) {Utility agent pipeline $\cdot\; N{=}6$};
-
-% G3: LLM belief update
-\fill[yellow!8, rounded corners=8pt] (-2.2,-3.4) rectangle (2.2,-6.4);
-\draw[rounded corners=8pt]           (-2.2,-3.4) rectangle (2.2,-6.4);
-\node[font=\footnotesize\bfseries, anchor=west] at (-1.8,-3.75) {LLM belief update};
-
-% G4: Market matching + quality metrics
-\fill[red!5, rounded corners=8pt]  (3.2,-3.4) rectangle (11.6,-6.4);
-\draw[rounded corners=8pt]         (3.2,-3.4) rectangle (11.6,-6.4);
-\node[font=\footnotesize\bfseries, anchor=west] at (3.6,-3.75) {Market matching $+$ quality metrics};
-
-% ============================================================
-% G1 inner nodes
-% ============================================================
-\node[draw, fill=blue!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (fv) at (0, 0.5)
-  {$\FV_t = \mu(T{-}t{+}1)$\\[-1pt]
-   {\scriptsize $d \in \{0,2\mu\}$, $T{=}10$}};
-
-\node[draw, fill=blue!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (cda) at (0,-1.0)
-  {CDA order book\\[-1pt]
-   {\scriptsize price--time priority}};
-
-% ============================================================
-% G2 inner nodes
-% ============================================================
-\node[draw, fill=green!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.1cm, align=center]
-  (prior) at (5.2, 0.5)
-  {Prior\\[-1pt]
-   {\scriptsize $\FV_t(1{+}b_i{+}\varepsilon)$}\\[-1pt]
-   {\scriptsize $U_L / U_N / U_A$}};
-
-\node[draw, fill=green!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (eu) at (9.2, 0.5)
-  {EU scoring\\[-1pt]
-   {\scriptsize $a^* = \arg\max\;\text{EU}$}};
-
-\node[draw, fill=green!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.1cm, align=center]
-  (plan1) at (5.2,-1.0)
-  {Plan I blend\\[-1pt]
-   {\scriptsize $w\!\cdot\!V^{\text{pr}} + (1{-}w)\bar m$}\\[-1pt]
-   {\scriptsize $w = 0.6 + 0.1\min(3,k)$}};
-
-\node[draw, fill=green!12, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.1cm, align=center]
-  (trust) at (9.2,-1.0)
-  {Trust EMA\\[-1pt]
-   {\scriptsize $\tau \leftarrow (1{-}\alpha)\tau$}\\[-1pt]
-   {\scriptsize ${}+ \alpha(1{-}|\hat v{-}\text{VWAP}|/\text{VWAP})$}};
-
-% ============================================================
-% G3 inner nodes
-% ============================================================
-\node[draw, fill=yellow!16, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (p2) at (0,-4.4)
-  {Plan II\\[-1pt]
-   {\scriptsize $a^\star \!\leftarrow\! \text{LLM}$, prompt $\supseteq \{U_L, U_N, U_A\}$}};
-
-\node[draw, fill=yellow!16, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (p3) at (0,-5.7)
-  {Plan III\\[-1pt]
-   {\scriptsize $a^\star \!\leftarrow\! \text{LLM}$, prompt $\supseteq$ risk label only}};
-
-% ============================================================
-% G4 inner nodes
-% ============================================================
-\node[draw, fill=red!10, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (book) at (5.2,-4.4)
-  {Matching engine\\[-1pt]
-   {\scriptsize bid $\ge$ ask $\Rightarrow$ trade}};
-
-\node[draw, fill=red!10, rounded corners=3pt,
-      minimum width=3.6cm, minimum height=1.0cm, align=center]
-  (metrics) at (9.2,-4.4)
-  {$R^2_H$, ND, Amplitude\\[-1pt]
-   {\scriptsize TO, Alloc.\ Eff.}};
-
-\node[draw, fill=red!10, rounded corners=3pt,
-      minimum width=7.8cm, minimum height=1.0cm, align=center]
-  (settle) at (7.2,-5.7)
-  {Settlement $+$ append-only logger\\[-1pt]
-   {\scriptsize traces, snapshots, events $\to$ exact replay}};
-
-% ============================================================
-% Connectors
-% ============================================================
-\draw[arr] (fv.east)    -- (prior.west);        % FV -> Prior
-\draw[arr] (prior.east) -- (eu.west);           % Prior -> EU
-\draw[arr] (plan1.north) -- (prior.south);      % Plan I -> Prior
-\draw[arr] (trust.west) -- (plan1.east);        % Trust -> Plan I
-
-% LLM -> Plan I blend (dashed, up through inter-row gap)
-\draw[darr] (p2.north) -- ++(0,1.1) -| (plan1.south);
-
-% CDA -> Matching engine (left side of book top)
-\draw[arr] (cda.south) -- ++(0,-0.8) -| ([xshift=-0.4cm]book.north);
-
-% EU -> Matching engine (right side of book top)
-\draw[arr] (eu.south) -- ++(0,-0.8) -| ([xshift=0.4cm]book.north);
-
-% Matching -> Metrics
-\draw[arr] (book.east) -- (metrics.west);
-
-\end{tikzpicture}%
-}% end resizebox
+\includegraphics[width=\columnwidth]{figures/arch.png}
 \caption{Mathematical architecture, mirroring the live Architecture
 tab.  Four groups: the DLM market substrate feeds into the
 six-agent utility pipeline; Plan~I evaluates EU algorithmically,
@@ -392,66 +260,15 @@ snapshot.  No simulation step is re-executed.
 The LLM channel is a pluggable oracle that operates outside the
 deterministic core.  Figure~\ref{fig:llm} summarises the data flow.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=0.4cm and 0.6cm,
-  box/.style={draw, rounded corners=3pt, minimum width=2.6cm,
-              minimum height=0.65cm, font=\small, align=center},
-  arr/.style={-{Stealth[length=4pt]}, thick},
-  darr/.style={-{Stealth[length=4pt]}, thick, dashed},
-  lbl/.style={font=\scriptsize\itshape, text=black!50},
-]
-% --- Prior ---
-\node[box, fill=green!10] (prior)
-  {Prior $V_i^{\text{prior}}$\\[-2pt]
-   {\scriptsize $\text{FV}_t(1{+}b_i{+}\varepsilon)$}};
-
-% --- Plan I path (left) ---
-\node[box, fill=green!10, below left=0.9cm and 0.2cm of prior] (blend)
-  {Plan I blend\\[-2pt]
-   {\scriptsize eq.~\eqref{eq:plan1}}};
-
-% --- LLM path (right) ---
-\node[box, fill=yellow!14, below right=0.9cm and 0.2cm of prior] (llm)
-  {LLM oracle\\[-2pt]
-   {\scriptsize async, fire-and-forget}};
-\node[box, fill=yellow!14, below=0.35cm of llm, minimum width=2.6cm,
-  text width=2.5cm] (p2)
-  {Plan II\\[-2pt]{\scriptsize $a^\star \!\leftarrow\! \text{LLM}$, $\pi \supseteq \{U_L,U_N,U_A\}$}};
-\node[box, fill=yellow!14, below=0.2cm of p2, minimum width=2.6cm,
-  text width=2.5cm] (p3)
-  {Plan III\\[-2pt]{\scriptsize $a^\star \!\leftarrow\! \text{LLM}$, $\pi \supseteq$ risk label}};
-
-% --- Posterior ---
-\node[box, fill=orange!10, below=2.8cm of prior] (post)
-  {$a_i^\star$ or $V_i^{\text{post}}$};
-
-% --- EU scoring ---
-\node[box, fill=red!10, below=0.5cm of post] (eu)
-  {EU scoring\\[-2pt]
-   {\scriptsize eq.~\eqref{eq:eu}}};
-
-% --- Arrows ---
-\draw[arr] (prior) -- (blend);
-\draw[arr] (prior) -- (llm);
-\draw[arr] (blend) -- node[left, font=\scriptsize] {fallback} (post);
-\draw[darr] (llm) -- (p2);
-\draw[darr] (p2) -- (p3);
-\draw[darr] (p3.south) -- ++(0,-0.15) -|
-  node[near start, above, font=\scriptsize] {cached reply} (post);
-\draw[arr] (post) -- (eu);
-
-% --- Labels ---
-\node[lbl, left=0.05cm of blend] {deterministic};
-\node[lbl, right=0.05cm of llm] {asynchronous};
-\end{tikzpicture}
-\caption{Belief-update data flow, matching the live Architecture tab.
+\includegraphics[width=0.75\columnwidth]{figures/llm.png}
+\caption{Belief-update and action-selection data flow.
 The LLM oracle (dashed) fires asynchronously at the previous period
 boundary; Plan~II includes the closed-form utility expression,
-Plan~III names only the risk label.  If no reply is cached, the
-agent falls through to the deterministic Plan~I blend.  The
-downstream EU scoring step is identical under all three plans.}
+Plan~III names only the risk label.  Both return a direct action
+from the seven-element set.  If no reply is cached, the
+agent falls through to the deterministic Plan~I blend.}
 \label{fig:llm}
 \end{figure}
 
