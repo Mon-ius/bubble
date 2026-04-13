@@ -744,7 +744,7 @@
           <g class="n n-eu" transform="translate(400 126)">
             <rect width="320" height="34" rx="6" ry="6"/>
             <foreignObject width="320" height="34">
-              <div class="fo-node"><div class="fo-t">$\mathrm{EU}(\alpha) = p\!\cdot\!U(w_1) + (1\!-\!p)\!\cdot\!U(w_0)$</div></div>
+              <div class="fo-node"><div class="fo-t">$\mathrm{EU}(\alpha) = p_{\text{fill}}\!\cdot\!U(w_1) + (1\!-\!p_{\text{fill}})\!\cdot\!U(w_0)$</div></div>
             </foreignObject>
           </g>
 
@@ -885,7 +885,7 @@
           <p class="role">Shared across plans</p>
           <div class="formula">$$ \mathrm{EU}(\alpha) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad \alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha) $$</div>
           <div class="formula">$$ U_L(w) = (w/w_0)^2,\qquad U_N(w) = w/w_0,\qquad U_A(w) = \sqrt{w/w_0} $$</div>
-          <p class="body">$w_0 = c_i + q_i \cdot \hat{V}_i$ is the agent's current wealth (cash plus inventory valued at subjective valuation); $w_1 = (c_i \pm p) + (q_i \pm 1) \cdot \hat{V}_i$ is wealth after a hypothetical fill at price $p$. For crossing orders (buy@$A_t$ and sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive quotes (bid, ask), $p_{\text{fill}} = 0.30$ (tunable). In Plan I, agent $i$ maximizes EU over the five-element action set $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the best ask and $B_t$ is the best bid on the order book at tick $t$. In Plans II/III the LLM selects directly from $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$. Risk-loving / neutral / averse pick $U_L$, $U_N$, or $U_A$.</p>
+          <p class="body">$\hat{V}_i \equiv V_i^{\text{post}}$ is agent $i$'s subjective valuation — the posterior output of the active plan (see Figure 3). $c_i$ is cash; $q_i$ is share inventory. $w_0 = c_i + q_i \cdot \hat{V}_i$ is current wealth; $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ is wealth after a hypothetical fill at order price $p_{\text{order}}$. For crossing actions (buy@$A_t$ and sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive quotes (bid, ask), $p_{\text{fill}} = 0.30$ (tunable). In Plan I, agent $i$ maximizes EU over the five-element action set $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the best ask and $B_t$ is the best bid on the order book at tick $t$. In Plans II/III the LLM selects directly from $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$. Risk-loving / neutral / averse pick $U_L$, $U_N$, or $U_A$.</p>
         </div>
       </div>
     </figure>
@@ -951,7 +951,7 @@
             <rect width="480" height="42" rx="6" ry="6"/>
             <foreignObject width="480" height="42">
               <div class="fo-node">
-                <div class="fo-t">Trust EMA &nbsp; $\tau_{r \to s} \!\leftarrow\! (1\!-\!\alpha)\,\tau + \alpha \!\cdot\! \text{closeness}$ &nbsp; $\alpha\!=\!0.30$</div>
+                <div class="fo-t">Trust EMA &nbsp; $\tau_{r \to s} \!\leftarrow\! (1\!-\!\lambda)\,\tau + \lambda \!\cdot\! \text{closeness}$ &nbsp; $\lambda\!=\!0.30$</div>
               </div>
             </foreignObject>
           </g>
@@ -964,13 +964,13 @@
           <p class="role">Deterministic</p>
           <div class="formula">$$ V_i^{\text{post}} \;=\; w \cdot V_i^{\text{prior}} \;+\; (1 - w) \cdot \underbrace{\tfrac{1}{|M|}\sum_{m \in M} \hat v_m}_{\bar{m}\;\text{(peer-message mean)}}, \qquad w \;=\; 0.6 + 0.1\,\min(3,\,k_i) $$</div>
           <div class="formula">$$ \hat v_m \;=\; V_m \cdot \begin{cases} 1 + \mathcal{U}[-h,\,h] & \text{honest} \quad (h = 0.02) \\[4pt] 1 + \text{tilt}_m & \text{biased} \quad (\text{tilt} = \pm 0.10 \;\text{from biasMode}) \\[4pt] \begin{cases} k_{\text{over}} & q_m > q_m^0 \;\text{(wants to sell)} \\ k_{\text{under}} & q_m < q_m^0 \;\text{(wants to buy)} \end{cases} & \text{deceptive} \quad (k_{\text{over}}\!=\!1.25,\; k_{\text{under}}\!=\!0.75) \end{cases} $$</div>
-          <p class="body">$\hat{v}_m$ is the claimed valuation that peer $m$ broadcasts via <code>communicate()</code>. It is derived from $m$'s subjective valuation $V_m$ (<code>subjectiveValuation</code>), strategically distorted according to <code>deceptionMode</code>: honest agents add small Gaussian-like jitter ($h = \texttt{honestNoise}$); biased agents apply a fixed-sign tilt ($\pm\texttt{biasedTilt}$, sign from <code>biasMode</code>: "over" → $+$, "under" → $-$); deceptive agents overstate when inventory $q_m$ exceeds baseline $q_m^0$ (to sell dear) and understate when below (to buy cheap). The result is clamped to $\geq 0$. $\bar{m}$ averages the $\hat{v}_m$ over the set $M$ of non-self messages received this period. Weight $w$ ramps from $0.60$ to $0.90$ over the first three rounds of experience ($k_i = \texttt{roundsPlayed}$, starting at $0$ and incremented at each round boundary), so novices listen freely and veterans stick to their own read. If $|M| = 0$, $V_i^{\text{post}} = V_i^{\text{prior}}$ (no blend). No network calls — the run is deterministic under the seeded PRNG.</p>
+          <p class="body">$V_i^{\text{prior}} = \text{prior}_t$ from Figure 2 (the bias- and noise-adjusted fundamental). $\hat{v}_m$ is the claimed valuation that peer $m$ broadcasts via <code>communicate()</code>. It is derived from $m$'s subjective valuation $V_m$ (<code>subjectiveValuation</code>), strategically distorted according to <code>deceptionMode</code>: honest agents add small uniform jitter ($h = \texttt{honestNoise}$, default $0.02$); biased agents apply a fixed-sign tilt ($\pm\texttt{biasedTilt}$, default $0.10$, sign from <code>biasMode</code>: "over" → $+$, "under" → $-$); deceptive agents overstate when inventory $q_m$ exceeds baseline $q_m^0$ (initial endowment, to sell dear) and understate when below (to buy cheap). The result is clamped to $\geq 0$. $\bar{m}$ averages the $\hat{v}_m$ over the set $M$ of non-self messages received this period. Weight $w$ ramps from $0.60$ to $0.90$ over the first three rounds of experience ($k_i = \texttt{roundsPlayed}$, starting at $0$ and incremented at each round boundary), so novices listen freely and veterans stick to their own read. If $|M| = 0$, $V_i^{\text{post}} = V_i^{\text{prior}}$ (no blend). No network calls — the run is deterministic under the seeded PRNG.</p>
         </div>
         <div class="arch-def-card card-ll">
           <h4>Pairwise Trust Dynamics</h4>
           <p class="role">Social learning</p>
-          <div class="formula">$$ \tau_{r \to s} \;\leftarrow\; (1 - \alpha)\, \tau_{r \to s} \;+\; \alpha \cdot \underbrace{\max\!\Bigl(0,\,1 - \tfrac{|\hat v_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr)}_{\text{closeness}_{r,s}}, \quad \alpha = 0.30 $$</div>
-          <p class="body">Receiver $r$'s trust in sender $s$ is reinforced when $s$'s claimed valuation $\hat{v}_s$ tracks the period's volume-weighted average price $\mathrm{VWAP}_t = \sum_j p_j q_j / \sum_j q_j$. Closeness is clipped to $[0, 1]$; $\tau$ is initialized at $0.5$ (neutral) with self-trust fixed at $1.0$. Logged on every plan, read by Plan II/III prompts for context.</p>
+          <div class="formula">$$ \tau_{r \to s} \;\leftarrow\; (1 - \lambda)\, \tau_{r \to s} \;+\; \lambda \cdot \underbrace{\max\!\Bigl(0,\,1 - \tfrac{|\hat v_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr)}_{\text{closeness}_{r,s}}, \quad \lambda = 0.30 $$</div>
+          <p class="body">$\lambda$ is the EMA learning rate (not to be confused with the action variable $\alpha_{i,t}$). Receiver $r$'s trust in sender $s$ is reinforced when $s$'s claimed valuation $\hat{v}_s$ (see Plan I card) tracks the period's volume-weighted average price $\mathrm{VWAP}_t = \sum_j p_j q_j / \sum_j q_j$, where $p_j$ and $q_j$ are the price and quantity of trade $j$ in period $t$. Closeness is clipped to $[0, 1]$; $\tau$ is initialized at $0.5$ (neutral) with self-trust fixed at $1.0$. Logged on every plan, read by Plan II/III prompts for context.</p>
         </div>
         <div class="arch-def-card card-wang">
           <h4>Plan II — LLM Posterior with Utility Forms</h4>
@@ -1032,7 +1032,7 @@
             <foreignObject width="166" height="68">
               <div class="fo-node">
                 <div class="fo-t">Norm. deviation</div>
-                <div class="fo-s">$\Sigma|p\!-\!\mathrm{FV}|/(T\!\cdot\!\mathrm{FV}_0\!\cdot\! Q)$</div>
+                <div class="fo-s">$\Sigma|p_j\!-\!\mathrm{FV}_{t(j)}|\!\cdot\!q_j\,/\,Q$</div>
               </div>
             </foreignObject>
           </g>
@@ -1041,7 +1041,7 @@
             <foreignObject width="166" height="68">
               <div class="fo-node">
                 <div class="fo-t">Amplitude</div>
-                <div class="fo-s">peak–trough / $\mathrm{FV}_0$</div>
+                <div class="fo-s">peak–trough / $\mathrm{FV}_1$</div>
               </div>
             </foreignObject>
           </g>
@@ -1050,7 +1050,7 @@
             <foreignObject width="166" height="68">
               <div class="fo-node">
                 <div class="fo-t">TO · AE</div>
-                <div class="fo-s">$\Sigma q/Q$ · $U_{\text{real}}/U_{\max}$</div>
+                <div class="fo-s">$\Sigma q_j/Q$ · $\sum V_i q_i\,/\,V_{\max} Q$</div>
               </div>
             </foreignObject>
           </g>
@@ -1062,13 +1062,13 @@
           <h4>Mispricing Measures</h4>
           <p class="role">Diagnostic</p>
           <div class="formula">$$ R^2_{\text{Haessel}} \;=\; 1 - \frac{\sum_t (\bar p_t - \mathrm{FV}_t)^2}{\sum_t (\bar p_t - \bar{\bar{p}})^2}, \qquad \mathrm{ND} = \frac{\sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j}{Q} $$</div>
-          <p class="body">$\bar{p}_t$ is the mean trade price in global period $t$ (averaged over all trades in that period); $\bar{\bar{p}}$ is the grand mean of $\bar{p}_t$ across all traded periods; $\mathrm{FV}_t$ is the fundamental value at period $t$. Haessel $R^2$ measures how closely per-period mean prices fit the fundamental staircase — it can be negative if mispricing exceeds the sample variance of $\bar{p}_t$. ND sums the absolute deviation $|p_j - \mathrm{FV}_{t(j)}|$ of each individual trade $j$ weighted by its quantity $q_j$, divided by total shares outstanding $Q = \sum_i q_i$.</p>
+          <p class="body">$\bar{p}_t$ is the mean trade price in global period $t$ (averaged over all trades in that period); $\bar{\bar{p}}$ is the grand mean of $\bar{p}_t$ across all traded periods; $\mathrm{FV}_t$ is the fundamental value at period $t$. Haessel $R^2$ measures how closely per-period mean prices fit the fundamental staircase — it can be negative if mispricing exceeds the sample variance of $\bar{p}_t$. ND sums the absolute deviation $|p_j - \mathrm{FV}_{t(j)}|$ of each individual trade $j$ weighted by its quantity $q_j$, divided by total shares outstanding $Q = \sum_i q_i$; here $t(j)$ is the period in which trade $j$ occurred.</p>
         </div>
         <div class="arch-def-card card-metric">
           <h4>Volume and Efficiency Measures</h4>
           <p class="role">Diagnostic</p>
-          <div class="formula">$$ A \;=\; \frac{\max_t (\bar p_t - \mathrm{FV}_t) - \min_t (\bar p_t - \mathrm{FV}_t)}{\mathrm{FV}_1}, \qquad \mathrm{TO} \;=\; \frac{\sum_j q_j}{Q} $$</div>
-          <p class="body">$A$ (amplitude) measures the peak-to-trough excursion of the mean-price residual $\bar{p}_t - \mathrm{FV}_t$, normalized by the initial fundamental $\mathrm{FV}_1 = \mathbb{E}[d] \cdot T = 100$¢. $\mathrm{TO}$ (turnover) sums the quantity $q_j$ across all trades $j$ and divides by total shares outstanding $Q = \sum_i q_i$ (conserved under double-auction trades); a value of $1.0$ means every share changed hands once. Both are reported in the Market-Quality Statistics panel and the batch results table.</p>
+          <div class="formula">$$ A \;=\; \frac{\max_t (\bar p_t - \mathrm{FV}_t) - \min_t (\bar p_t - \mathrm{FV}_t)}{\mathrm{FV}_1}, \qquad \mathrm{TO} \;=\; \frac{\sum_j q_j}{Q}, \qquad \mathrm{AE} \;=\; \frac{\sum_i \hat{V}_i \cdot q_i}{\hat{V}_{\max} \cdot Q} $$</div>
+          <p class="body">$A$ (amplitude) measures the peak-to-trough excursion of the mean-price residual $\bar{p}_t - \mathrm{FV}_t$, normalized by the initial fundamental $\mathrm{FV}_1 = \mathbb{E}[d] \cdot T = 100$¢. $\mathrm{TO}$ (turnover) sums the quantity $q_j$ across all trades $j$ and divides by total shares outstanding $Q = \sum_i q_i$ (conserved under double-auction trades); a value of $1.0$ means every share changed hands once. $\mathrm{AE}$ (allocative efficiency) is the ratio of realized to optimal aggregate valuation: $\hat{V}_i$ is agent $i$'s subjective valuation ($= V_i^{\text{post}}$), $q_i$ is agent $i$'s current inventory, and $\hat{V}_{\max} = \max_i \hat{V}_i$; the optimal allocation assigns all $Q$ shares to the highest-valuation agent. All three are reported in the Market-Quality Statistics panel and the batch results table.</p>
         </div>
       </div>
     </figure>
@@ -1101,7 +1101,7 @@
           <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
           <tr><td class="term">EU</td><td>Expected utility</td><td>$\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1-p_{\text{fill}})\cdot U(w_0)$ — the Utility agent's scoring functional over $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$.</td></tr>
           <tr><td class="term">VWAP</td><td>Volume-weighted average price</td><td>Per-period average trade price weighted by quantity; baseline for the trust EMA update.</td></tr>
-          <tr><td class="term">ND</td><td>Normalized deviation</td><td>Total absolute mispricing, scaled by $T\cdot\mathrm{FV}_0 \cdot Q$ so runs with different N are comparable.</td></tr>
+          <tr><td class="term">ND</td><td>Normalized deviation</td><td>Total absolute mispricing: $\mathrm{ND} = \sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j \,/\, Q$, where $j$ indexes trades, $q_j$ is trade quantity, and $Q$ is total shares outstanding.</td></tr>
           <tr><td class="term">R²</td><td>Haessel R²</td><td>Coefficient of determination of mean price against fundamental value.</td></tr>
           <tr><td class="term">TO</td><td>Turnover</td><td>Total shares traded divided by total shares outstanding — reports speculative intensity.</td></tr>
           <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized utility divided by the theoretical maximum utility given final endowments.</td></tr>
@@ -1128,7 +1128,7 @@
           <tr><td class="term math">$w_0, w_1$</td><td>Wealth states for EU evaluation. $w_0 = c_i + q_i \cdot \hat{V}_i$ (wealth if no trade); $w_1 = (c_i \pm p) + (q_i \pm 1) \cdot \hat{V}_i$ (wealth if the order fills), where $c_i$ is cash, $q_i$ is inventory, $p$ is the order price, and $\hat{V}_i$ is the agent's subjective valuation.</td><td>EU scoring — $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$ (Figure 2)</td></tr>
           <tr><td class="term math">$p_{\text{fill}} = 0.30$</td><td>Assumed fill probability for a non-crossing (passive) quote. Used in the EU functional: $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$. For crossing actions (buy@$A_t$, sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive actions (bid, ask), $p_{\text{fill}} = 0.30$ (tunable).</td><td>EU scoring — $\alpha^\star_{i,t}$ action evaluation (Figure 2)</td></tr>
           <tr><td class="term math">$\alpha^\star_{i,t}$</td><td>Optimal action for agent $i$ at tick $t$. $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over the five-element set $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the current best ask and $B_t$ is the current best bid. buy@$A_t$ crosses the book at the resting ask (deterministic fill, $p_{\text{fill}} = 1$); sell@$B_t$ lifts the resting bid (deterministic fill); bid and ask post passive quotes ($p_{\text{fill}} = 0.30$). Plans II/III use a seven-element LLM action set: $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$.</td><td>Action selection — output of EU maximization (Figures 2–3)</td></tr>
-          <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$. Updated by exponential moving average: $\tau_{r \to s} \leftarrow (1 - \alpha)\,\tau_{r \to s} + \alpha \cdot \text{closeness}_{r,s}$, where $\alpha = 0.30$ and $\text{closeness} = \max\!\bigl(0,\, 1 - |\hat{v}_s - \text{VWAP}_t|\,/\,\text{VWAP}_t\bigr)$. Initialized at $0.5$; self-trust fixed at $1.0$.</td><td>Messaging diagnostic; context for Plan II/III prompts (Figure 3)</td></tr>
+          <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$. Updated by exponential moving average: $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}_{r,s}$, where $\lambda = 0.30$ is the EMA learning rate and $\text{closeness} = \max\!\bigl(0,\, 1 - |\hat{v}_s - \text{VWAP}_t|\,/\,\text{VWAP}_t\bigr)$. Initialized at $0.5$; self-trust fixed at $1.0$.</td><td>Messaging diagnostic; context for Plan II/III prompts (Figure 3)</td></tr>
           <tr><td class="term math">$\pi_i^{\text{II}}, \pi_i^{\text{III}}$</td><td>Structured LLM prompts for Plans II and III. $\pi^{\text{II}}$ includes market rules, agent state, and the explicit utility formula $U_L/U_N/U_A$ for the agent's risk type. $\pi^{\text{III}}$ omits the formula and supplies only the risk-preference label.</td><td>LLM posterior — input to $\alpha^\star_{i,t} \leftarrow \text{LLM}(\pi_i)$ (Figure 3)</td></tr>
           <tr><td class="term math">$Q$</td><td>Total shares outstanding, $Q = \sum_i q_i$, conserved under double-auction trades (shares transfer, never created or destroyed).</td><td>Normalized deviation $\mathrm{ND}$, turnover $\mathrm{TO}$ (Figure 4)</td></tr>
           <tr><td class="term math">$\bar{p}_t$</td><td>Mean trade price in global period $t$. $\bar{p}_t = \sum_j p_j \,/\, n_t$ where $j$ ranges over trades in period $t$ and $n_t$ is the trade count. Used as the basis for Haessel $R^2$ and amplitude.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
@@ -1424,7 +1424,7 @@
         <div class="slide-body">
           <h2 class="slide-heading">Social learning · trust EMA &amp; strategic deception</h2>
           <div class="slide-formula-card">
-            $$ \tau_{r \to s} \;\leftarrow\; (1 - \alpha)\,\tau_{r \to s} \;+\; \alpha \cdot \max\!\Bigl(0,\; 1 - \frac{|\hat{v}_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr), \qquad \alpha = 0.30 $$
+            $$ \tau_{r \to s} \;\leftarrow\; (1 - \lambda)\,\tau_{r \to s} \;+\; \lambda \cdot \max\!\Bigl(0,\; 1 - \frac{|\hat{v}_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr), \qquad \lambda = 0.30 $$
           </div>
           <p class="slide-text">Trust of receiver $r$ in sender $s$ is updated by exponential moving average. Closeness is measured against the period's volume-weighted average price, clamped to $[0,1]$. Trust matrices persist across round boundaries — they constitute part of the agent's cumulative experience.</p>
           <div class="slide-formula-card">
@@ -1541,12 +1541,12 @@
             </div>
             <div class="slide-card">
               <h4>Normalized deviation</h4>
-              <div class="slide-formula">$\mathrm{ND} = \dfrac{\sum_t |p_t - \mathrm{FV}_t|}{T \cdot \mathrm{FV}_0 \cdot Q}$</div>
+              <div class="slide-formula">$\mathrm{ND} = \dfrac{\sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j}{Q}$</div>
               <p class="slide-sm">Total absolute mispricing normalised by shares outstanding and horizon. Comparable across $N$.</p>
             </div>
             <div class="slide-card">
               <h4>Amplitude</h4>
-              <div class="slide-formula">$A = \dfrac{\max_t (\bar{p}_t - \mathrm{FV}_t) - \min_t (\bar{p}_t - \mathrm{FV}_t)}{\mathrm{FV}_0}$</div>
+              <div class="slide-formula">$A = \dfrac{\max_t (\bar{p}_t - \mathrm{FV}_t) - \min_t (\bar{p}_t - \mathrm{FV}_t)}{\mathrm{FV}_1}$</div>
               <p class="slide-sm">Peak-to-trough excursion of the mean-price residual. Captures bubble height.</p>
             </div>
             <div class="slide-card">
