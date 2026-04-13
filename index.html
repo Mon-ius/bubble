@@ -350,9 +350,9 @@
         <dd class="const-note">Before any bias or message update, each Utility agent draws prior = FV × (1 + bias + U(−0.03, +0.03)). Not in DLM 2005; added so trade decisions do not degenerate to lockstep when every biased/unbiased agent starts each tick from the identical prior.<span class="const-src">agents.js — UTILITY_DEFAULTS.valuationNoise</span></dd>
       </div>
       <div class="const-item ext-only">
-        <dt>trust α <span class="const-val">= 0.30</span></dt>
+        <dt>trust λ <span class="const-val">= 0.30</span></dt>
         <dd class="const-label">EMA learning rate for the pairwise trust update</dd>
-        <dd class="const-note">Pairwise trust is updated as trust[r→s] ← (1 − α) × old + α × closeness, where closeness = 1 − |claim − vwap|/vwap for the period. α = 0.30 weights each new observation at 30%. Not in DLM 2005, which has no messaging layer; chosen for a balance between responsiveness and stability.<span class="const-src">engine.js — TrustTracker period close-out</span></dd>
+        <dd class="const-note">Pairwise trust is updated as $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}$, where closeness $= \max(0,\, 1 - |\hat{v}_s - \mathrm{VWAP}_t| / \mathrm{VWAP}_t)$. $\lambda = 0.30$ weights each new observation at 30%. Not in DLM 2005, which has no messaging layer; chosen for a balance between responsiveness and stability.<span class="const-src">engine.js — TrustTracker period close-out</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>passive fill probability <span class="const-val">= 0.30</span></dt>
@@ -1096,7 +1096,7 @@
       <table class="gloss-table">
         <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
         <tbody>
-          <tr><td class="term">Plan I</td><td>Algorithmic posterior</td><td>Deterministic baseline — $V_i^{\text{post}} = w\cdot V_i^{\text{prior}} + (1-w)\cdot\overline{\text{msg}}$ with $w = 0.6 + 0.1\,\min(3, k_i)$.</td></tr>
+          <tr><td class="term">Plan I</td><td>Algorithmic posterior</td><td>Deterministic baseline — $V_i^{\text{post}} = w\cdot V_i^{\text{prior}} + (1-w)\cdot\bar{m}$ with $w = 0.6 + 0.1\,\min(3, k_i)$.</td></tr>
           <tr><td class="term">Plan II</td><td>LLM posterior · utility forms</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
           <tr><td class="term">Plan III</td><td>LLM posterior · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied. Same seven-action output set.</td></tr>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
@@ -1107,7 +1107,7 @@
           <tr><td class="term">ND</td><td>Normalized deviation</td><td>Total absolute mispricing: $\mathrm{ND} = \sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j \,/\, Q$, where $j$ indexes trades, $q_j$ is trade quantity, and $Q$ is total shares outstanding.</td></tr>
           <tr><td class="term">R²</td><td>Haessel R²</td><td>Coefficient of determination of mean price against fundamental value.</td></tr>
           <tr><td class="term">TO</td><td>Turnover</td><td>Total shares traded divided by total shares outstanding — reports speculative intensity.</td></tr>
-          <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized utility divided by the theoretical maximum utility given final endowments.</td></tr>
+          <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized aggregate valuation divided by the theoretical maximum: $\mathrm{AE} = \sum_i \hat{V}_i q_i \,/\, (\hat{V}_{\max} \cdot Q)$, where $\hat{V}_i = V_i^{\text{post}}$.</td></tr>
           <tr><td class="term">Session</td><td>10-session DLM batch</td><td>One click of Start runs 10 sessions (5 &times; first treatment + 5 &times; second treatment). Each session is a complete $R = 4$ round game; data is collected per round with labels $\texttt{R\{r\}\_S\{s\}}$.</td></tr>
           <tr><td class="term">R<em>r</em>_S<em>s</em></td><td>Round–session label</td><td>Identifies Round $r$ of Session $s$ in the batch results table. Example: R3_S7 = round 3 of session 7.</td></tr>
           <tr><td class="term">T2 / T4</td><td>DLM treatment sizes</td><td>T2 (R4-&#8532;): 2 agents replaced in R4, 4 veterans remain. T4 (R4-&#8531;): 4 replaced, 2 veterans remain. First 5 sessions use the selected treatment, last 5 use the other.</td></tr>
@@ -1136,12 +1136,12 @@
           <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$. Updated by exponential moving average: $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}_{r,s}$, where $\lambda = 0.30$ is the EMA learning rate and $\text{closeness} = \max\!\bigl(0,\, 1 - |\hat{v}_s - \text{VWAP}_t|\,/\,\text{VWAP}_t\bigr)$. Initialized at $0.5$; self-trust fixed at $1.0$.</td><td>Messaging diagnostic; context for Plan II/III prompts (Figure 3)</td></tr>
           <tr><td class="term math">$\pi_i^{\text{II}}, \pi_i^{\text{III}}$</td><td>Structured LLM prompts for Plans II and III. $\pi^{\text{II}}$ includes market rules, agent state, and the explicit utility formula $U_L/U_N/U_A$ for the agent's risk type. $\pi^{\text{III}}$ omits the formula and supplies only the risk-preference label.</td><td>LLM posterior — input to $\alpha^\star_{i,t} \leftarrow \text{LLM}(\pi_i)$ (Figure 3)</td></tr>
           <tr><td class="term math">$Q$</td><td>Total shares outstanding, $Q = \sum_i q_i$, conserved under double-auction trades (shares transfer, never created or destroyed).</td><td>Normalized deviation $\mathrm{ND}$, turnover $\mathrm{TO}$ (Figure 4)</td></tr>
-          <tr><td class="term math">$\bar{p}_t$</td><td>Mean trade price in global period $t$. $\bar{p}_t = \sum_j p_j \,/\, n_t$ where $j$ ranges over trades in period $t$ and $n_t$ is the trade count. Used as the basis for Haessel $R^2$ and amplitude.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$\bar{p}_t$</td><td>Mean trade price in global period $t$. $\bar{p}_t = \sum_{j \in \mathcal{T}_t} p_j \,/\, |\mathcal{T}_t|$ where $\mathcal{T}_t$ is the set of trades in period $t$. Used as the basis for Haessel $R^2$ and amplitude.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
           <tr><td class="term math">$R^2_{\text{Haessel}}$</td><td>Haessel (1978) coefficient of determination. $R^2 = 1 - \sum_t (\bar{p}_t - \mathrm{FV}_t)^2 \,/\, \sum_t (\bar{p}_t - \overline{\bar{p}})^2$. Measures how closely per-period mean prices fit the fundamental staircase; can be negative if mispricing exceeds sample variance.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
           <tr><td class="term math">$\mathrm{ND}$</td><td>Normalized absolute price deviation. $\mathrm{ND} = \sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j \,/\, Q$, summing over all trades $j$ weighted by quantity, divided by total shares outstanding.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
           <tr><td class="term math">$A$</td><td>Price amplitude. $A = \bigl(\max_t (\bar{p}_t - \mathrm{FV}_t) - \min_t (\bar{p}_t - \mathrm{FV}_t)\bigr) \,/\, \mathrm{FV}_1$. Peak-to-trough excursion of the mean-price residual, normalized by the initial fundamental.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
-          <tr><td class="term math">$\mathrm{TO}$</td><td>Turnover. $\mathrm{TO} = \sum_t q_t \,/\, Q$ — total shares traded divided by total shares outstanding. A value of $1.0$ means every share changed hands once.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
-          <tr><td class="term math">$\rho_t$</td><td>Price-to-fundamental ratio. $\rho_t = P_t \,/\, \mathrm{FV}_t$ (Lopez-Lira 2025). Values $> 1$ indicate overpricing; persistent $\rho_t \gg 1$ signals a bubble.</td><td>Market-quality diagnostics (Table 1)</td></tr>
+          <tr><td class="term math">$\mathrm{TO}$</td><td>Turnover. $\mathrm{TO} = \sum_j q_j \,/\, Q$ — total shares traded (summing quantity $q_j$ over all trades $j$) divided by total shares outstanding $Q$. A value of $1.0$ means every share changed hands once.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$\rho_t$</td><td>Price-to-fundamental ratio. $\rho_t = p_t \,/\, \mathrm{FV}_t$ (Lopez-Lira 2025), where $p_t$ is the most recent trade price at tick $t$. Values $> 1$ indicate overpricing; persistent $\rho_t \gg 1$ signals a bubble.</td><td>Market-quality diagnostics (Table 1)</td></tr>
         </tbody>
       </table>
     </div>
