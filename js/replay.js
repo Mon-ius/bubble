@@ -44,6 +44,9 @@ const Replay = {
         initialCash:      a.initialCash,
         initialInventory: a.initialInventory,
         lastAction:       a.lastAction,
+        roundsPlayed:     a.roundsPlayed | 0,
+        replacementFresh: !!a.replacementFresh,
+        endowmentType:    a.endowmentType,
         // Extended fields (undefined for legacy agents).
         riskPref:            a.riskPref,
         trueValuation:       a.trueValuation,

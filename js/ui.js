@@ -338,26 +338,20 @@ const UI = {
       const subtitleSym = (subtitleKey && window.Sym) ? window.Sym[subtitleKey] : '';
       const sym = window.Sym || {};
       const displayName = a.name || ('A' + a.id);
-      // DLM mode badges: endowment type, endogenous experience state,
-      // and a marker for fresh traders spliced in by the round-4
-      // replacement step. All three fields are no-ops for non-DLM
-      // agents (they read undefined / 0 / false).
-      const isDLM = a.type === 'dlm';
-      const rp    = a.roundsPlayed | 0;
-      const expBadge = isDLM
-        ? (rp === 0
-            ? '<span class="dlm-badge dlm-badge-novice">inexperienced</span>'
-            : `<span class="dlm-badge dlm-badge-vet">experienced · ${rp}R</span>`)
-        : '';
-      const endowBadge = isDLM && a.endowmentType
+      // Experience and replacement badges — shown for every agent type
+      // since all agents participate in the 4-round session and the
+      // round-4 replacement step.
+      const rp = a.roundsPlayed | 0;
+      const expBadge = rp === 0
+        ? '<span class="dlm-badge dlm-badge-novice">inexperienced</span>'
+        : `<span class="dlm-badge dlm-badge-vet">experienced · ${rp}R</span>`;
+      const endowBadge = a.endowmentType
         ? `<span class="dlm-badge dlm-badge-endow">type&nbsp;${a.endowmentType}</span>`
         : '';
-      const freshBadge = isDLM && a.replacementFresh
+      const freshBadge = a.replacementFresh
         ? '<span class="dlm-badge dlm-badge-fresh">R4 replacement</span>'
         : '';
-      const dlmBadgeRow = isDLM
-        ? `<div class="dlm-badges">${endowBadge}${expBadge}${freshBadge}</div>`
-        : '';
+      const badgeRow = `<div class="dlm-badges">${endowBadge}${expBadge}${freshBadge}</div>`;
       // Live-updating numeric values plus the agent's exact welfare
       // functional. The utility row is pinned to the per-agent
       // riskPref via _riskFormula, so every U-agent card carries the
@@ -440,7 +434,7 @@ const UI = {
                   <span class="sym action-sym">${sym.action || ''}</span>
                 </div>
               </div>
-              ${dlmBadgeRow}
+              ${badgeRow}
               <div class="metrics">
                 <span class="metric">Cash <span class="sym">${sym.cash || ''}</span></span>    <span class="metric-val">${cashCell}</span>
                 <span class="metric">Shares <span class="sym">${sym.shares || ''}</span></span>  <span class="metric-val">${invCell}</span>
