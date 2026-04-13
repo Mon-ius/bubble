@@ -406,24 +406,22 @@ const App = {
       });
     });
 
-    // "Edit in draw.io" — open architecture.drawio in the public
-    // app.diagrams.net editor. The URL is constructed at runtime so
-    // GitHub Pages, a local file:// serve, and a localhost dev server
-    // all resolve to the correct absolute URL of the source file.
-    // app.diagrams.net#U<encoded-url> loads the file read/write from
-    // the given HTTPS origin; file:// origins are ignored gracefully.
-    const drawioBtn = document.getElementById('btn-drawio');
-    if (drawioBtn) {
+    // "Edit in draw.io" — each architecture figure carries its own
+    // .drawio file via data-drawio. Wire every such button to the
+    // correct app.diagrams.net URL at runtime so GitHub Pages, a
+    // local file:// serve, and a localhost dev server all resolve to
+    // the right absolute URL. file:// origins are handled gracefully.
+    document.querySelectorAll('[data-drawio]').forEach(btn => {
       const origin = window.location.origin;
       if (origin && /^https?:/.test(origin)) {
-        const path    = window.location.pathname.replace(/[^/]*$/, '');
-        const srcUrl  = origin + path + 'architecture.drawio';
-        drawioBtn.href = 'https://app.diagrams.net/#U' + encodeURIComponent(srcUrl);
+        const path   = window.location.pathname.replace(/[^/]*$/, '');
+        const srcUrl = origin + path + btn.dataset.drawio;
+        btn.href = 'https://app.diagrams.net/#U' + encodeURIComponent(srcUrl);
       } else {
-        drawioBtn.href   = 'https://app.diagrams.net/';
-        drawioBtn.title  = 'Open app.diagrams.net (source file only resolvable over https://)';
+        btn.href  = 'https://app.diagrams.net/';
+        btn.title = 'Open app.diagrams.net (source file only resolvable over https://)';
       }
-    }
+    });
 
     // Slides tab wiring — prev/next, fullscreen, reading-mode, keyboard.
     this._wireSlides();

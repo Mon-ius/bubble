@@ -2310,6 +2310,9 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   }
   .arch-header h2 { font-size: 15px; }
   .arch-desc { font-size: 11px; }
+  .arch-figure { margin: 0 0 28px; }
+  .arch-fig-header { gap: 8px; }
+  .arch-fig-header figcaption { font-size: 11.5px; }
   .btn-drawio { padding: 6px 10px; font-size: 11px; gap: 6px; }
   .btn-drawio svg { width: 14px; height: 14px; }
   .arch-svg-container { padding: 4px 0 16px; }
@@ -2386,9 +2389,9 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
  * foreignObject to embed KaTeX-rendered math (same auto-render pass
  * as .arch-def-card .formula blocks). Every node class has a CSS custom-property
  * pair (--nc = accent/stroke, --nb = soft fill) so the theme-swap is
- * free. The "Edit in draw.io" button opens architecture.drawio in the
- * public app.diagrams.net editor — href is filled in at runtime by
- * main.js so the URL always reflects the live GitHub Pages path.
+ * free. Each figure's "Edit in draw.io" button opens the matching
+ * .drawio file in the public app.diagrams.net editor — hrefs are
+ * filled in at runtime by main.js via data-drawio attributes.
  */
 .arch-wrap {
   max-width: 1200px;
@@ -2418,6 +2421,31 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   font-size: 12px;
   color: var(--fg-2);
   font-style: italic;
+}
+/* Publication-quality figure wrappers. Each .arch-figure holds an
+   SVG diagram, an "Edit in draw.io" button, and definition cards. */
+.arch-figure {
+  margin: 0 0 40px;
+  padding: 0;
+}
+.arch-fig-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.arch-fig-header figcaption {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-0);
+  letter-spacing: 0.01em;
+}
+.arch-fig-header .fig-num {
+  font-variant-numeric: lining-nums;
+  font-weight: 700;
 }
 .btn-drawio {
   display: inline-flex;
