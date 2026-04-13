@@ -954,8 +954,13 @@ class UtilityAgent extends Agent {
     report = Math.max(0, report);
     this.reportedValuation = report;
 
-    const signal = report > v * (1 + signalThreshold) ? 'buy'
-                 : report < v * (1 - signalThreshold) ? 'sell'
+    // Compare the claimed valuation to the market price (or FV if no
+    // trades yet) so the signal reflects the directional content visible
+    // to other agents, not the degree of private-vs-public divergence.
+    const ref = market.lastPrice != null ? market.lastPrice
+                                         : market.fundamentalValue();
+    const signal = report > ref * (1 + signalThreshold) ? 'buy'
+                 : report < ref * (1 - signalThreshold) ? 'sell'
                  : 'hold';
     const deceptive = this.deceptionMode !== 'honest' &&
                       Math.abs(report - v) / Math.max(1, v) > deceptiveThreshold;
