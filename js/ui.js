@@ -1,22 +1,10 @@
 'use strict';
 
-/* =====================================================================
-   ui.js — DOM + canvas rendering.
-
-   The UI module is purely a consumer of "views" — plain objects built
-   by Replay.buildLiveView / Replay.buildViewAt. It never touches the
-   Market, Engine, or Agent directly. This means live rendering and
-   replay rendering go through identical code, so visual consistency
-   is guaranteed.
-   ===================================================================== */
-
 const UI = {
   els:     {},
   charts:  {},
   canvases: {},
 
-  // Human-readable labels used by the agents panel. Kept on the UI
-  // object so renderAgents stays compact.
   _riskLabel: {
     loving:  'Risk-loving',
     neutral: 'Risk-neutral',
@@ -203,7 +191,24 @@ const UI = {
     const host = document.getElementById('batch-results');
     if (!host) return;
     const results = window.App && window.App.batchResults;
-    if (!results || !results.length) { host.innerHTML = ''; return; }
+    if (!results || !results.length) {
+      host.innerHTML = `
+        <div class="batch-agg"><div class="batch-agg-row"><span class="treat">—</span>
+          <strong>&mu;&nbsp;dev</strong> — &middot;
+          <strong>&mu;&nbsp;turn</strong> — &middot;
+          <strong>trades</strong> — &middot;
+          <strong>&mu;&nbsp;payoff</strong> —
+        </div></div>
+        <table class="batch-table">
+          <thead>
+            <tr><th>Label</th><th>Tx</th><th>S</th><th>R</th><th>dev ¢</th><th>turn</th><th>trades</th><th>vol</th><th>payoff</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="batch-label">—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>`;
+      return;
+    }
 
     // Build per-row HTML — one row per round per session.
     const rowsHtml = results.map(r => `<tr>
