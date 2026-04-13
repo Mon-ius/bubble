@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" modified="2026-04-13T00:00:00.000Z" agent="bubble-math" version="24.7.17" etag="fig2-elicitation" type="device">
   <diagram name="Figure 2 — Prior Elicitation and EU Scoring" id="fig2-elicitation">
-    <mxGraphModel dx="900" dy="500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="860" pageHeight="440" math="1" shadow="0">
+    <mxGraphModel dx="900" dy="440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="860" pageHeight="380" math="1" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
@@ -16,9 +16,9 @@
           <mxGeometry x="440" y="54" width="350" height="42" as="geometry"/>
         </mxCell>
 
-        <!-- Row 2 — Risk-preference functions -->
-        <mxCell id="g2" value="Risk-Preference Functions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
-          <mxGeometry x="30" y="130" width="780" height="86" as="geometry"/>
+        <!-- Row 2 — EU Maximization (utility functions nested inside) -->
+        <mxCell id="g2" value="Expected-Utility Maximization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="130" width="780" height="180" as="geometry"/>
         </mxCell>
         <mxCell id="n2a" value="U&lt;sub&gt;L&lt;/sub&gt;(w) = (w/w₀)²" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="50" y="164" width="244" height="42" as="geometry"/>
@@ -29,29 +29,15 @@
         <mxCell id="n2c" value="U&lt;sub&gt;A&lt;/sub&gt;(w) = √(w/w₀)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="566" y="164" width="224" height="42" as="geometry"/>
         </mxCell>
-
-        <!-- Row 3 — EU maximization -->
-        <mxCell id="g3" value="Expected-Utility Maximization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;fontColor=#831843;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
-          <mxGeometry x="30" y="240" width="780" height="120" as="geometry"/>
+        <mxCell id="n3a" value="EU(a) = p&lt;sub&gt;fill&lt;/sub&gt; · U(w₁) + (1 − p&lt;sub&gt;fill&lt;/sub&gt;) · U(w₀)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="220" width="640" height="42" as="geometry"/>
         </mxCell>
-        <mxCell id="n3a" value="EU(a) = p&lt;sub&gt;fill&lt;/sub&gt; · U(w₁) + (1 − p&lt;sub&gt;fill&lt;/sub&gt;) · U(w₀)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="274" width="640" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="n3b" value="a* = argmax EU(a), &#xa0; a ∈ {hold, buy, sell, bid, ask}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="160" y="324" width="520" height="28" as="geometry"/>
+        <mxCell id="n3b" value="a* = argmax EU(a), &#xa0; a ∈ {hold, buy, sell, bid, ask}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="160" y="270" width="520" height="28" as="geometry"/>
         </mxCell>
 
-        <!-- Connectors -->
+        <!-- Connector: Prior → EU group -->
         <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#6b7280;strokeWidth=1.5;" edge="1" parent="1" source="g1" target="g2">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e2a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;" edge="1" parent="1" source="n2a" target="n3a">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e2b3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;" edge="1" parent="1" source="n2b" target="n3a">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="e2c3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;" edge="1" parent="1" source="n2c" target="n3a">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
       </root>

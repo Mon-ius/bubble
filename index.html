@@ -790,7 +790,7 @@
         </a>
       </div>
       <div class="arch-svg-container arch-diagram" id="arch-fig2">
-        <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 2 — Prior elicitation and expected-utility scoring">
+        <svg viewBox="0 0 760 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 2 — Prior elicitation and expected-utility scoring">
 
           <!-- Row 1 — Prior formation -->
           <g class="arch-group g-paper">
@@ -812,46 +812,36 @@
 
           <path class="link" d="M 380 90 L 380 116"/>
 
-          <!-- Row 2 — Three utility functions -->
-          <g class="arch-group g-strat">
-            <rect x="20" y="116" width="720" height="80" rx="10" ry="10"/>
-            <text x="380" y="136" class="g-label">Risk-Preference Functions</text>
+          <!-- Row 2 — EU maximization (utility functions nested inside) -->
+          <g class="arch-group g-plan">
+            <rect x="20" y="116" width="720" height="164" rx="10" ry="10"/>
+            <text x="380" y="136" class="g-label">Expected-Utility Maximization</text>
           </g>
-          <g class="n n-util" transform="translate(40 146)">
+          <g class="n n-util" transform="translate(40 148)">
             <rect width="224" height="40" rx="6" ry="6"/>
             <foreignObject width="224" height="40">
               <div class="fo-node"><div class="fo-t">$U_L(w) = (w/w_0)^2$</div></div>
             </foreignObject>
           </g>
-          <g class="n n-util" transform="translate(278 146)">
+          <g class="n n-util" transform="translate(278 148)">
             <rect width="224" height="40" rx="6" ry="6"/>
             <foreignObject width="224" height="40">
               <div class="fo-node"><div class="fo-t">$U_N(w) = w/w_0$</div></div>
             </foreignObject>
           </g>
-          <g class="n n-util" transform="translate(516 146)">
+          <g class="n n-util" transform="translate(516 148)">
             <rect width="204" height="40" rx="6" ry="6"/>
             <foreignObject width="204" height="40">
               <div class="fo-node"><div class="fo-t">$U_A(w) = \sqrt{w/w_0}$</div></div>
             </foreignObject>
           </g>
-
-          <path class="link" d="M 152 186 L 380 222"/>
-          <path class="link" d="M 390 186 L 380 222"/>
-          <path class="link" d="M 618 186 L 380 222"/>
-
-          <!-- Row 3 — EU maximization -->
-          <g class="arch-group g-plan">
-            <rect x="20" y="222" width="720" height="108" rx="10" ry="10"/>
-            <text x="380" y="242" class="g-label">Expected-Utility Maximization</text>
-          </g>
-          <g class="n n-eu" transform="translate(80 254)">
+          <g class="n n-eu" transform="translate(80 200)">
             <rect width="600" height="40" rx="6" ry="6"/>
             <foreignObject width="600" height="40">
               <div class="fo-node"><div class="fo-t">$\mathrm{EU}(a) = p_{\text{fill}}\!\cdot\!U(w_1) + (1 - p_{\text{fill}})\!\cdot\!U(w_0)$</div></div>
             </foreignObject>
           </g>
-          <g class="n n-eu" transform="translate(140 302)">
+          <g class="n n-eu" transform="translate(140 250)">
             <rect width="480" height="22" rx="6" ry="6"/>
             <foreignObject width="480" height="22">
               <div class="fo-node"><div class="fo-s">$a^\star = \arg\max_a \mathrm{EU}(a)$, &nbsp; $a \in \{\text{hold, buy, sell, bid, ask}\}$</div></div>
