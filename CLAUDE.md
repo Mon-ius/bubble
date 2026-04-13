@@ -55,13 +55,21 @@ Invariants that the replay system relies on:
 - `ui.js` must never reach into `Market`/`Engine`/`Agent` state directly;
   always go through a view object from `replay.js`.
 
-## Session structure: rounds and periods
+## Session structure: rounds, periods, and the 10-session batch
 
-A run is one *session* of `roundsPerSession` consecutive *rounds* (fixed
-at `R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
+A single press of Start runs a **10-session batch** — 5 sessions with the
+first selected DLM treatment (T2 or T4) followed by 5 with the other.
+Each *session* is `roundsPerSession` consecutive *rounds* (fixed at
+`R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
 market that lasts `T × ticksPerPeriod = 180` ticks, so a session is
-`R × T × K = 720` ticks. At the end of period `T` of a non-final round the
-`Engine`:
+`R × T × K = 720` ticks and a full batch is 7 200 ticks.
+
+`App.currentSession` tracks which session is active (1–10); it is set to
+0 between batches and on manual Reset. The per-round data collector in
+`start()`'s `onEnd` callback labels every round with `R{r}_S{s}` (e.g.
+`R3_S7` = round 3 of session 7) and stores it in `App.batchResults`.
+
+At the end of period `T` of a non-final round the `Engine`:
 
 1. snapshots every surviving agent's cash into
    `Logger.roundFinalCash[r-1]` for payoff accounting,
@@ -69,15 +77,12 @@ market that lasts `T × ticksPerPeriod = 180` ticks, so a session is
 3. **increments every surviving agent's `roundsPlayed` by one**, so any
    `DLMTrader` that just finished a round flips from the inexperienced
    branch to the experienced branch for the next round,
-4. if strict-DLM mode is active and the round that just ended was round 3,
-   runs `_round4Replacement(k)` — Fisher-Yates selects `k ∈ {2, 4}`
-   survivors (T2 = DLM's R4-⅔, two-thirds experienced; T4 = DLM's
-   R4-⅓, one-third experienced — the paper's shorthand appears in
-   Table 2 on p. 1735), removes them, draws `k` fresh `DLMTrader`
-   specs via `dlmSampleReplacementAgent` (each with a unique display
-   name filtered against the surviving roster and an iid
-   type-A / type-B endowment), and splices them back in at the vacated
-   numeric ids with `roundsPlayed = 0` and `replacementFresh = true`,
+4. if the round that just ended was round 3 and `ctx.treatmentSize > 0`,
+   runs `_round4Replacement()` — Fisher-Yates selects `treatmentSize`
+   experienced agents (T2 = 2 replacements, T4 = 4), clones their
+   specs with a fresh name drawn from `AGENT_NAMES`, and re-instantiates
+   them via `buildAgentsFromSpecs` at the vacated numeric ids with
+   `roundsPlayed = 0` and `replacementFresh = true`,
 5. rewinds every surviving agent's `cash` and `inventory` to its
    `agentSpecs` entry (the fresh splice-ins take their own replacement
    endowment on the same call),
@@ -191,30 +196,24 @@ sampling pipeline and a different set of visible controls.
 | Lopez-Lira  | 6 `UtilityAgent` (strategy cube over bias/belief/risk) | Expected-utility messaging market from Lopez-Lira (2025)     |
 | AIPE        | Utility block + fixed F/T/R background              | AI-Agent Prior Elicitation on top of the Lopez-Lira model       |
 
-**Strict-DLM mode** is the single-button knob that enforces the paper's
-exact protocol: `N = 6` is pinned, the population sliders are disabled,
-and sampling routes through `dlmSampleAgents(rng)` which assigns the
-index sequence `[0, 0, 0, 1, 1, 1]` (type A = 200¢ + 6 shares,
-type B = 600¢ + 2 shares, both with buy-and-hold value 1000¢),
-Fisher-Yates shuffles it, and writes the matching cash/inventory pair
-onto each spec. A T2/T4 treatment selector and a **Run 10-session
-batch** button are exposed only in this mode. The shorthand T2/T4
-maps onto DLM's own convention, which labels conditions by the
-fraction of experienced subjects remaining in round 4: **T2 ↔
-R4-⅔** (two fresh replacements, four veterans, two-thirds
-experienced) and **T4 ↔ R4-⅓** (four fresh replacements, two
-veterans, one-third experienced); the R4-⅔ / R4-⅓ notation is the
-paper's and appears in Table 2 on p. 1735. The batch runner drives
-10 synchronous `Engine.runToEnd()` loops (5 T2 + 5 T4, interleaved) and
-reports per-session `meanDev`, `turnover`, `trades`, `payoffTotal`, and
-the round-4 replacement record into the DLM panel, then restores the
-pre-batch interactive state.
+The paradigm table above is the conceptual decomposition, but at
+runtime the simulator always uses `sampleAgents(mix, rng, options)`
+with 6 `UtilityAgent` slots. The T2/T4 treatment selector in Trade
+Settings controls the round-4 replacement size.
 
-The **Lopez-Lira** and **AIPE** paradigms continue to use the relaxed
-`sampleAgents(mix, rng, options)` sampler (uniform `[800, 1200]` cash,
-uniform `{2, 3, 4}` inventory) since they are extensions rather than
-replications and intentionally depart from the strict design at the
-populations layer.
+**10-session batch.** One press of Start runs 10 sessions animated
+at the Speed slider rate (5 × first selected treatment + 5 × the
+other). Each session calls `reset()` for a fresh seed, then
+`engine.start()` with an `onEnd` callback that collects per-round
+metrics labeled `R{r}_S{s}` into `App.batchResults` (40 rows total:
+4 rounds × 10 sessions). The batch results panel (Table 2 in the
+Experiment tab) renders these rows with per-treatment aggregates.
+Pause stops the chain via `_batchRunning = false`.
+
+The shorthand T2/T4 maps onto DLM's own convention: **T2 ↔ R4-⅔**
+(two fresh replacements, four veterans, two-thirds experienced) and
+**T4 ↔ R4-⅓** (four fresh replacements, two veterans, one-third
+experienced).
 
 Session payoff for agent `i` is
 `π_i = Σ_r roundFinalCash[r-1][i] + 500¢` (the show-up fee), captured

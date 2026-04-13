@@ -511,6 +511,7 @@ class Engine {
       tick:               m.tick,
       period:             m.period,
       round:              m.round,
+      session:            (this.ctx && this.ctx.currentSession) || 0,
       lastPrice:          m.lastPrice,
       fv:                 m.fundamentalValue(),
       bids: m.book.bids.map(o => ({ price: o.price, remaining: o.remaining, agentId: o.agentId })),

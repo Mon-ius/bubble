@@ -1232,50 +1232,47 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 }
 .dlm-batch-status:empty { display: none; }
 
-/* 10-session batch results: compact aggregate line + per-session row
-   table. Only populated after runDlmBatch finishes; empty otherwise
-   so the DLM psec stays tight on a fresh load. */
-.dlm-batch-results:empty { display: none; }
-.dlm-batch-results {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed color-mix(in srgb, var(--blue, #3b82f6) 30%, transparent);
-}
-.dlm-batch-agg {
+/* 10-session batch results panel: per-round data labeled R{r}_S{s}
+   across all sessions, plus per-treatment aggregate line. The panel
+   is hidden when empty (no batch has run yet) and expands as each
+   session completes. */
+.panel-batch { grid-column: span 12; }
+.panel-batch:has(#batch-results:empty) { display: none; }
+.batch-agg {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 8px;
   font-size: 11px;
 }
-.dlm-batch-agg-row { color: var(--fg-1); }
-.dlm-batch-agg-row .treat {
+.batch-agg-row { color: var(--fg-1); }
+.batch-agg-row .treat {
   display: inline-block;
   width: 22px;
   font-weight: 700;
   color: var(--blue, #3b82f6);
 }
-.dlm-batch-table {
+.batch-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-.dlm-batch-table th,
-.dlm-batch-table td {
+.batch-table th,
+.batch-table td {
   padding: 3px 6px;
   text-align: right;
   border-bottom: 1px solid var(--border);
 }
-.dlm-batch-table th {
+.batch-table th {
   color: var(--fg-2);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 9px;
 }
-.dlm-batch-table td.repl { text-align: left; color: var(--fg-2); }
-.dlm-batch-table tbody tr:hover { background: var(--bg-2); }
+.batch-table .batch-label { text-align: left; font-weight: 600; color: var(--accent); }
+.batch-table tbody tr:hover { background: var(--bg-2); }
 
 /* ---------- Constant cards (Paper + Hidden) ---------- */
 /*

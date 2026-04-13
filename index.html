@@ -372,6 +372,7 @@
   </section>
 
   <section class="panel panel-stats">
+    <div class="stat"><span class="label">Session</span><span class="value" id="stat-session">— / 10</span></div>
     <div class="stat"><span class="label">Round</span><span class="value" id="stat-round">1 / 4</span></div>
     <div class="stat"><span class="label">Period</span><span class="value" id="stat-period">1 / 10</span></div>
     <div class="stat"><span class="label">Tick</span><span class="value" id="stat-tick">0</span></div>
@@ -649,6 +650,17 @@
     </figcaption>
   </section>
 
+  <section class="panel panel-batch figure" id="panel-batch">
+    <header class="fig-head">
+      <span class="fig-num">Table 2</span>
+      <h2 class="fig-title">10-Session Batch Results</h2>
+    </header>
+    <div id="batch-results"></div>
+    <figcaption class="fig-caption">
+      <p>Per-round market-quality metrics across the 10-session DLM batch (5 &times; first treatment + 5 &times; second treatment). Each row is labelled <code>R<em>r</em>_S<em>s</em></code> (Round <em>r</em> of Session <em>s</em>). <strong>dev</strong> = mean absolute deviation |P &minus; FV| in &cent;; <strong>turn</strong> = shares traded / shares outstanding; <strong>vol</strong> = total shares exchanged; <strong>payoff</strong> = aggregate agent cash at round end.</p>
+    </figcaption>
+  </section>
+
   <section class="panel panel-replay">
     <h2>Replay &amp; Trace Inspector</h2>
     <div class="replay-controls">
@@ -681,7 +693,7 @@
     <div class="arch-header">
       <div class="arch-title-block">
         <h2>Simulation Design</h2>
-        <p class="arch-desc">Figures 1–4: the four-stage pipeline from asset fundamentals through information aggregation to price discovery.</p>
+        <p class="arch-desc">Figures 1–4: the four-stage pipeline from asset fundamentals through information aggregation to price discovery. A single Start press runs 10 sessions ($R = 4$ rounds each, 720 ticks/session) with per-round data collected as $\texttt{R\{r\}\_S\{s\}}$.</p>
       </div>
     </div>
 
@@ -1091,6 +1103,9 @@
           <tr><td class="term">R²</td><td>Haessel R²</td><td>Coefficient of determination of mean price against fundamental value.</td></tr>
           <tr><td class="term">TO</td><td>Turnover</td><td>Total shares traded divided by total shares outstanding — reports speculative intensity.</td></tr>
           <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized utility divided by the theoretical maximum utility given final endowments.</td></tr>
+          <tr><td class="term">Session</td><td>10-session DLM batch</td><td>One click of Start runs 10 sessions (5 &times; first treatment + 5 &times; second treatment). Each session is a complete $R = 4$ round game; data is collected per round with labels $\texttt{R\{r\}\_S\{s\}}$.</td></tr>
+          <tr><td class="term">R<em>r</em>_S<em>s</em></td><td>Round–session label</td><td>Identifies Round $r$ of Session $s$ in the batch results table. Example: R3_S7 = round 3 of session 7.</td></tr>
+          <tr><td class="term">T2 / T4</td><td>DLM treatment sizes</td><td>T2 (R4-&#8532;): 2 agents replaced in R4, 4 veterans remain. T4 (R4-&#8531;): 4 replaced, 2 veterans remain. First 5 sessions use the selected treatment, last 5 use the other.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1142,6 +1157,10 @@
       <div class="plot-desc">
         <div class="plot-icon" style="background:var(--pink);">7</div>
         <div class="plot-info"><h4>Pairwise Trust Matrix</h4><p>Heatmap of $\tau_{r \to s}$ on $[0, 1]$ with the diagonal masked. Warm columns identify agents whose claims the population finds credible.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--fg-2);">T2</div>
+        <div class="plot-info"><h4>10-Session Batch Results (Table 2)</h4><p>Per-round market-quality metrics across the 10-session DLM batch. Each row is labelled $\texttt{R\{r\}\_S\{s\}}$ with mean deviation, turnover, trade count, volume, and aggregate payoff. Per-treatment aggregates summarise T2 vs T4 performance.</p></div>
       </div>
     </div>
 
@@ -1292,9 +1311,9 @@
               <p class="slide-sm">4. Reset cash, inventory to endowment; clear order book</p>
             </div>
             <div class="slide-card">
-              <h4>Session payoff</h4>
+              <h4>Session payoff &amp; batch structure</h4>
               <div class="slide-formula">$\pi_i = \sum_{r=1}^{R} c_{i,r}^{\text{final}} + 500$¢</div>
-              <p class="slide-sm">Show-up fee: 500¢. Endowments reset at each round boundary; experience ($k_i$) and trust matrices persist across rounds.</p>
+              <p class="slide-sm">Show-up fee: 500¢. One Start click runs 10 sessions (5 &times; T2 + 5 &times; T4). Per-round data is labelled $\texttt{R\{r\}\_S\{s\}}$ in the batch results table.</p>
             </div>
           </div>
         </div>
@@ -1464,7 +1483,10 @@
             </div>
           </div>
           <div class="slide-formula-card">
-            $$ \text{Session} \;=\; R \times T \times K \;=\; 4 \times 10 \times 18 \;=\; 720 \;\text{ticks}, \qquad \pi_i = \sum_{r=1}^{R} c_{i,r}^{\text{final}} + 500 $$
+            $$ \text{Session} \;=\; R \times T \times K \;=\; 4 \times 10 \times 18 \;=\; 720 \;\text{ticks}, \qquad \text{Batch} = 10 \;\text{sessions} \;=\; 7200 \;\text{ticks} $$
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>Data collection.</strong> Per-round metrics are labelled $\texttt{R\{r\}\_S\{s\}}$ (Round $r$ of Session $s$). One Start press runs all 10 sessions (5 &times; first treatment + 5 &times; other), collecting 40 round-level rows (4 rounds &times; 10 sessions) with mean deviation, turnover, trades, volume, and payoff.</p>
           </div>
         </div>
       </div>
@@ -1486,7 +1508,7 @@
               <p class="slide-sm">One-third experienced. Expected: fresh agents reignite the bubble in R4 despite veteran presence.</p>
             </div>
           </div>
-          <p class="slide-text">The batch runner drives 10 synchronous sessions (5 $\times$ T2 + 5 $\times$ T4, interleaved) and reports per-session ND, TO, trade count, total payoff, and the round-4 replacement record into the DLM diagnostics panel.</p>
+          <p class="slide-text">One click of Start runs 10 animated sessions (5 $\times$ first treatment + 5 $\times$ second) at the Speed slider rate. Per-round metrics are collected with $\texttt{R\{r\}\_S\{s\}}$ labels (40 rows total) into the batch results table, with per-treatment aggregates for T2 vs T4 comparison.</p>
         </div>
       </div>
 
@@ -1555,7 +1577,7 @@
             </div>
             <div class="slide-card">
               <h4>DLM batch replication</h4>
-              <p class="slide-sm">10-session strict-DLM batch (5 $\times$ T2 + 5 $\times$ T4). Validate the platform against DLM 2005 Table 2 benchmarks before running LLM treatments.</p>
+              <p class="slide-sm">10-session animated batch (5 $\times$ T2 + 5 $\times$ T4). 40 round-level rows ($\texttt{R\{r\}\_S\{s\}}$) with per-treatment aggregates. Validate against DLM 2005 Table 2.</p>
             </div>
           </div>
           <div class="slide-formula-card">

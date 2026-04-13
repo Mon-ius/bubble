@@ -107,6 +107,7 @@ const UI = {
   init() {
     this.refreshTheme();
     // Stat cells
+    this.els.session = document.getElementById('stat-session');
     this.els.round   = document.getElementById('stat-round');
     this.els.period  = document.getElementById('stat-period');
     this.els.tick    = document.getElementById('stat-tick');
@@ -186,51 +187,62 @@ const UI = {
     this.renderOwnershipChart(view, config);
     this.renderMetrics(view, config);
     this.renderTraces(view);
-    // DLM batch-results card (strict-DLM mode only). Reads from
-    // App.dlmConfig.batchResults and writes a compact summary table
-    // under the DLM replication psec. No-op when the panel is absent
-    // or there are no results yet.
-    this.renderDlmBatchResults();
+    // 10-session batch results table. Per-round data labeled
+    // R{r}_S{s} across all sessions. No-op when there are no
+    // results yet.
+    this.renderBatchResults();
   },
 
   /**
-   * Render the 10-session batch summary produced by runDlmBatch into
-   * the #dlm-batch-results div. Reads the results off App directly
-   * (not the view object) because the batch data is not per-tick and
-   * does not participate in replay slicing.
+   * Render the 10-session batch results into #batch-results. Reads
+   * per-round data from App.batchResults (populated by start()'s
+   * onEnd callback). Each row is labeled R{r}_S{s} to identify the
+   * round and session. After the table, shows per-treatment aggregates.
    */
-  renderDlmBatchResults() {
-    const host = document.getElementById('dlm-batch-results');
+  renderBatchResults() {
+    const host = document.getElementById('batch-results');
     if (!host) return;
-    const r = window.App && window.App.dlmConfig && window.App.dlmConfig.batchResults;
-    if (!r) { host.innerHTML = ''; return; }
-    const { sessions, aggregate } = r;
-    const rowsHtml = sessions.map(s => {
-      const rep = s.replacement && s.replacement.length
-        ? s.replacement.map(x => `#${x.id}`).join(' ')
-        : '—';
-      return `<tr>
-        <td>T${s.treatment}</td>
-        <td>${s.session}</td>
-        <td>${(s.meanDev * 100).toFixed(1)}%</td>
-        <td>${s.turnover.toFixed(2)}</td>
-        <td>${s.trades}</td>
-        <td>${(s.payoffTotal / 6).toFixed(0)}¢</td>
-        <td class="repl">${rep}</td>
-      </tr>`;
+    const results = window.App && window.App.batchResults;
+    if (!results || !results.length) { host.innerHTML = ''; return; }
+
+    // Build per-row HTML — one row per round per session.
+    const rowsHtml = results.map(r => `<tr>
+      <td class="batch-label">${r.label}</td>
+      <td>${r.treatment}</td>
+      <td>${r.session}</td>
+      <td>${r.round}</td>
+      <td>${r.meanDev.toFixed(1)}</td>
+      <td>${r.turnover.toFixed(2)}</td>
+      <td>${r.trades}</td>
+      <td>${r.volume}</td>
+      <td>${r.payoff}¢</td>
+    </tr>`).join('');
+
+    // Compute per-treatment aggregates across all rounds.
+    const byTreatment = {};
+    for (const r of results) {
+      if (!byTreatment[r.treatment]) byTreatment[r.treatment] = [];
+      byTreatment[r.treatment].push(r);
+    }
+    const aggHtml = Object.entries(byTreatment).map(([tx, rows]) => {
+      const n       = rows.length;
+      const avgDev  = rows.reduce((s, r) => s + r.meanDev, 0) / n;
+      const avgTurn = rows.reduce((s, r) => s + r.turnover, 0) / n;
+      const avgPay  = rows.reduce((s, r) => s + r.payoff, 0) / n;
+      const totTr   = rows.reduce((s, r) => s + r.trades, 0);
+      return `<div class="batch-agg-row"><span class="treat">${tx}</span>
+        <strong>&mu;&nbsp;dev</strong> ${avgDev.toFixed(1)}¢ &middot;
+        <strong>&mu;&nbsp;turn</strong> ${avgTurn.toFixed(2)} &middot;
+        <strong>trades</strong> ${totTr} &middot;
+        <strong>&mu;&nbsp;payoff</strong> ${avgPay.toFixed(0)}¢
+      </div>`;
     }).join('');
-    const agg = (t) => {
-      if (!t) return '—';
-      return `<strong>μ&nbsp;dev</strong> ${(t.meanDev * 100).toFixed(1)}% · <strong>μ&nbsp;turnover</strong> ${t.turnover.toFixed(2)} · <strong>μ&nbsp;payoff</strong> ${t.payoff.toFixed(0)}¢`;
-    };
+
     host.innerHTML = `
-      <div class="dlm-batch-agg">
-        <div class="dlm-batch-agg-row"><span class="treat">T2</span> ${agg(aggregate.t2)}</div>
-        <div class="dlm-batch-agg-row"><span class="treat">T4</span> ${agg(aggregate.t4)}</div>
-      </div>
-      <table class="dlm-batch-table">
+      <div class="batch-agg">${aggHtml}</div>
+      <table class="batch-table">
         <thead>
-          <tr><th>Tx</th><th>#</th><th>dev</th><th>turn</th><th>trades</th><th>payoff</th><th>R4 swap</th></tr>
+          <tr><th>Label</th><th>Tx</th><th>S</th><th>R</th><th>dev ¢</th><th>turn</th><th>trades</th><th>vol</th><th>payoff</th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>`;
@@ -241,6 +253,10 @@ const UI = {
   renderStats(v, config) {
     const rounds = config.roundsPerSession || 1;
     const round  = v.round || 1;
+    if (this.els.session) {
+      const s = v.session || 0;
+      this.els.session.textContent = s > 0 ? `${s} / 10` : '— / 10';
+    }
     if (this.els.round) this.els.round.textContent = `${round} / ${rounds}`;
     this.els.period.textContent = `${v.period} / ${config.periods}`;
     this.els.tick.textContent   = v.tick;
@@ -620,6 +636,18 @@ const UI = {
     }).join('');
   },
 
+  /**
+   * Format an x-axis tick label for round-based charts. When a batch
+   * session is active (v.session > 0), labels read "R{r}_S{s}" so the
+   * round is identifiable across sessions; otherwise just "R{r}".
+   */
+  _roundLabel(v, config, x) {
+    const rounds = config.roundsPerSession || 1;
+    const r = Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1);
+    if (v.session > 0) return 'R' + r + '_S' + v.session;
+    return 'R' + r;
+  },
+
   /* -------- Price vs FV chart -------- */
 
   renderPriceChart(v, config) {
@@ -653,7 +681,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin, xMax, yMin, yMax,
       xTicks: rounds, yTicks: 5,
-      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(0),
     });
 
@@ -711,7 +739,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
 
     Viz.legendRow(ctx, rect, [
       { color: this.theme.accent, label: '● observed price' },
@@ -741,7 +769,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin, yMax,
       xTicks: rounds, yTicks: 4,
-      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(0),
     });
     // Absolute mispricing |P_t − FV_t| inherits the same null-aware
@@ -770,7 +798,7 @@ const UI = {
       ctx.restore();
     }
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
       { color: this.theme.red, label: '▬ absolute mispricing' },
     ]);
@@ -817,7 +845,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin, xMax, yMin: 0, yMax,
       xTicks: rounds, yTicks: 4,
-      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(0),
     });
 
@@ -842,7 +870,7 @@ const UI = {
       ctx.restore();
     }
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
     Viz.legendRow(ctx, rect, [
       { color: this.theme.green, label: '▮ shares traded' },
     ], { padY: -10 });
@@ -915,7 +943,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* -------- Agent action timeline -------- */
@@ -1013,7 +1041,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* ============================================================
@@ -1053,10 +1081,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin: 0, yMax,
       xTicks: config.roundsPerSession || 1, yTicks: 4,
-      xFmt: x => 'R' + Math.min(
-        config.roundsPerSession || 1,
-        Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1,
-      ),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(0),
     });
 
@@ -1125,7 +1150,7 @@ const UI = {
     drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* -------- Utility-over-time chart -------- */
@@ -1158,10 +1183,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin, yMax,
       xTicks: config.roundsPerSession || 1, yTicks: 4,
-      xFmt: x => 'R' + Math.min(
-        config.roundsPerSession || 1,
-        Math.floor(x / (config.periods * config.ticksPerPeriod)) + 1,
-      ),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(2),
     });
 
@@ -1179,7 +1201,7 @@ const UI = {
       Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
     }
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* -------- Messages timeline -------- */
@@ -1271,7 +1293,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* -------- Trust matrix heatmap -------- */
@@ -1370,7 +1392,7 @@ const UI = {
     Viz.axes(ctx, rect, {
       xMin: 0, xMax: totalTicks, yMin: 0, yMax,
       xTicks: rounds, yTicks: 4,
-      xFmt: x => 'R' + Math.min(rounds, Math.floor(x / ticksPerRnd) + 1),
+      xFmt: x => this._roundLabel(v, config, x),
       yFmt: y => y.toFixed(0),
     });
 
@@ -1433,7 +1455,7 @@ const UI = {
     }
     ctx.restore();
 
-    Viz.axisLabel(ctx, rect, 'Round R', 'bottom');
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
   },
 
   /* -------- Extended metrics panel -------- */

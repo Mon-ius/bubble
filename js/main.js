@@ -102,6 +102,11 @@ const App = {
   // (R4-⅔, two fresh), 4 = T4 (R4-⅓, four fresh).
   treatmentSize: 2,
 
+  // Session counter for the 10-session batch. 0 = idle/pre-run,
+  // 1-10 during a batch. Updated by start() at every session
+  // boundary and reset to 0 by reset() or when the batch completes.
+  currentSession: 0,
+
   // LLM endpoint state for Plans II and III. Populated from the
   // #ai-key / #ai-endpoint / #ai-model inputs on every change event
   // and consumed by start() to gate the run (both plans refuse to
@@ -785,6 +790,7 @@ const App = {
   reset() {
     this.seed = this._rollSeed();
     this.agentSpecs = null;
+    if (!this._batchRunning) this.currentSession = 0;
     this.rebuild();
   },
 
@@ -864,6 +870,8 @@ const App = {
       llmActions:    {},
       // Round-4 replacement: 2 (T2/R4-⅔) or 4 (T4/R4-⅓).
       treatmentSize: this.treatmentSize,
+      // Current session number (1-10) for the batch display.
+      currentSession: this.currentSession,
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);
     this.engine.onTick = () => this.requestRender();
@@ -926,34 +934,57 @@ const App = {
     const runSession = (s) => {
       if (s >= SESSIONS) {
         this._batchRunning = false;
+        this.currentSession = 0;
         this.treatmentSize = firstTreatment;
         console.table(this.batchResults);
+        this.requestRender();
         return;
       }
       const treatment = s < 5 ? firstTreatment : secondTreatment;
       this.treatmentSize = treatment;
+      this.currentSession = s + 1;
       this.reset();
+      // Patch the ctx session counter after rebuild() so the engine
+      // snapshots and the live view carry the right session number.
+      this.ctx.currentSession = this.currentSession;
 
       this.engine.onEnd = () => {
-        // Collect per-session summary.
-        const trades = this.market.trades;
-        const prices = trades.map(t => t.price);
-        const fvAtTrade = trades.map(t => {
-          const p = t.period != null ? t.period : 1;
-          return this.config.dividendMean * (this.config.periods - p + 1);
-        });
-        const absDev = prices.map((p, i) => Math.abs(p - fvAtTrade[i]));
-        const meanDev = absDev.length ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
+        // Collect per-round metrics for this session.
+        const allTrades   = this.market.trades;
+        const rounds      = this.config.roundsPerSession;
         const totalShares = this.TOTAL_N * 3;
-        const turnover = trades.length / totalShares;
-        this.batchResults.push({
-          session:   s + 1,
-          treatment: treatment === 2 ? 'T2' : 'T4',
-          treatmentSize: treatment,
-          trades:    trades.length,
-          meanDev:   Math.round(meanDev * 100) / 100,
-          turnover:  Math.round(turnover * 100) / 100,
-        });
+        const sessionNum  = s + 1;
+        const txLabel     = treatment === 2 ? 'T2' : 'T4';
+
+        for (let r = 1; r <= rounds; r++) {
+          const roundTrades = allTrades.filter(t => t.round === r);
+          const prices   = roundTrades.map(t => t.price);
+          const fvAtTr   = roundTrades.map(t => {
+            const p = t.period != null ? t.period : 1;
+            return this.config.dividendMean * (this.config.periods - p + 1);
+          });
+          const absDev  = prices.map((p, i) => Math.abs(p - fvAtTr[i]));
+          const meanDev = absDev.length
+            ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
+          const turnover = roundTrades.length / totalShares;
+          const volume   = roundTrades.reduce((sum, t) => sum + t.quantity, 0);
+          // Per-round payoff from roundFinalCash.
+          const cashMap    = this.logger.roundFinalCash[r - 1] || {};
+          const roundPayoff = Object.values(cashMap).reduce((a, b) => a + b, 0);
+
+          this.batchResults.push({
+            label:     `R${r}_S${sessionNum}`,
+            session:   sessionNum,
+            round:     r,
+            treatment: txLabel,
+            trades:    roundTrades.length,
+            meanDev:   Math.round(meanDev * 100) / 100,
+            turnover:  Math.round(turnover * 100) / 100,
+            volume,
+            payoff:    Math.round(roundPayoff),
+          });
+        }
+
         this.requestRender();
         // Chain to next session.
         setTimeout(() => runSession(s + 1), 50);
