@@ -82,8 +82,8 @@ const App = {
     trustAlpha:           0.30,
     valuationNoise:       0.03,
     biasAmount:           0.15,
-    applyBias:            false,
-    applyNoise:           false,
+    applyBias:            true,
+    applyNoise:           true,
   },
 
   // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only

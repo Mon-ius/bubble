@@ -92,18 +92,18 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="5" step="1" value="0">
           </div>
-          <div class="param-row param-toggle-pair" data-tip="Bias adds a persistent per-agent tilt (biasMode × biasAmount) to the FV prior. Noise adds i.i.d. per-tick jitter ±valuationNoise. Both off → prior = FV exactly (pure Plan I).">
-            <div class="param-head">
+          <div class="param-row param-toggle-pair">
+            <div class="param-head" data-tip="When ON each UtilityAgent's prior becomes FV × (1 + biasMode × biasAmount). biasMode ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and biasAmount defaults to 0.15. The tilt is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF the bias term is zeroed and every agent starts from the true FV.">
               <label>Prior Bias</label>
               <label class="slide-toggle" for="p-applyBias">
-                <input type="checkbox" id="p-applyBias">
+                <input type="checkbox" id="p-applyBias" checked>
                 <span class="slide-track"><span class="slide-thumb"></span></span>
               </label>
             </div>
-            <div class="param-head">
+            <div class="param-head" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV × (1 + ε) where ε ~ U[−valuationNoise, +valuationNoise] (default ±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
               <label>Prior Noise</label>
               <label class="slide-toggle" for="p-applyNoise">
-                <input type="checkbox" id="p-applyNoise">
+                <input type="checkbox" id="p-applyNoise" checked>
                 <span class="slide-track"><span class="slide-thumb"></span></span>
               </label>
             </div>
