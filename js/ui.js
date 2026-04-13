@@ -438,61 +438,55 @@ const UI = {
         </div>`;
     }).join('');
 
-    // Save scroll positions of flipped cards and inner text blocks
-    // before the innerHTML rebuild destroys them.
-    const scrollState = {};
+    // Detach flipped card DOM nodes before innerHTML so their scroll
+    // state and any active interactions (scrollbar hold, text selection)
+    // survive the per-frame rebuild. The back face is static between
+    // period boundaries, so keeping the old node is correct.
+    const preserved = {};
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flipped').forEach(wrap => {
-      const id = wrap.dataset.agentId;
-      const back = wrap.querySelector('.card-back');
-      const entry = { back: back ? back.scrollTop : 0, texts: [] };
-      wrap.querySelectorAll('.llm-text').forEach(pre => {
-        entry.texts.push(pre.scrollTop);
-      });
-      scrollState[id] = entry;
+      preserved[wrap.dataset.agentId] = wrap;
+      wrap.remove();
     });
 
     this.els.agentsGrid.innerHTML = html;
 
-    // Restore scroll positions after rebuild.
-    for (const [id, state] of Object.entries(scrollState)) {
-      const wrap = this.els.agentsGrid.querySelector(`.agent-card-wrap[data-agent-id="${id}"]`);
-      if (!wrap) continue;
-      const back = wrap.querySelector('.card-back');
-      if (back) back.scrollTop = state.back;
-      const texts = wrap.querySelectorAll('.llm-text');
-      state.texts.forEach((top, i) => {
-        if (texts[i]) texts[i].scrollTop = top;
-      });
+    // Re-insert preserved flipped cards in place of their new copies.
+    for (const [id, oldWrap] of Object.entries(preserved)) {
+      const fresh = this.els.agentsGrid.querySelector(
+        `.agent-card-wrap[data-agent-id="${id}"]`,
+      );
+      if (fresh) fresh.replaceWith(oldWrap);
     }
 
-    // Flip-card click handlers — persist state in _flipped so it
-    // survives the per-frame innerHTML rebuild.
-    this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flippable').forEach(wrap => {
-      wrap.addEventListener('click', (e) => {
+    // Wire event delegation once — avoids per-card handler accumulation.
+    if (!this._agentGridWired) {
+      this._agentGridWired = true;
+      this.els.agentsGrid.addEventListener('click', (e) => {
+        // Click-to-copy on prompt text blocks.
+        const copyable = e.target.closest('.llm-copyable');
+        if (copyable) {
+          e.stopPropagation();
+          navigator.clipboard.writeText(copyable.textContent).then(() => {
+            const label = copyable.previousElementSibling;
+            const hint = label && label.querySelector('.copy-hint');
+            if (hint) {
+              hint.textContent = 'copied!';
+              setTimeout(() => { hint.textContent = 'click to copy'; }, 1200);
+            }
+          });
+          return;
+        }
+        // Flip card toggle.
+        const wrap = e.target.closest('.agent-card-wrap.flippable');
+        if (!wrap) return;
         if (e.target.closest('.endow-input')) return;
-        // Back face: only flip back via the header hint, not content.
         if (e.target.closest('.card-back') && !e.target.closest('.card-back-head')) return;
         const id = Number(wrap.dataset.agentId);
         if (UI._flipped.has(id)) UI._flipped.delete(id);
         else                     UI._flipped.add(id);
         wrap.classList.toggle('flipped');
       });
-    });
-
-    // Click-to-copy on system / user prompt blocks.
-    this.els.agentsGrid.querySelectorAll('.llm-copyable').forEach(pre => {
-      pre.addEventListener('click', (e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(pre.textContent).then(() => {
-          const label = pre.previousElementSibling;
-          if (!label) return;
-          const hint = label.querySelector('.copy-hint');
-          if (!hint) return;
-          hint.textContent = 'copied!';
-          setTimeout(() => { hint.textContent = 'click to copy'; }, 1200);
-        });
-      });
-    });
+    }
 
     if (editable) this._wireEndowmentInputs();
   },
