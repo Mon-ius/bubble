@@ -886,20 +886,16 @@ const App = {
   },
 
   /**
-   * Kick off the simulation loop. Plan II and Plan III refuse to
-   * launch without an API key in `aiConfig.apiKey`: the LLM call
-   * is the whole point of those plans, and running them without a
-   * key would silently collapse every agent into Plan I's algorithm.
-   * Plan I does not touch the network and starts immediately.
+   * Run the full DLM 2005 10-session batch. Sessions 1-5 use the
+   * first treatment (selected by the radio), sessions 6-10 use the
+   * other. Each session is a fresh 4-round game with a new seed and
+   * fresh agents, run synchronously via Engine.runToEnd(). The final
+   * session's state is left on screen for inspection and replay.
+   *
+   * Plan II/III require an API key; Plan I runs immediately.
    */
   start() {
     if (this.replayMode) this.exitReplay();
-    // Plan II and Plan III require an API key — they call an LLM at
-    // every period boundary and there is no algorithmic fallback at
-    // run start (a missing key means the entire plan collapses to
-    // Plan I). Refuse to launch until the user either supplies a key
-    // or switches to Plan I. The AI status line is repurposed to
-    // carry the error back into the AI endpoint panel.
     if (this.plan === 'II' || this.plan === 'III') {
       const key = this.aiConfig && (this.aiConfig.apiKey || '').trim();
       if (!key) {
@@ -910,7 +906,45 @@ const App = {
     } else {
       this._setAiStatus('');
     }
-    this.engine.start();
+
+    const SESSIONS = 10;
+    const firstTreatment  = this.treatmentSize;          // 2 or 4
+    const secondTreatment = firstTreatment === 2 ? 4 : 2;
+    this.batchResults = [];
+
+    for (let s = 0; s < SESSIONS; s++) {
+      const treatment = s < 5 ? firstTreatment : secondTreatment;
+      this.treatmentSize = treatment;
+      this.reset();                    // new seed + fresh agents + rebuild
+
+      this.engine.runToEnd();
+
+      // Collect per-session summary.
+      const trades = this.market.trades;
+      const prices = trades.map(t => t.price);
+      const fvAtTrade = trades.map(t => {
+        const p = t.period != null ? t.period : 1;
+        return this.config.dividendMean * (this.config.periods - p + 1);
+      });
+      const absDev = prices.map((p, i) => Math.abs(p - fvAtTrade[i]));
+      const meanDev = absDev.length ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
+      const totalShares = this.TOTAL_N * 3;  // average inventory ≈ 3
+      const turnover = trades.length / totalShares;
+      this.batchResults.push({
+        session:   s + 1,
+        treatment: treatment === 2 ? 'T2' : 'T4',
+        treatmentSize: treatment,
+        trades:    trades.length,
+        meanDev:   Math.round(meanDev * 100) / 100,
+        turnover:  Math.round(turnover * 100) / 100,
+      });
+    }
+
+    // Restore the original treatmentSize setting.
+    this.treatmentSize = firstTreatment;
+    // Log batch results to console for inspection.
+    console.table(this.batchResults);
+    this.requestRender();
   },
 
   /**
