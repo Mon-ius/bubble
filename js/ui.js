@@ -438,20 +438,31 @@ const UI = {
         </div>`;
     }).join('');
 
-    // Preserve scroll position of flipped card backs across rebuild.
-    const scrollMap = {};
+    // Save scroll positions of flipped cards and inner text blocks
+    // before the innerHTML rebuild destroys them.
+    const scrollState = {};
     this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flipped').forEach(wrap => {
       const id = wrap.dataset.agentId;
       const back = wrap.querySelector('.card-back');
-      if (back && back.scrollTop) scrollMap[id] = back.scrollTop;
+      const entry = { back: back ? back.scrollTop : 0, texts: [] };
+      wrap.querySelectorAll('.llm-text').forEach(pre => {
+        entry.texts.push(pre.scrollTop);
+      });
+      scrollState[id] = entry;
     });
 
     this.els.agentsGrid.innerHTML = html;
 
-    // Restore scroll positions.
-    for (const [id, top] of Object.entries(scrollMap)) {
-      const wrap = this.els.agentsGrid.querySelector(`.agent-card-wrap[data-agent-id="${id}"] .card-back`);
-      if (wrap) wrap.scrollTop = top;
+    // Restore scroll positions after rebuild.
+    for (const [id, state] of Object.entries(scrollState)) {
+      const wrap = this.els.agentsGrid.querySelector(`.agent-card-wrap[data-agent-id="${id}"]`);
+      if (!wrap) continue;
+      const back = wrap.querySelector('.card-back');
+      if (back) back.scrollTop = state.back;
+      const texts = wrap.querySelectorAll('.llm-text');
+      state.texts.forEach((top, i) => {
+        if (texts[i]) texts[i].scrollTop = top;
+      });
     }
 
     // Flip-card click handlers — persist state in _flipped so it
