@@ -919,44 +919,6 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.18);
 }
 
-/* Treatment switch — compact segmented control matching the slide-toggle
-   aesthetic. Sits at the right edge of a .param-head row. */
-.treatment-switch {
-  display: flex;
-  gap: 1px;
-  padding: 2px;
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-.treatment-btn {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--fg-3);
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.18s var(--ease), color 0.18s var(--ease);
-  white-space: nowrap;
-}
-.treatment-btn input[type="radio"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.treatment-btn:hover { color: var(--fg-1); }
-.treatment-btn:has(input:checked) {
-  background: var(--bg-1);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Risk-preference composition bar — the three linked sliders push
    their percentages into this segmented bar so the overall risk mix
    is visible at a glance even when the sliders are below the fold. */
@@ -1194,6 +1156,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   color: var(--fg-1);
   transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
 }
+.dlm-treatment-opt > span { flex: 1; }
 .dlm-treatment-opt:hover {
   border-color: var(--blue, #3b82f6);
 }
