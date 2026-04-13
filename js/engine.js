@@ -43,8 +43,9 @@ class Engine {
     this.ctx     = ctx || {};
     this.running = false;
     this._timer  = null;
-    this.onTick  = null;     // callback after each step
-    this.onEnd   = null;
+    this.onTick     = null;     // callback after each step
+    this.onEnd      = null;
+    this.onRoundEnd = null;     // callback(round) after each round boundary
   }
 
   get tickInterval() { return this.config.tickInterval; }
@@ -212,6 +213,7 @@ class Engine {
         // of their final cash holdings from each round").
         this._captureRoundFinalCash(m.round);
         this.logger.logEvent({ tick: m.tick, type: 'round_end', round: m.round });
+        if (this.onRoundEnd) this.onRoundEnd(m.round);
         // Endogenous experience: each agent that just finished
         // playing this round has its roundsPlayed counter
         // incremented HERE, before the replacement step runs, so
@@ -241,6 +243,7 @@ class Engine {
         // Final round, final period: capture payoff one last time
         // so the session payoff sum spans every round.
         this._captureRoundFinalCash(m.round);
+        if (this.onRoundEnd) this.onRoundEnd(m.round);
       }
     }
   }

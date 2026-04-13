@@ -948,43 +948,41 @@ const App = {
       // snapshots and the live view carry the right session number.
       this.ctx.currentSession = this.currentSession;
 
+      const sessionNum  = s + 1;
+      const txLabel     = treatment === 2 ? 'T2' : 'T4';
+      const totalShares = this.TOTAL_N * 3;
+
+      // Collect one round's metrics as soon as it finishes, so Table 2
+      // updates progressively instead of waiting for the full session.
+      this.engine.onRoundEnd = (round) => {
+        const roundTrades = this.market.trades.filter(t => t.round === round);
+        const fvAtTr = roundTrades.map(t => {
+          const p = t.period != null ? t.period : 1;
+          return this.config.dividendMean * (this.config.periods - p + 1);
+        });
+        const absDev  = roundTrades.map((t, i) => Math.abs(t.price - fvAtTr[i]));
+        const meanDev = absDev.length
+          ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
+        const turnover = roundTrades.length / totalShares;
+        const volume   = roundTrades.reduce((sum, t) => sum + t.quantity, 0);
+        const cashMap    = this.logger.roundFinalCash[round - 1] || {};
+        const roundPayoff = Object.values(cashMap).reduce((a, b) => a + b, 0);
+
+        this.batchResults.push({
+          label:     `R${round}_S${sessionNum}`,
+          session:   sessionNum,
+          round,
+          treatment: txLabel,
+          trades:    roundTrades.length,
+          meanDev:   Math.round(meanDev * 100) / 100,
+          turnover:  Math.round(turnover * 100) / 100,
+          volume,
+          payoff:    Math.round(roundPayoff),
+        });
+        this.requestRender();
+      };
+
       this.engine.onEnd = () => {
-        // Collect per-round metrics for this session.
-        const allTrades   = this.market.trades;
-        const rounds      = this.config.roundsPerSession;
-        const totalShares = this.TOTAL_N * 3;
-        const sessionNum  = s + 1;
-        const txLabel     = treatment === 2 ? 'T2' : 'T4';
-
-        for (let r = 1; r <= rounds; r++) {
-          const roundTrades = allTrades.filter(t => t.round === r);
-          const prices   = roundTrades.map(t => t.price);
-          const fvAtTr   = roundTrades.map(t => {
-            const p = t.period != null ? t.period : 1;
-            return this.config.dividendMean * (this.config.periods - p + 1);
-          });
-          const absDev  = prices.map((p, i) => Math.abs(p - fvAtTr[i]));
-          const meanDev = absDev.length
-            ? absDev.reduce((a, b) => a + b, 0) / absDev.length : 0;
-          const turnover = roundTrades.length / totalShares;
-          const volume   = roundTrades.reduce((sum, t) => sum + t.quantity, 0);
-          // Per-round payoff from roundFinalCash.
-          const cashMap    = this.logger.roundFinalCash[r - 1] || {};
-          const roundPayoff = Object.values(cashMap).reduce((a, b) => a + b, 0);
-
-          this.batchResults.push({
-            label:     `R${r}_S${sessionNum}`,
-            session:   sessionNum,
-            round:     r,
-            treatment: txLabel,
-            trades:    roundTrades.length,
-            meanDev:   Math.round(meanDev * 100) / 100,
-            turnover:  Math.round(turnover * 100) / 100,
-            volume,
-            payoff:    Math.round(roundPayoff),
-          });
-        }
-
         this.requestRender();
         // Chain to next session.
         setTimeout(() => runSession(s + 1), 50);
