@@ -1,180 +1,117 @@
-<mxfile host="app.diagrams.net" modified="2026-04-11T00:00:00.000Z" agent="bubble-math" version="24.7.17" etag="bubble-math-arch-strict-dlm" type="device">
+<mxfile host="app.diagrams.net" modified="2026-04-13T00:00:00.000Z" agent="bubble-math" version="24.7.17" etag="bubble-math-arch-pipeline" type="device">
   <diagram name="Math pipeline" id="bubble-math-pipeline">
-    <mxGraphModel dx="1200" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="1" shadow="0">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="860" pageHeight="740" math="1" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
 
-        <!-- Group: Paper constants (DLM 2005) -->
-        <mxCell id="g-paper" value="Paper constants &#x2014; Dufwenberg, Lindqvist &amp; Moore (2005) &#xa7;I" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="40" width="380" height="340" as="geometry"/>
+        <!-- ═══════════════════════════════════════════════
+             Layer 1 — Market substrate · DLM 2005 (y 20–100)
+             ═══════════════════════════════════════════════ -->
+        <mxCell id="g-L1" value="Market substrate · DLM 2005" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="780" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="n-N" value="N = 6 subjects / session&#xa;same six play rounds 1&#x2013;3, replacement in round 4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="80" width="340" height="50" as="geometry"/>
+        <mxCell id="n-params" value="&lt;b&gt;T = 10&lt;/b&gt; periods &#xa0;&#xa0; d ∈ {0, 20}¢ &#xa0;&#xa0; 𝔼[d] = 10¢" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="54" width="370" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="n-rounds" value="R = 4 rounds / session&#xa;round-end reset of cash + inventory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="140" width="340" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-bigT" value="T = 10&#xa;Asset life (periods)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="200" width="160" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-div" value="d &#x2208; {0, 20}&#xa;&#x1d53c;[d] = 10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="240" y="200" width="160" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-fv" value="FV&#x209c; = &#x1d53c;[d] &#xb7; (T &#x2212; t + 1)&#xa;resets at every round start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="260" width="340" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-endow" value="Endowments (two-discrete)&#xa;type A: 200&#xa2; + 6 shares&#xa;type B: 600&#xa2; + 2 shares&#xa;both bundles &#x2261; 1000&#xa2; buy-and-hold value" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="320" width="340" height="50" as="geometry"/>
+        <mxCell id="n-fv" value="&lt;b&gt;FV&lt;sub&gt;t&lt;/sub&gt; = 𝔼[d] · (T − t + 1)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="440" y="54" width="350" height="44" as="geometry"/>
         </mxCell>
 
-        <!-- Group: Session + treatment (right of paper constants) -->
-        <mxCell id="g-session" value="Session structure (DLM &#xa7;I, p. 1733)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;fontColor=#7f1d1d;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="40" y="410" width="380" height="240" as="geometry"/>
+        <!-- ═══════════════════════════════════════════════
+             Layer 2 — Utility agent pipeline (y 140–220)
+             ═══════════════════════════════════════════════ -->
+        <mxCell id="g-L2" value="Utility agent pipeline · N = 6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="140" width="780" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="n-round4" value="Round 4 replacement&#xa;T2: replace 2 of 6 &#x2022; T4: replace 4 of 6&#xa;fresh subjects spliced in with roundsPlayed = 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontColor=#7f1d1d;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="450" width="340" height="60" as="geometry"/>
+        <mxCell id="n-prior" value="Prior &#xa0; FV&lt;sub&gt;t&lt;/sub&gt; · (1 + b&lt;sub&gt;i&lt;/sub&gt; + ε) &#xa0; U&lt;sub&gt;L&lt;/sub&gt; / U&lt;sub&gt;N&lt;/sub&gt; / U&lt;sub&gt;A&lt;/sub&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="174" width="370" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="n-batch" value="Multi-session batch&#xa;10 sessions total = 5 T2 + 5 T4&#xa;synchronous Engine.runToEnd() loop&#xa;fresh seed + fresh sample per session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontColor=#7f1d1d;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="520" width="340" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-payoff" value="Payoff accounting&#xa;&#x03c0;&#x1d62; = &#x03a3;&#x1d63; final cash&#x1d63;,&#x1d62; + 500&#xa2; show-up" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontColor=#7f1d1d;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="60" y="590" width="340" height="50" as="geometry"/>
-        </mxCell>
-
-        <!-- Group: Strategies -->
-        <mxCell id="g-strat" value="Agent strategies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="460" y="40" width="900" height="420" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-fund" value="Fundamentalist&#xa;buy if ask &lt; 0.98&#xb7;FV&#x209c;&#xa;sell if bid &gt; 1.02&#xb7;FV&#x209c;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="80" width="200" height="70" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-trend" value="Trend follower&#xa;slope from last 6 trades&#xa;bid&#x2081; = p + k&#xb7;slope" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="80" width="200" height="70" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-zi" value="Random (ZI)&#xa;bid &#x223c; U[0.7&#xb7;FV, 1.1&#xb7;FV]&#xa;ask &#x223c; U[0.9&#xb7;FV, 1.3&#xb7;FV]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="920" y="80" width="200" height="70" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-dlm-novice" value="DLMTrader (roundsPlayed = 0)&#xa;trend-chase + ZI noise&#xa;no FV horizon, no late liquidation&#xa;bubble-prone behaviour" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="180" width="280" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-dlm-vet" value="DLMTrader (roundsPlayed &#x2265; 1)&#xa;prior = &#x3c6;(h)&#xb7;FV&#x209c;, h = T&#x2212;t+1&#xa;refuses overpay in late periods&#xa;liquidates remaining inventory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="780" y="180" width="280" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-switch" value="decide() {&#xa;  return roundsPlayed === 0&#xa;    ? inexperienced()&#xa;    : experienced()&#xa;}&#xa;endogenous &#x2014; never pre-labeled" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfccb;strokeColor=#65a30d;fontColor=#365314;fontSize=10;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="180" width="240" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-util" value="Utility (Lopez-Lira 2025)&#xa;prior = FV&#x209c;&#xb7;(1 + b + &#x3b5;)&#xa;risk: U&#x2097;, U&#x2099;, U&#x2090;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="300" width="200" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-eu" value="EU&#x209a; = p&#x202f;U(w&#x2081;) + (1-p)&#x202f;U(w&#x2080;)&#xa;a* = argmax EU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="300" width="200" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-trust" value="Trust EMA (Lopez-Lira)&#xa;&#x3c4;&#x209b;&#x2192;&#x1d63; &#x2190; (1-&#x3b1;)&#x3c4; + &#x3b1;&#xb7;closeness" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="920" y="300" width="200" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-belief" value="Belief blending&#xa;posterior = w&#xb7;prior + (1-w)&#xb7;avg(msgs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="390" width="280" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-deception" value="Deception (Lopez-Lira)&#xa;report&#x1d65; = &#x3bb;&#xb7;true&#x1d65; + (1-&#x3bb;)&#xb7;bias" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="780" y="390" width="280" height="50" as="geometry"/>
+        <mxCell id="n-eu" value="EU(a) = p · U(w₁) + (1−p) · U(w₀) &#xa0; a* = argmax" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="174" width="350" height="44" as="geometry"/>
         </mxCell>
 
-        <!-- Group: AIPE overlay -->
-        <mxCell id="g-wang" value="AIPE &#x2014; AI-agent anchor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;strokeDasharray=5 5;fontColor=#831843;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="460" y="480" width="380" height="180" as="geometry"/>
+        <!-- ═══════════════════════════════════════════════
+             Layer 3 — Belief update: three plans + social
+             learning (y 260–460)
+             ═══════════════════════════════════════════════ -->
+        <mxCell id="g-L3" value="Belief update · three plans + social learning" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf2f8;strokeColor=#db2777;fontColor=#831843;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="260" width="780" height="210" as="geometry"/>
         </mxCell>
-        <mxCell id="n-anchor" value="V&#x0302;&#x1d62; &#x2190; AIPE(agent i)&#xa;V&#x0302;&#x1d62; &#x2208; [0.25&#xb7;FV&#x2080;, 1.75&#xb7;FV&#x2080;]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="480" y="520" width="340" height="60" as="geometry"/>
+        <mxCell id="n-plan1" value="&lt;b&gt;Plan I · algorithmic&lt;/b&gt;&#xa;V&lt;sup&gt;post&lt;/sup&gt; = w · V&lt;sup&gt;prior&lt;/sup&gt; + (1−w) · m̄&#xa;w = 0.6 + 0.1 · min(3, k)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="296" width="240" height="76" as="geometry"/>
         </mxCell>
-        <mxCell id="n-question" value="Does the asset end up with the highest-V&#x0302; agent?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="480" y="590" width="340" height="50" as="geometry"/>
+        <mxCell id="n-plan2" value="&lt;b&gt;Plan II · LLM + forms&lt;/b&gt;&#xa;prompt ⊇ {U&lt;sub&gt;L&lt;/sub&gt;, U&lt;sub&gt;N&lt;/sub&gt;, U&lt;sub&gt;A&lt;/sub&gt;}&#xa;a* ← LLM(π&lt;sup&gt;II&lt;/sup&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="306" y="296" width="240" height="76" as="geometry"/>
         </mxCell>
-
-        <!-- Group: Market + Metrics -->
-        <mxCell id="g-market" value="Market matching + quality metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#78350f;fontStyle=1;fontSize=12;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
-          <mxGeometry x="860" y="480" width="500" height="260" as="geometry"/>
+        <mxCell id="n-plan3" value="&lt;b&gt;Plan III · LLM + label&lt;/b&gt;&#xa;prompt ⊇ risk label only&#xa;a* ← LLM(π&lt;sup&gt;III&lt;/sup&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="562" y="296" width="230" height="76" as="geometry"/>
         </mxCell>
-        <mxCell id="n-book" value="Order book (price-time priority)&#xa;Match bid&#x2265;ask &#x2192; trade at resting price" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="880" y="520" width="460" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-r2" value="Haessel R&#xb2;&#xa;fit of p&#x0304;&#x209c; to FV&#x209c;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="880" y="590" width="150" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-amp" value="Amplitude&#xa;(max-min residual)/FV&#x2080;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="590" width="150" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-turnover" value="Turnover = &#x03a3; qty / Q" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="590" width="140" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="n-nd" value="Normalized deviation&#xa;ND = &#x03a3; |p&#x209c; &#x2212; FV&#x209c;| / (T&#xb7;FV&#x2080;&#xb7;Q)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="880" y="660" width="460" height="60" as="geometry"/>
+        <mxCell id="n-trust" value="Trust EMA &#xa0; τ&lt;sub&gt;r→s&lt;/sub&gt; ← (1−α) τ + α · closeness &#xa0; α = 0.30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="150" y="392" width="520" height="48" as="geometry"/>
         </mxCell>
 
-        <!-- Edges (paper constants → strategies) -->
-        <mxCell id="e-fv-fund" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#6b7280;" edge="1" parent="1" source="n-fv" target="n-fund">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- ═══════════════════════════════════════════════
+             Layer 4 — Market matching + quality metrics
+             (y 500–700)
+             ═══════════════════════════════════════════════ -->
+        <mxCell id="g-L4" value="Market matching + quality metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#d97706;fontColor=#78350f;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="500" width="780" height="210" as="geometry"/>
         </mxCell>
-        <mxCell id="e-fv-dlm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#6b7280;" edge="1" parent="1" source="n-fv" target="n-dlm-vet">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="n-book" value="Order book (price–time priority) &#xa0; bid ≥ ask ⇒ trade at resting price" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="536" width="760" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="e-fv-util" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#6b7280;" edge="1" parent="1" source="n-fv" target="n-util">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="n-r2" value="&lt;b&gt;Haessel R²&lt;/b&gt;&#xa;fit of p̄&lt;sub&gt;t&lt;/sub&gt; to FV&lt;sub&gt;t&lt;/sub&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="598" width="180" height="64" as="geometry"/>
         </mxCell>
-        <mxCell id="e-endow-dlm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;strokeColor=#2563eb;" edge="1" parent="1" source="n-endow" target="n-dlm-novice">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="n-nd" value="&lt;b&gt;Norm. deviation&lt;/b&gt;&#xa;Σ|p − FV| / (T · FV₀ · Q)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="234" y="598" width="180" height="64" as="geometry"/>
         </mxCell>
-
-        <!-- Endogenous experience switch -->
-        <mxCell id="e-novice-switch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#65a30d;dashed=1;" edge="1" parent="1" source="n-dlm-novice" target="n-switch">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="n-amp" value="&lt;b&gt;Amplitude&lt;/b&gt;&#xa;peak–trough / FV₀" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="428" y="598" width="180" height="64" as="geometry"/>
         </mxCell>
-        <mxCell id="e-vet-switch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#65a30d;dashed=1;" edge="1" parent="1" source="n-dlm-vet" target="n-switch">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- Round-4 replacement and session → strategies -->
-        <mxCell id="e-round4-novice" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#dc2626;fontColor=#7f1d1d;fontSize=10;" edge="1" parent="1" source="n-round4" target="n-dlm-novice">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="460" y="480"/>
-              <mxPoint x="460" y="225"/>
-            </Array>
-          </mxGeometry>
-          <mxCell id="e-round4-novice-label" value="fresh replacements" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=9;" vertex="1" connectable="0" parent="e-round4-novice">
-            <mxGeometry x="0" y="0" relative="1" as="geometry"/>
-          </mxCell>
+        <mxCell id="n-toae" value="&lt;b&gt;TO · AE&lt;/b&gt;&#xa;Σq/Q · U&lt;sub&gt;real&lt;/sub&gt;/U&lt;sub&gt;max&lt;/sub&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontColor=#78350f;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="622" y="598" width="180" height="64" as="geometry"/>
         </mxCell>
 
-        <!-- Strategies → market -->
-        <mxCell id="e-util-eu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;" edge="1" parent="1" source="n-util" target="n-eu">
+        <!-- ═══════════════════════════════════════════════
+             Vertical connectors between layers
+             ═══════════════════════════════════════════════ -->
+        <!-- L1 → L2 -->
+        <mxCell id="e-L1-L2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#6b7280;strokeWidth=1.5;" edge="1" parent="1" source="g-L1" target="g-L2">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e-eu-book" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#6b7280;" edge="1" parent="1" source="n-eu" target="n-book">
+        <!-- L2 → L3 -->
+        <mxCell id="e-L2-L3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#6b7280;strokeWidth=1.5;" edge="1" parent="1" source="g-L2" target="g-L3">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e-book-nd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-nd">
+        <!-- Plan I → Trust -->
+        <mxCell id="e-P1-trust" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#db2777;dashed=1;" edge="1" parent="1" source="n-plan1" target="n-trust">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e-book-r2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-r2">
+        <!-- Plan II → Trust -->
+        <mxCell id="e-P2-trust" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#db2777;dashed=1;" edge="1" parent="1" source="n-plan2" target="n-trust">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-
-        <!-- Market → payoff -->
-        <mxCell id="e-book-payoff" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#dc2626;dashed=1;" edge="1" parent="1" source="n-book" target="n-payoff">
+        <!-- Plan III → Trust -->
+        <mxCell id="e-P3-trust" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#db2777;dashed=1;" edge="1" parent="1" source="n-plan3" target="n-trust">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-
-        <!-- AIPE anchor → Utility -->
-        <mxCell id="e-anchor-util" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#db2777;strokeWidth=2;dashed=1;dashPattern=4 3;" edge="1" parent="1" source="n-anchor" target="n-util">
+        <!-- L3 → L4 -->
+        <mxCell id="e-L3-L4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#6b7280;strokeWidth=1.5;" edge="1" parent="1" source="g-L3" target="g-L4">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-
-        <!-- Trust/belief/deception feed utility -->
-        <mxCell id="e-trust-util" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;dashed=1;" edge="1" parent="1" source="n-trust" target="n-util">
+        <!-- Order book → metrics -->
+        <mxCell id="e-book-r2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-r2">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e-belief-util" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;dashed=1;" edge="1" parent="1" source="n-belief" target="n-util">
+        <mxCell id="e-book-nd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-nd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-book-amp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-amp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-book-toae" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#d97706;" edge="1" parent="1" source="n-book" target="n-toae">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
       </root>
