@@ -1,0 +1,165 @@
+%% sections/model.tex
+\section{Model}
+\label{sec:model}
+
+\subsection{Asset and fundamental value}
+
+The asset pays an iid per-period dividend
+$d_t\sim\text{Uniform}\{0,20\}$ with $\E[d_t]=10$ and lives for
+$T=10$ periods per round.  The risk-neutral fundamental at the start
+of period~$t$ is
+\begin{equation}
+\FV_t = 10\,(T-t+1),
+\label{eq:fv}
+\end{equation}
+declining from $\FV_1=100$ to $\FV_T=10$.  Terminal value is zero.
+The fundamental resets at every round boundary.  A session consists of
+$R=4$ rounds; each period is discretised into $K=18$ ticks, giving
+720 ticks per session.  The asset, dividend, and session structure
+reproduce DLM exactly.
+
+\subsection{Market institution}
+
+Trade takes place in a continuous double auction with price-time
+priority.  Bids are sorted descending by price, asks ascending; ties
+break by arrival time.  Each tick, every agent submits at most one
+order.  A crossing pair matches at the resting price; self-matches are
+prevented.  At the end of each period, all outstanding orders are
+withdrawn and the dividend is drawn and credited.
+
+\subsection{Agent types}
+
+Five agent types populate the market.  All observe the best bid~$b_t$,
+best ask~$a_t$, last trade price~$p_t$, and fundamental~$\FV_t$.
+
+\paragraph{Fundamentalist (F)}
+Belief: $\beta_t = \FV_t(1+0.04(r{-}0.5))$, a $\pm2\%$ perturbation.
+Buys at~$a_t$ when $a_t<0.98\beta_t$; sells at~$b_t$ when
+$b_t>1.02\beta_t$; otherwise posts passive quotes near $\beta_t$ with
+probability~$0.45$ or holds.
+
+\paragraph{Trend follower (T)}
+Estimates a slope from the last six in-round trade prices and
+projects three ticks ahead.  Chases momentum when slope$\,{>}\,0$;
+panic-sells when slope$\,{<}\,0$; liquidates excess inventory in
+flat markets.  This is the positive-feedback channel
+\citep{delong1990positive}.
+
+\paragraph{Zero-intelligence (R)}
+Posts $\text{bid}\sim\text{Uniform}[0.7\FV_t,1.1\FV_t]$ and
+$\text{ask}\sim\text{Uniform}[0.9\FV_t,1.3\FV_t]$, following
+\citet{gode1993allocative}.  Ensures the book is never empty.
+
+\paragraph{DLM trader (D)}
+Used only in strict-DLM mode ($N{=}6$).  A two-branch decision rule
+is gated on the experience counter~$k_i$, which starts at zero and is
+incremented at each round boundary:
+\begin{equation}
+\text{decide}() =
+\begin{cases}
+\text{inexperienced rule}, & k_i = 0,\\
+\text{experienced rule}, & k_i \ge 1.
+\end{cases}
+\label{eq:dlm-gate}
+\end{equation}
+
+\emph{Inexperienced} ($k_i{=}0$).---The agent chases price momentum
+with no fundamental anchor: when slope$\,{>}\,0$ it bids at
+$p_t(1.02{+}0.04r)$; when slope$\,{<}\,0$ it asks at
+$p_t(0.98{-}0.04r)$; otherwise it posts noisy quotes around~$p_t$.
+This branch generates the bubble.
+
+\emph{Experienced} ($k_i{\ge}1$).---The agent anchors to a
+horizon-discounted belief
+$\beta_t^{\text{exp}} = \FV_t\bigl(0.92 + 0.06\,(T{-}t{+}1)/T\bigr)$
+and trades accordingly: it liquidates inventory when three or fewer
+periods remain, refuses overpaying in late periods, crosses the book
+only when the spread offers a discount or premium relative to
+$\beta_t^{\text{exp}}$, and posts passive quotes near the belief with
+probability~$0.35$.  This branch kills the bubble.
+
+\paragraph{Utility agent (U)}
+Follows \citet{lopezlira2025llm}.  On each tick the prior is
+\begin{equation}
+V_i^{\text{prior}} = \FV_t(1+b_i+\varepsilon_{it}),
+\quad
+b_i\in\{-0.15,\,0,\,0.15\},
+\quad
+\varepsilon_{it}\sim\text{Uniform}[-0.03,0.03],
+\label{eq:util-prior}
+\end{equation}
+where $b_i$ is a persistent optimistic, unbiased, or pessimistic bias.
+The agent scores each action $a\in\{\text{hold, cross bid, cross ask,
+passive bid, passive ask}\}$ by expected utility:
+\begin{equation}
+\EU(a) = p_f\,U(w_1) + (1{-}p_f)\,U(w_0),
+\qquad
+a^\star = \arg\max_a\EU(a),
+\label{eq:eu}
+\end{equation}
+with constant fill probability $p_f{=}0.30$ and risk-preference
+functionals normalised so $U(w_0){=}1$:
+\begin{equation}
+\Uloving(w) = (w/w_0)^2,\qquad
+\Uneutral(w) = w/w_0,\qquad
+\Uaverse(w) = \sqrt{w/w_0}.
+\label{eq:risk}
+\end{equation}
+
+\subsection{Communication and trust}
+
+Each period, utility agents broadcast private valuations.  Three
+deception modes govern the report: \emph{honest}
+($\hat v_i = v_i(1{\pm}0.01)$), \emph{biased}
+($\hat v_i = v_i(1{\pm}0.10)$, fixed sign), and \emph{deceptive}
+($\hat v_i = 0.82v_i$ when under-invested, $1.18v_i$ when
+over-invested).  Pairwise trust $\trust_{rs}\in[0,1]$ is initialised
+at~$0.5$ and updated by exponential moving average against the
+period's VWAP:
+\begin{equation}
+\trust_{rs} \leftarrow
+(1{-}\alpha)\trust_{rs}
++ \alpha\max\!\bigl(0,\,1{-}|\hat v_s{-}\VWAP_t|/\VWAP_t\bigr),
+\qquad \alpha=0.30.
+\label{eq:trust}
+\end{equation}
+Trust accumulates across rounds; all other per-round state resets.
+
+\subsection{Belief-update plans}
+
+The period-boundary belief update maps the agent's prior and received
+peer claims $\msgs_i$ into a posterior $V_i^{\text{post}}$ that
+becomes next period's prior.  Three plans hold the upstream (prior,
+messages, trust) and downstream (EU scoring, order matching, dividend
+credit) stages fixed.
+
+\paragraph{Plan I (algorithmic blend)}
+The posterior is the experience-weighted convex combination of
+equation~\eqref{eq:plan1}: a novice ($k_i{=}0$) weights peers at
+$40\%$; a three-round veteran ($k_i{\ge}3$) at~$10\%$.  If no
+messages arrive, the prior is unchanged.  Plan~I is deterministic
+under the seeded PRNG.
+
+\paragraph{Plan II (LLM direct action with utility expression)}
+At each period boundary, one language-model call per utility agent
+bypasses equation~\eqref{eq:plan1} entirely.  The structured prompt
+encodes market rules, the agent's status, decision-making principles,
+role-specific guidance (risk-type and experience-level), and the
+\emph{closed-form} risk-utility expression:
+$(w/w_0)^2$ for risk-loving, $w/w_0$ for neutral, $\sqrt{w/w_0}$ for
+averse.  The LLM returns a discrete action from the set
+$\{\text{BUY\_NOW}, \text{SELL\_NOW}, \text{BID\_1}, \text{BID\_3},
+\text{ASK\_1}, \text{ASK\_3}, \text{HOLD}\}$,
+which the engine translates into an order using the current book state.
+A failed or invalid action degrades silently to Plan~I's EU evaluation.
+
+\paragraph{Plan III (LLM direct action with risk label only)}
+Identical to Plan~II except the functional form is deleted from the
+prompt; only the category \emph{risk-loving}, \emph{risk-neutral}, or
+\emph{risk-averse} is named.  Every other input and the seven-action
+output set are identical.
+
+If Plans~II and~III yield different actions, the difference is
+attributable to prompt structure alone.  If a run's LLM calls all
+fail, the trajectory is identical to the matched Plan~I run under the
+same seed.

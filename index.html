@@ -42,8 +42,8 @@
     </div>
     <div class="plan-switch" role="group" aria-label="Research plan">
       <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
-      <button class="plan-btn" data-plan="II" title="Plan II — LLM with utility forms. Every period the model is asked for a subjective valuation given the agent's risk preference and the explicit utility function U_L / U_N / U_A that corresponds to it. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan II</button>
-      <button class="plan-btn" data-plan="III" title="Plan III — LLM with risk-preference label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover the utility-aware belief. Requires an API key in the AI endpoint panel; falls back to Plan I on network or API failure.">Plan III</button>
+      <button class="plan-btn" data-plan="II" title="Plan II — LLM direct action with utility forms. Every period the model selects an action (BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD) given the agent's risk preference and the explicit utility function U_L / U_N / U_A. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan II</button>
+      <button class="plan-btn" data-plan="III" title="Plan III — LLM direct action with risk label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover utility-aware trading. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan III</button>
     </div>
   </nav>
   <div class="controls">
@@ -150,12 +150,12 @@
         <div class="psec-body ai-config">
           <p class="ai-config-note">
             <strong>Required for Plan II.</strong> Every period boundary, each Utility
-            agent calls the LLM for a fresh subjective valuation. The prompt includes
-            the agent's risk preference <em>and</em> the explicit closed-form utility
-            function ($U_L$, $U_N$, $U_A$) so the model can reason about convexity,
-            linearity, or concavity of the agent's risk type. Fields are read fresh
-            from the DOM on every run (no localStorage); if the key is empty the
-            Start button will refuse to launch.
+            agent calls the LLM for a direct trading action (BUY_NOW, SELL_NOW,
+            BID_1, BID_3, ASK_1, ASK_3, HOLD). The structured prompt includes
+            market rules, decision-making principles, role-specific guidance,
+            and the explicit closed-form utility function ($U_L$, $U_N$, $U_A$).
+            Fields are read fresh from the DOM on every run (no localStorage);
+            if the key is empty the Start button will refuse to launch.
           </p>
           <div class="param-row">
             <div class="param-head">
@@ -190,12 +190,12 @@
         <div class="psec-body ai-config">
           <p class="ai-config-note">
             <strong>Required for Plan III.</strong> Every period boundary, each Utility
-            agent calls the LLM for a fresh subjective valuation. The prompt supplies
-            only a natural-language risk-preference label (risk-loving, risk-neutral,
-            or risk-averse) — no closed-form utility function is provided. The LLM
-            must rely on its implicit understanding of risk preferences.
-            Fields are read fresh from the DOM on every run (no localStorage); if the
-            key is empty the Start button will refuse to launch.
+            agent calls the LLM for a direct trading action. The structured
+            prompt supplies market rules, decision-making principles, and only
+            a natural-language risk-preference label (risk-loving, risk-neutral,
+            or risk-averse) — no closed-form utility function is provided.
+            Fields are read fresh from the DOM on every run (no localStorage);
+            if the key is empty the Start button will refuse to launch.
           </p>
           <div class="param-row">
             <div class="param-head">
@@ -765,7 +765,7 @@
             <div class="fo-node">
               <div class="fo-t">Plan II · LLM + forms</div>
               <div class="fo-s">prompt $\supseteq \{U_L, U_N, U_A\}$</div>
-              <div class="fo-s">$V^{\text{post}} \!\leftarrow\! \text{LLM}(\pi^{\text{II}})$</div>
+              <div class="fo-s">$a^\star \!\leftarrow\! \text{LLM}(\pi^{\text{II}})$</div>
             </div>
           </foreignObject>
         </g>
@@ -775,7 +775,7 @@
             <div class="fo-node">
               <div class="fo-t">Plan III · LLM + label</div>
               <div class="fo-s">prompt $\supseteq$ risk label only</div>
-              <div class="fo-s">$V^{\text{post}} \!\leftarrow\! \text{LLM}(\pi^{\text{III}})$</div>
+              <div class="fo-s">$a^\star \!\leftarrow\! \text{LLM}(\pi^{\text{III}})$</div>
             </div>
           </foreignObject>
         </g>
@@ -870,7 +870,7 @@
         <p class="role">Shared</p>
         <div class="formula">$$ \mathrm{EU}(a) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad a^\star = \arg\max_a \mathrm{EU}(a) $$</div>
         <div class="formula">$$ U_L(w) = (w/w_0)^2,\qquad U_N(w) = w/w_0,\qquad U_A(w) = \sqrt{w/w_0} $$</div>
-        <p class="body">Each Utility agent argmaxes the EU functional over {hold, cross bid, cross ask, passive bid, passive ask}. Risk-loving / neutral / averse pick one of $U_L,U_N,U_A$.</p>
+        <p class="body">Each Utility agent argmaxes the EU functional over {hold, buy at best ask, sell at best bid, passive bid, passive ask} in Plan I. In Plans II/III the LLM selects directly from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Risk-loving / neutral / averse pick one of $U_L,U_N,U_A$.</p>
       </div>
 
       <div class="arch-def-card card-ll">
@@ -888,17 +888,18 @@
       </div>
 
       <div class="arch-def-card card-wang">
-        <h4>Plan II · LLM update with utility forms</h4>
+        <h4>Plan II · LLM direct action with utility forms</h4>
         <p class="role">LLM</p>
-        <div class="formula">$$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \supset \{\,U_L(w) = (w/w_0)^2,\; U_N(w) = w/w_0,\; U_A(w) = \sqrt{w/w_0}\,\} $$</div>
-        <p class="body">At every period boundary the engine fires one parallel chat completion per Utility agent. The user prompt includes the explicit risk-utility formula for that agent's type, recent peer claims, and the agent's mark-to-market wealth. The returned valuation becomes next period's prior. Fire-and-forget: a failed call drops silently to Plan I for that agent.</p>
+        <div class="formula">$$ a_i^\star \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \supset \{\,U_L(w) = (w/w_0)^2,\; U_N(w) = w/w_0,\; U_A(w) = \sqrt{w/w_0}\,\} $$</div>
+        <div class="formula">$$ a_i^\star \in \{\text{BUY\_NOW},\,\text{SELL\_NOW},\,\text{BID\_1},\,\text{BID\_3},\,\text{ASK\_1},\,\text{ASK\_3},\,\text{HOLD}\} $$</div>
+        <p class="body">At every period boundary the engine fires one parallel chat completion per Utility agent. The structured prompt includes market rules, the agent's status, decision-making principles, role-specific guidance, and the explicit risk-utility formula for that agent's type. The LLM returns a discrete action from the seven-element set; the engine translates it to an order using the current book state. Fire-and-forget: a failed or invalid action falls back to the Plan I EU evaluation.</p>
       </div>
 
       <div class="arch-def-card card-wang">
-        <h4>Plan III · LLM update with risk label only</h4>
+        <h4>Plan III · LLM direct action with risk label only</h4>
         <p class="role">LLM</p>
-        <div class="formula">$$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \supset \{\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\} $$</div>
-        <p class="body">Identical wiring to Plan II but the prompt omits the closed-form $U_L / U_N / U_A$ expressions and only names the risk-preference category. Isolates the effect of giving the LLM an explicit functional form versus just a label.</p>
+        <div class="formula">$$ a_i^\star \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \supset \{\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\} $$</div>
+        <p class="body">Identical wiring to Plan II but the prompt omits the closed-form $U_L / U_N / U_A$ expressions and only names the risk-preference category. Isolates the effect of giving the LLM an explicit functional form versus just a label. Same seven-action output set.</p>
       </div>
 
       <div class="arch-def-card card-metric">
@@ -934,8 +935,8 @@
         <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td class="term">Plan I</td><td>Algorithmic belief update</td><td>Deterministic baseline — $V_i^{\text{post}} = w\cdot V_i^{\text{prior}} + (1-w)\cdot\overline{\text{msg}}$ with $w = 0.6 + 0.1\,\min(3, k_i)$.</td></tr>
-          <tr><td class="term">Plan II</td><td>LLM update · utility forms</td><td>One chat completion per Utility agent per period. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
-          <tr><td class="term">Plan III</td><td>LLM update · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied.</td></tr>
+          <tr><td class="term">Plan II</td><td>LLM direct action · utility forms</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
+          <tr><td class="term">Plan III</td><td>LLM direct action · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied. Same seven-action output set.</td></tr>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
           <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 6$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
           <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
