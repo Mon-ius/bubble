@@ -557,17 +557,6 @@
     </figcaption>
   </section>
 
-  <section class="panel panel-metrics figure ext-only">
-    <header class="fig-head">
-      <span class="fig-num">Table 1</span>
-      <h2 class="fig-title">Experimental Market-Quality Statistics</h2>
-    </header>
-    <div id="metrics-body"></div>
-    <figcaption class="fig-caption">
-      <p>Quantitative summary in the notation of Dufwenberg, Lindqvist &amp; Moore (2005) and Lopez-Lira (2025). Haessel R² measures fit of the per-period mean price to fundamental value; the two normalized deviations capture total and average mispricing per share outstanding; amplitude is the peak-to-trough excursion of the mean-price residual normalized by the initial fundamental; turnover is the total shares traded divided by shares outstanding. The lower group reports allocative efficiency, aggregate welfare, and the deception statistics unique to the Utility population.</p>
-    </figcaption>
-  </section>
-
   <section class="panel panel-chart figure chart-utility ext-only">
     <header class="fig-head">
       <span class="fig-num">Figure 7</span>
@@ -647,6 +636,17 @@
           <dt><span data-sym="closenessRS"></span></dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
         </dl>
       </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-metrics figure ext-only" id="panel-metrics">
+    <header class="fig-head">
+      <span class="fig-num">Table 1</span>
+      <h2 class="fig-title">Market-Quality Statistics (Current Session)</h2>
+    </header>
+    <div id="metrics-body"></div>
+    <figcaption class="fig-caption">
+      <p>Quantitative summary in the notation of Dufwenberg, Lindqvist &amp; Moore (2005) and Lopez-Lira (2025). Haessel R&sup2; measures fit of the per-period mean price to fundamental value; the two normalized deviations capture total and average mispricing per share outstanding; amplitude is the peak-to-trough excursion of the mean-price residual normalized by the initial fundamental; turnover is the total shares traded divided by shares outstanding. The lower group reports allocative efficiency, aggregate welfare, and the deception statistics unique to the Utility population.</p>
     </figcaption>
   </section>
 
@@ -1157,6 +1157,10 @@
       <div class="plot-desc">
         <div class="plot-icon" style="background:var(--pink);">7</div>
         <div class="plot-info"><h4>Pairwise Trust Matrix</h4><p>Heatmap of $\tau_{r \to s}$ on $[0, 1]$ with the diagonal masked. Warm columns identify agents whose claims the population finds credible.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--fg-2);">T1</div>
+        <div class="plot-info"><h4>Market-Quality Statistics (Table 1)</h4><p>Live session metrics: Haessel $R^2$, normalized price deviations, amplitude, turnover, allocative efficiency, welfare, and deception statistics. Updates every render tick.</p></div>
       </div>
       <div class="plot-desc">
         <div class="plot-icon" style="background:var(--fg-2);">T2</div>

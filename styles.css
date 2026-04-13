@@ -574,8 +574,8 @@ math[display="inline"] { white-space: nowrap; }
 .panel-replay   { grid-column: span 12; }
 
 /* Extended panels (utility experiment mode) */
-.chart-valuation { grid-column: span 8; }
-.panel-metrics   { grid-column: span 4; }
+.chart-valuation { grid-column: span 12; }
+.panel-metrics   { grid-column: span 12; }
 .chart-utility   { grid-column: span 6; }
 .chart-ownership { grid-column: span 6; }
 .chart-messages  { grid-column: span 8; }
@@ -1272,7 +1272,28 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   font-size: 9px;
 }
 .batch-table .batch-label { text-align: left; font-weight: 600; color: var(--accent); }
+.batch-table .batch-metric-name { text-align: left; color: var(--fg-2); }
+.batch-table .batch-metric-name em {
+  font-style: normal;
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 9px;
+  color: var(--fg-3);
+  margin-left: 4px;
+}
+.batch-table .batch-group-label td {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-3);
+  padding-top: 8px;
+  border-bottom: 1px solid var(--bg-3);
+  text-align: left;
+  font-weight: 600;
+}
+.batch-table .batch-group-label:first-child td { padding-top: 4px; }
 .batch-table tbody tr:hover { background: var(--bg-2); }
+.batch-table .ok  { color: var(--green, #22c55e); }
+.batch-table .bad { color: var(--red, #ef4444); }
 
 /* ---------- Constant cards (Paper + Hidden) ---------- */
 /*
@@ -2060,45 +2081,10 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   margin: 0;
 }
 
-/* ---------- Metrics panel ---------- */
-#metrics-body {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  row-gap: 10px;
-  column-gap: 14px;
-  font-family: var(--font-ui);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  padding-top: 4px;
-}
-#metrics-body .metric-row { display: contents; }
-#metrics-body .metric-row span   { color: var(--fg-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 0; }
-#metrics-body .metric-row span em {
-  font-style: normal;
-  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-  font-size: 10px;
-  color: var(--fg-3);
-  margin-left: 4px;
-}
-#metrics-body .metric-row span em math {
-  font-size: 12px;
-}
-#metrics-body .metric-row strong { color: var(--fg-0); text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-#metrics-body .metric-group-label {
-  grid-column: 1 / -1;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--fg-3);
-  padding-top: 4px;
-  border-top: 1px solid var(--bg-3);
-  margin-top: 2px;
-}
-#metrics-body .metric-group-label:first-child {
-  border-top: none;
-  padding-top: 0;
-  margin-top: 0;
-}
+/* ---------- Metrics panel (Table 1) ---------- */
+/* Rendered as a <table class="batch-table"> to match Table 2 styling.
+   Group headers use a spanning row with .batch-group-label. */
+#metrics-body .muted { color: var(--fg-3); font-size: 12px; padding: 8px 0; }
 
 /* ---------- EU candidate table in trace cards ---------- */
 .trace-card .trace-eu {
@@ -2131,8 +2117,9 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .panel-stats { grid-template-columns: repeat(3, 1fr); }
   .chart-price, .chart-timeline, .panel-agents { grid-column: span 6; }
   .panel-book, .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed { grid-column: span 6; }
-  .chart-valuation, .panel-metrics, .chart-utility,
+  .chart-valuation, .chart-utility,
   .chart-ownership, .chart-messages, .chart-trust { grid-column: span 6; }
+  .panel-metrics, .panel-batch { grid-column: span 6; }
   .agents-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {

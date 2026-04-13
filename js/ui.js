@@ -1662,29 +1662,34 @@ const UI = {
 
     const fmt = (x, d = 2) => x == null ? '—' : x.toFixed(d);
     const sym = window.Sym || {};
-    el.innerHTML = `
-      <div class="metric-group-label">Market quality · Dufwenberg, Lindqvist &amp; Moore (2005)</div>
-      <div class="metric-row"><span>Haessel R²&nbsp;&nbsp;<em>1 − Σ(P̄−FV)² / Σ(P̄−P̄̄)²</em></span><strong>${fmt(haessel, 3)}</strong></div>
-      <div class="metric-row"><span>Norm. absolute price deviation&nbsp;&nbsp;<em>Σ|P−FV|·q / Q</em></span><strong>${fmt(normAbsDev, 2)}</strong></div>
-      <div class="metric-row"><span>Norm. average price deviation&nbsp;&nbsp;<em>${sym.normAvgDev || ''}</em></span><strong>${fmt(normAvgDev, 2)}</strong></div>
-      <div class="metric-row"><span>Price amplitude&nbsp;&nbsp;<em>(max−min)(P̄−FV) / FV₁</em></span><strong>${fmt(amplitude, 3)}</strong></div>
-      <div class="metric-row"><span>Turnover&nbsp;&nbsp;<em>Σ q / Q</em></span><strong>${fmt(turnover, 3)}</strong></div>
-      <div class="metric-row"><span>P / FV ratio&nbsp;&nbsp;<em>${sym.rhoT || ''} &nbsp;(Lopez-Lira 2025)</em></span><strong>${fmt(rho, 3)}</strong></div>
+    const row = (name, formula, val) =>
+      `<tr><td class="batch-metric-name">${name}${formula ? '<em>' + formula + '</em>' : ''}</td><td>${val}</td></tr>`;
+    const grp = label =>
+      `<tr class="batch-group-label"><td colspan="2">${label}</td></tr>`;
 
-      <div class="metric-group-label">Utility-agent welfare &amp; deception</div>
-      <div class="metric-row"><span>Avg subjective V̂&nbsp;&nbsp;<em>${sym.avgVbar || ''}</em></span><strong>${fmt(avgV)}</strong></div>
-      <div class="metric-row"><span>Allocative efficiency&nbsp;&nbsp;<em>${sym.efficiencyEq || ''}</em></span><strong>${fmt(efficiency, 3)}</strong></div>
-      <div class="metric-row"><span>Total welfare&nbsp;&nbsp;<em>${sym.totalWelfareEq || ''}</em></span><strong>${fmt(totalWelfare, 3)}</strong></div>
-      <div class="metric-row"><span>|P − ⟨V̂⟩|</span><strong>${fmt(pDev)}</strong></div>
-      <div class="metric-row"><span>Mean lie magnitude&nbsp;&nbsp;<em>⟨${sym.lieGap || ''}⟩</em></span><strong>${fmt(deceptionMag)}</strong></div>
-      <div class="metric-row"><span>Deceptive / total msgs</span><strong>${nDeceptive} / ${msgs.length}</strong></div>
+    el.innerHTML = `<table class="batch-table"><tbody>
+      ${grp('Market quality &middot; Dufwenberg, Lindqvist &amp; Moore (2005)')}
+      ${row('Haessel R&sup2;', '1 &minus; &Sigma;(P&#772;&minus;FV)&sup2; / &Sigma;(P&#772;&minus;P&#772;&#772;)&sup2;', fmt(haessel, 3))}
+      ${row('Norm. absolute price deviation', '&Sigma;|P&minus;FV|&middot;q / Q', fmt(normAbsDev, 2))}
+      ${row('Norm. average price deviation', sym.normAvgDev || '', fmt(normAvgDev, 2))}
+      ${row('Price amplitude', '(max&minus;min)(P&#772;&minus;FV) / FV&#8321;', fmt(amplitude, 3))}
+      ${row('Turnover', '&Sigma; q / Q', fmt(turnover, 3))}
+      ${row('P / FV ratio', (sym.rhoT || '') + ' (Lopez-Lira 2025)', fmt(rho, 3))}
 
-      <div class="metric-group-label">Psychological allocation · AIPE</div>
-      <div class="metric-row"><span>Top holder vs highest V̂</span><strong class="${psychMatch === true ? 'ok' : psychMatch === false ? 'bad' : ''}">${psychMatch == null ? '—' : psychMatch ? 'match' : 'miss'}</strong></div>
-      <div class="metric-row"><span>Top-holder id · V̂</span><strong>${psychTopHolderId == null ? '—' : 'A' + psychTopHolderId + ' · ' + fmt(psychTopHolderV)}</strong></div>
-      <div class="metric-row"><span>Max-V̂ id · V̂*</span><strong>${psychMaxVid == null ? '—' : 'A' + psychMaxVid + ' · ' + fmt(psychMaxV)}</strong></div>
-      <div class="metric-row"><span>Valuation gap&nbsp;&nbsp;<em>(V̂* − V̂ₕ) / V̂*</em></span><strong>${fmt(psychGap, 3)}</strong></div>
-    `;
+      ${grp('Utility-agent welfare &amp; deception')}
+      ${row('Avg subjective V&#770;', sym.avgVbar || '', fmt(avgV))}
+      ${row('Allocative efficiency', sym.efficiencyEq || '', fmt(efficiency, 3))}
+      ${row('Total welfare', sym.totalWelfareEq || '', fmt(totalWelfare, 3))}
+      ${row('|P &minus; &langle;V&#770;&rangle;|', '', fmt(pDev))}
+      ${row('Mean lie magnitude', '&langle;' + (sym.lieGap || '') + '&rangle;', fmt(deceptionMag))}
+      ${row('Deceptive / total msgs', '', nDeceptive + ' / ' + msgs.length)}
+
+      ${grp('Psychological allocation &middot; AIPE')}
+      ${row('Top holder vs highest V&#770;', '', '<span class="' + (psychMatch === true ? 'ok' : psychMatch === false ? 'bad' : '') + '">' + (psychMatch == null ? '—' : psychMatch ? 'match' : 'miss') + '</span>')}
+      ${row('Top-holder id &middot; V&#770;', '', psychTopHolderId == null ? '—' : 'A' + psychTopHolderId + ' &middot; ' + fmt(psychTopHolderV))}
+      ${row('Max-V&#770; id &middot; V&#770;*', '', psychMaxVid == null ? '—' : 'A' + psychMaxVid + ' &middot; ' + fmt(psychMaxV))}
+      ${row('Valuation gap', '(V&#770;* &minus; V&#770;&#8341;) / V&#770;*', fmt(psychGap, 3))}
+    </tbody></table>`;
   },
 
   /* -------- Trace inspector -------- */
