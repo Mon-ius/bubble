@@ -437,7 +437,22 @@ const UI = {
           </div>
         </div>`;
     }).join('');
+
+    // Preserve scroll position of flipped card backs across rebuild.
+    const scrollMap = {};
+    this.els.agentsGrid.querySelectorAll('.agent-card-wrap.flipped').forEach(wrap => {
+      const id = wrap.dataset.agentId;
+      const back = wrap.querySelector('.card-back');
+      if (back && back.scrollTop) scrollMap[id] = back.scrollTop;
+    });
+
     this.els.agentsGrid.innerHTML = html;
+
+    // Restore scroll positions.
+    for (const [id, top] of Object.entries(scrollMap)) {
+      const wrap = this.els.agentsGrid.querySelector(`.agent-card-wrap[data-agent-id="${id}"] .card-back`);
+      if (wrap) wrap.scrollTop = top;
+    }
 
     // Flip-card click handlers — persist state in _flipped so it
     // survives the per-frame innerHTML rebuild.
