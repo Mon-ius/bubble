@@ -108,15 +108,20 @@
               </label>
             </div>
           </div>
-          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. T2 (R4-⅔) replaces 2 agents in round 4; T4 (R4-⅓) replaces 4. One click of Start runs all 10 sessions.">
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="2" checked>
-              <span><strong>First T2</strong> · R4-&#8532;</span>
-            </label>
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="4">
-              <span><strong>First T4</strong> · R4-&#8531;</span>
-            </label>
+          <div class="param-row">
+            <div class="param-head" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. T2 (R4-⅔) replaces 2 agents in round 4; T4 (R4-⅓) replaces 4. One click of Start runs all 10 sessions.">
+              <label>DLM Treatment</label>
+              <div class="treatment-switch" role="group">
+                <label class="treatment-btn">
+                  <input type="radio" name="dlm-treatment" value="2" checked>
+                  <span>First T2 · R4-&#8532;</span>
+                </label>
+                <label class="treatment-btn">
+                  <input type="radio" name="dlm-treatment" value="4">
+                  <span>First T4 · R4-&#8531;</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </details>
