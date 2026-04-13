@@ -816,7 +816,7 @@ const App = {
     // stage: 6 DLMTraders, 3 type A + 3 type B, paper-exact endowments.
     if (!this.agentSpecs || this.agentSpecs[0]?.type !== 'dlm') {
       const sampleRng = makeRNG((this.seed ^ 0xA5A5A5A5) >>> 0);
-      this.agentSpecs = dlmSampleAgents(sampleRng);
+      this.agentSpecs = dlmSampleAgents(sampleRng, { riskMix: this.riskMix });
     }
     this.agents = buildAgentsFromSpecs(this.agentSpecs);
     this.market = new Market(this.config);

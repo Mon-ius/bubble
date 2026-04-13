@@ -336,10 +336,10 @@ const AI = {
   async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables) {
     if (!aiCfg || !aiCfg.apiKey) return {};
     if (plan !== 'II' && plan !== 'III') return {};
-    const utilityAgents = Object.values(agents).filter(
-      a => a && (a.type === 'utility' || a.constructor?.name === 'UtilityAgent'),
+    const targetAgents = Object.values(agents).filter(
+      a => a && (a.type === 'utility' || a.type === 'dlm'),
     );
-    if (!utilityAgents.length) return {};
+    if (!targetAgents.length) return {};
 
     const periods      = config.periods;
     const periodNow    = market.period;
@@ -549,8 +549,11 @@ const AI = {
       return lines.join('\n');
     };
 
-    const tasks = utilityAgents.map(async (a) => {
+    const tasks = targetAgents.map(async (a) => {
       const userPrompt = promptFor(a);
+      // Ensure initialWealth is set for the LLM prompt (DLMTraders
+      // don't track it natively like UtilityAgents do).
+      if (a.initialWealth == null) a.initialWealth = a.cash + a.inventory * fvNow;
       a.lastLLMPrompt = { system, user: userPrompt, plan, ts: Date.now() };
       try {
         const raw = await this.call(aiCfg, system, userPrompt);

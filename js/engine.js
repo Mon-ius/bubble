@@ -456,7 +456,7 @@ class Engine {
       const prev = market.period;
       for (const id of Object.keys(agents)) {
         const a = agents[id];
-        if (!a || a.type !== 'utility') continue;
+        if (!a || (a.type !== 'utility' && a.type !== 'dlm')) continue;
         const msgs = bus.byPeriod(prev, market.round) || [];
         a.receivedMsgs = msgs.filter(m => m.senderId !== a.id);
       }
