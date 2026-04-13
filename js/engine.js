@@ -219,12 +219,12 @@ class Engine {
           const a = this.agents[id];
           a.roundsPlayed = (a.roundsPlayed || 0) + 1;
         }
-        // Strict-DLM round-3 → round-4 transition fires the
-        // treatment-controlled replacement step BEFORE the round-4
-        // reset rewinds endowments, so the new fresh agents take
-        // their replacement endowments and the surviving veterans
-        // start round 4 from their original spec.
-        if (m.round === 3 && this._isStrictDLM()) {
+        // Round-3 → round-4 transition: the treatment-controlled
+        // replacement step fires BEFORE the round-4 reset rewinds
+        // endowments, so the new fresh agents take their replacement
+        // endowments and the surviving veterans start round 4 from
+        // their original spec.
+        if (m.round === 3) {
           this._round4Replacement();
         }
         this._resetRound();
@@ -239,11 +239,6 @@ class Engine {
         this._captureRoundFinalCash(m.round);
       }
     }
-  }
-
-  /** True if the engine is running a strict-DLM-mode session. */
-  _isStrictDLM() {
-    return !!(this.ctx && this.ctx.strictDLM);
   }
 
   /**
@@ -263,35 +258,18 @@ class Engine {
   }
 
   /**
-   * Strict-DLM round-3 → round-4 replacement step.
+   * Round-3 → round-4 replacement step (DLM 2005 §I, p. 1733).
    *
-   * DLM 2005 §I, p. 1733: "In the fourth round, depending on
-   * treatment, two or four experienced subjects who had participated
-   * in the first three rounds were randomly selected, removed, and
-   * replaced by the same number of inexperienced subjects."
+   * At the round 3→4 boundary the engine randomly selects
+   * `treatmentSize` experienced agents, removes them, and splices in
+   * the same number of fresh agents (roundsPlayed = 0,
+   * replacementFresh = true). Treatment sizes:
+   *   T2 (R4-⅔) — 2 replaced, 4 veterans remain.
+   *   T4 (R4-⅓) — 4 replaced, 2 veterans remain.
    *
-   * The paper labels the two conditions by the fraction of
-   * experienced subjects remaining in round 4 (Table 2, p. 1735):
-   *   - R4-⅔ (two-thirds experienced) — two fresh subjects replace
-   *     two veterans, four veterans survive.  Shorthand here: T2.
-   *   - R4-⅓ (one-third experienced)  — four fresh subjects replace
-   *     four veterans, two veterans survive.  Shorthand here: T4.
-   *
-   * The simulator implements this by:
-   *   1. selecting `treatmentSize` agents with roundsPlayed >= 3
-   *      (every surviving original DLMTrader has played all three
-   *      preceding rounds), uniformly at random,
-   *   2. removing those agents from this.agents and from
-   *      ctx.agentSpecs (so the round-end reset cannot rewind them
-   *      back into existence),
-   *   3. drawing the same number of fresh DLMTrader specs from
-   *      dlmSampleReplacementAgent, instantiating them with
-   *      roundsPlayed = 0 and replacementFresh = true, and inserting
-   *      them in the vacated id slots.
-   *
-   * The fresh agents inherit the *removed* agent's id so the rest of
-   * the engine — order book, trace logs, snapshots — continues to key
-   * agents by a stable integer.
+   * Replacement agents are cloned from the removed agent's spec and
+   * re-instantiated via buildAgentsFromSpecs so they match the
+   * current population type (UtilityAgent or DLMTrader).
    */
   _round4Replacement() {
     const treatmentSize = (this.ctx && this.ctx.treatmentSize) | 0;

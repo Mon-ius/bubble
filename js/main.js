@@ -853,9 +853,7 @@ const App = {
       // Populated asynchronously by the engine's comms round when
       // plan ∈ {II, III}, consumed next tick by decide().
       llmActions:    {},
-      // DLM round-4 replacement — always enabled so the 4-round
-      // session structure fires the treatment-controlled swap.
-      strictDLM:     true,
+      // Round-4 replacement: 2 (T2/R4-⅔) or 4 (T4/R4-⅓).
       treatmentSize: this.treatmentSize,
     };
     this.engine = new Engine(this.market, this.agents, this.logger, this.config, this._rng, this.ctx);

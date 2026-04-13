@@ -568,15 +568,6 @@ class UtilityAgent extends Agent {
     this.reportedValuation   = null;
     this.receivedMsgs        = [];
 
-    // AIPE (AI-Agent Prior Elicitation) psychological anchor.
-    // Populated by App.start() from AI.getPsychAnchors when
-    // paradigm === 'wang' (the internal code key is retained for
-    // stability) and an API key is present; null means "fall back
-    // to the deterministic Lopez-Lira prior". Consumed exactly once
-    // on the first updateBelief() tick, then cleared so subsequent
-    // ticks return to the normal prior + message-update flow.
-    this.psychAnchor = null;
-
     // Frozen baseline — used to normalize utility so U(w0) = 1. The
     // initial price reference is FV at the top of period 1 of round 1
     // (= dividendMean × periods, usually 100¢), which matches the
@@ -1192,90 +1183,6 @@ function sampleAgents(mix, rng, options = {}) {
     id++;
   }
   return specs;
-}
-
-/* =====================================================================
-   dlmSampleAgents — strict DLM 2005 sampling stage.
-
-   Pins exactly six DLMTrader specs and assigns the two discrete
-   endowment types from DLM 2005 §I (p. 1733): "before a market
-   opened, half of the traders each started with a cash endowment
-   of 200 cents and six assets, while each of the other traders
-   started with 600 cents and two assets". Buy-and-hold value is
-   identical at 1000¢ for both types, exactly as in the paper. The
-   half-and-half split is enforced by construction; the random
-   shuffle controls *which* slot draws which type, not the count.
-   ===================================================================== */
-
-const DLM_ENDOWMENT_TYPES = [
-  { cash: 200, inventory: 6 },
-  { cash: 600, inventory: 2 },
-];
-const DLM_N = 6;
-
-function dlmSampleAgents(rng) {
-  const names = pickNames(DLM_N, rng);
-  // Assign three slots type A (200,6) and three slots type B (600,2)
-  // by Fisher-Yates shuffling a deterministic [A,A,A,B,B,B] sequence.
-  const types = [0, 0, 0, 1, 1, 1];
-  for (let i = types.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [types[i], types[j]] = [types[j], types[i]];
-  }
-  const specs = [];
-  for (let i = 0; i < DLM_N; i++) {
-    const e = DLM_ENDOWMENT_TYPES[types[i]];
-    specs.push({
-      id:        i + 1,
-      slot:      i + 1,
-      type:      'dlm',
-      typeLabel: `D${i + 1}`,
-      name:      names[i],
-      cash:      e.cash,
-      inventory: e.inventory,
-      // Both endowment types and the DLMTrader behaviour itself are
-      // round-end-reset to these values; recorded here so the engine
-      // can rewind cash + inventory between rounds.
-      endowmentType: types[i] === 0 ? 'A' : 'B',
-    });
-  }
-  return specs;
-}
-
-/**
- * dlmSampleReplacementAgent — draw a single fresh DLMTrader spec for
- * the round-4 replacement step. Used by Engine when one of the two
- * treatments (T2 = DLM's R4-⅔, two fresh; T4 = DLM's R4-⅓, four
- * fresh; Table 2, p. 1735) swaps experienced subjects out of the
- * round-4 market and replaces them with the same number of fresh,
- * never-before-played subjects. Endowment is drawn from the same
- * two-type pool.
- *
- * The `excludeNames` set lets the engine pass in names already used
- * by surviving agents so a fresh draw never collides with an existing
- * trader's display name (cosmetic only — keys are always the id).
- */
-function dlmSampleReplacementAgent(id, rng, excludeNames = null) {
-  const pool = AGENT_NAMES.filter(n => !excludeNames || !excludeNames.has(n));
-  // Fisher-Yates on the remaining pool to pick a unique name.
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const name = pool[0] || pickNames(1, rng)[0];
-  const t = rng() < 0.5 ? 0 : 1;
-  const e = DLM_ENDOWMENT_TYPES[t];
-  return {
-    id,
-    slot:          id,
-    type:          'dlm',
-    typeLabel:     `D${id}*`,
-    name,
-    cash:          e.cash,
-    inventory:     e.inventory,
-    endowmentType: t === 0 ? 'A' : 'B',
-    replacement:   true,
-  };
 }
 
 /**
