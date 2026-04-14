@@ -215,6 +215,8 @@ const App = {
     document.getElementById('btn-start').addEventListener('click', () => this.start());
     document.getElementById('btn-pause').addEventListener('click', () => this.pause());
     document.getElementById('btn-reset').addEventListener('click', () => this.reset());
+    const exportBtn = document.getElementById('btn-export');
+    if (exportBtn) exportBtn.addEventListener('click', () => this.exportBatchJSON());
     const themeBtn = document.getElementById('btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', () => this._cycleTheme());
 
@@ -929,7 +931,10 @@ const App = {
     const firstTreatment  = this.treatmentSize;
     const secondTreatment = firstTreatment === 2 ? 4 : 2;
     this.batchResults = [];
+    this._exportSessions = [];
     this._batchRunning = true;
+    const btnExport = document.getElementById('btn-export');
+    if (btnExport) btnExport.disabled = true;
 
     const runSession = (s) => {
       if (s >= SESSIONS) {
@@ -937,6 +942,7 @@ const App = {
         this.currentSession = 0;
         this.treatmentSize = firstTreatment;
         console.table(this.batchResults);
+        if (btnExport) btnExport.disabled = false;
         this.requestRender();
         return;
       }
@@ -944,6 +950,9 @@ const App = {
       this.treatmentSize = treatment;
       this.currentSession = s + 1;
       this.reset();
+      // Snapshot the original agent specs before any round-4 replacement
+      // mutates them — the export needs the pre-replacement population.
+      this._sessionOriginalSpecs = this.agentSpecs.map(sp => ({ ...sp }));
       // Patch the ctx session counter after rebuild() so the engine
       // snapshots and the live view carry the right session number.
       this.ctx.currentSession = this.currentSession;
@@ -984,6 +993,8 @@ const App = {
 
       this.engine.onEnd = () => {
         this.requestRender();
+        // Snapshot the completed session before chaining resets state.
+        this._exportSessions.push(this._snapshotSession());
         // Chain to next session.
         setTimeout(() => runSession(s + 1), 50);
       };
@@ -991,6 +1002,131 @@ const App = {
     };
 
     runSession(0);
+  },
+
+  /**
+   * Capture the current session's full state into a plain object for
+   * the JSON export. Called from engine.onEnd before the next session
+   * chains and reset() clears the market / logger / agents.
+   */
+  _snapshotSession() {
+    const sessionNum = this.currentSession;
+    const R = this.config.roundsPerSession;
+
+    // Per-round breakdown — metrics + replacement info + final cash.
+    const rounds = [];
+    const replEvt = this.logger.events.find(e => e.type === 'round_4_replacement');
+    for (let r = 1; r <= R; r++) {
+      const label = `R${r}_S${sessionNum}`;
+      rounds.push({
+        round: r,
+        label,
+        metrics:        this.batchResults.find(b => b.label === label) || null,
+        replacement:    r === 4 && replEvt
+          ? { treatmentSize: replEvt.treatmentSize, replaced: replEvt.replaced }
+          : null,
+        roundFinalCash: this.logger.roundFinalCash[r - 1] || null,
+      });
+    }
+
+    // Agent final states at session end.
+    const agents = Object.values(this.agents).map(a => ({
+      id:               a.id,
+      name:             a.displayName,
+      type:             a.type,
+      typeLabel:        a.typeLabel || null,
+      riskPref:         a.riskPref || null,
+      biasMode:         a.biasMode || null,
+      deceptionMode:    a.deceptionMode || null,
+      beliefMode:       a.beliefMode || null,
+      roundsPlayed:     a.roundsPlayed,
+      replacementFresh: !!a.replacementFresh,
+      cash:             a.cash,
+      inventory:        a.inventory,
+      initialCash:      a.initialCash,
+      initialInventory: a.initialInventory,
+    }));
+
+    return {
+      session:    sessionNum,
+      treatment:  this.treatmentSize === 2 ? 'T2' : 'T4',
+      plan:       this.plan,
+      seed:       this.seed,
+      agentSpecs: (this._sessionOriginalSpecs || this.agentSpecs).map(s => ({ ...s })),
+      agents,
+      rounds,
+      trades: this.market.trades.map(t => ({
+        id:       t.id,
+        buyerId:  t.buyerId,
+        sellerId: t.sellerId,
+        price:    t.price,
+        quantity: t.quantity,
+        tick:     t.timestamp,
+        period:   t.period,
+        round:    t.round,
+      })),
+      priceHistory: this.market.priceHistory.map(p => ({
+        tick:   p.tick,
+        price:  p.price,
+        fv:     p.fv,
+        bid:    p.bid,
+        ask:    p.ask,
+        period: p.period,
+        round:  p.round,
+      })),
+      dividends: this.logger.events
+        .filter(e => e.type === 'dividend')
+        .map(e => ({ period: e.period, round: e.round, value: e.value, tick: e.tick })),
+      messages: this.logger.messages.map(m => ({
+        senderId:         m.senderId,
+        senderName:       m.senderName,
+        round:            m.round,
+        period:           m.period,
+        tick:             m.tick,
+        trueValuation:    m.trueValuation,
+        claimedValuation: m.claimedValuation,
+        signal:           m.signal,
+        deceptionMode:    m.deceptionMode,
+        deceptive:        !!m.deceptive,
+      })),
+      llmCalls: this.logger.llmCalls.slice(),
+    };
+  },
+
+  /**
+   * Build the full batch export object and trigger a browser download.
+   * The file contains every session's trades, prices, dividends,
+   * messages, agent states, and — for Plans II/III — the complete
+   * LLM prompt/response audit trail.
+   */
+  exportBatchJSON() {
+    if (!this._exportSessions || !this._exportSessions.length) return;
+    const data = {
+      meta: {
+        exportedAt:     new Date().toISOString(),
+        plan:           this.plan,
+        treatmentOrder: [
+          this._exportSessions[0].treatment,
+          this._exportSessions.length > 5 ? this._exportSessions[5].treatment : null,
+        ],
+        config:     { ...this.config },
+        tunables:   { ...this.tunables },
+        population: { ...this.mix },
+        riskMix:    { ...this.riskMix },
+      },
+      sessions:     this._exportSessions,
+      batchSummary: this.batchResults,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `batch_plan${this.plan}_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 
   /**

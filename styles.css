@@ -329,6 +329,7 @@ math[display="inline"] { white-space: nowrap; }
 }
 .controls button:hover { background: var(--bg-3); border-color: var(--accent); }
 .controls button:active { transform: translateY(1px); }
+.controls button:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 .controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .controls button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .controls .theme-btn {
@@ -2185,6 +2186,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   #btn-start::before  { content: '\25B6'; }
   #btn-pause::before  { content: '\23F8'; }
   #btn-reset::before  { content: '\21BA'; }
+  #btn-export::before { content: '\2B07'; }
   .controls .theme-btn { width: 32px; height: 32px; font-size: 0; border-radius: 8px; }
   .controls .theme-btn::before { content: '\25D1'; font-size: 14px; }
 

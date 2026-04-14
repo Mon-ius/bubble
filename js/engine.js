@@ -338,7 +338,8 @@ class Engine {
       fresh.replacementFresh = true;
       fresh.roundsPlayed     = 0;
       this.agents[oldId]     = fresh;
-      replacements.push({ id: oldId, name: freshName, type: freshSpec.type });
+      const oldName = oldSpec ? oldSpec.name : null;
+      replacements.push({ id: oldId, oldName, newName: freshName, type: freshSpec.type });
     }
     this.logger.logEvent({
       tick:           this.market.tick,
@@ -457,12 +458,34 @@ class Engine {
         a.receivedMsgs = msgs.filter(m => m.senderId !== a.id);
       }
     }
+    // Capture tick coordinates before the async call — the market may
+    // advance by the time the LLM responds.
+    const callTick   = market.tick;
+    const callPeriod = market.period;
+    const callRound  = market.round;
+    const logger     = this.logger;
     Promise.resolve().then(async () => {
       try {
         const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables);
         if (!results) return;
         for (const k of Object.keys(results)) {
           ctx.llmActions[k] = results[k];
+        }
+        // Log every LLM call for the export audit trail.
+        for (const id of Object.keys(agents)) {
+          const a = agents[id];
+          if (!a || a.type !== 'utility' || !a.lastLLMPrompt) continue;
+          logger.logLLMCall({
+            tick:         callTick,
+            period:       callPeriod,
+            round:        callRound,
+            agentId:      a.id,
+            agentName:    a.displayName,
+            prompt:       { system: a.lastLLMPrompt.system, user: a.lastLLMPrompt.user },
+            response:     a.lastLLMResponse || '',
+            parsedAction: results[a.id] ? results[a.id].action : null,
+            parsedReason: results[a.id] ? results[a.id].reason : null,
+          });
         }
       } catch (err) {
         console.warn('[engine._schedulePlanLLM]', err && err.message || err);

@@ -52,6 +52,10 @@ class Logger {
     // {agentId: cash} map. Session payoff is the sum across rounds
     // plus the $5 (= 500¢) show-up fee, exactly as in DLM 2005.
     this.roundFinalCash      = [];
+    // LLM prompt/response audit trail for Plans II/III. Each entry
+    // records the system prompt, user prompt, raw response, and parsed
+    // action for one agent at one period boundary. Empty for Plan I.
+    this.llmCalls            = [];
   }
 
   logTrace(trace)         { this.traces.push(trace); }
@@ -63,6 +67,7 @@ class Logger {
   logBeliefChange(entry)  { this.beliefChanges.push(entry); }
   logTrust(entry)         { this.trustHistory.push(entry); }
   logRoundFinalCash(round, byAgent) { this.roundFinalCash[round - 1] = byAgent; }
+  logLLMCall(entry)       { this.llmCalls.push(entry); }
   snapshot(s)             { this.snapshots[s.tick] = s; }
 
   clear() {
@@ -76,6 +81,7 @@ class Logger {
     this.beliefChanges       = [];
     this.trustHistory        = [];
     this.roundFinalCash      = [];
+    this.llmCalls            = [];
   }
 
   /** Nearest snapshot at or before the requested tick. */
