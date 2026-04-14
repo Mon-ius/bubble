@@ -188,17 +188,17 @@ const Sym = {
     _sub(_mi('m'), _imsgT), _mo('='),
     _mo('('), _mi('signal'), _mo(','), _sub(_tilde(_mi('V')), _it), _mo(')'),
   )),
-  trustEq:   _wrap(_row(                                                      // T_{r→s} ← (1−α)·T_{r→s} + α·closeness_{r,s}
+  trustEq:   _wrap(_row(                                                      // T_{r→s} ← (1−λ)·T_{r→s} + λ·closeness_{r,s}
     _sub(_mi('T'), _rarrs), _mo('←'),
-    _mo('('), _mn('1'), _mo('−'), _mi('α'), _mo(')'), _mo('·'),
+    _mo('('), _mn('1'), _mo('−'), _mi('λ'), _mo(')'), _mo('·'),
     _sub(_mi('T'), _rarrs), _mo('+'),
-    _mi('α'), _mo('·'),
+    _mi('λ'), _mo('·'),
     _sub(_mi('closeness'), _row(_mi('r'), _mo(','), _mi('s'))),
   )),
 
   /* Figure-specific symbols that previously lived as raw text */
   qOrder:      _wrap(_mi('q')),                                               // q
-  alphaRate:   _wrap(_mi('α')),                                               // α
+  lambdaRate:  _wrap(_mi('λ')),                                               // λ
   closenessRS: _wrap(_sub(_mi('closeness'), _row(_mi('r'), _mo(','), _mi('s')))), // closeness_{r,s}
   heatBin:     _wrap(_row(                                                    // H(P, t)
     _mi('H'), _mo('('), _mi('P'), _mo(','), _mi('t'), _mo(')'),

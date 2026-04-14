@@ -93,14 +93,14 @@
             <input type="range" id="p-count-t" min="0" max="5" step="1" value="0">
           </div>
           <div class="param-row dlm-treatment-row">
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV × (1 + biasMode × biasAmount). biasMode ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and biasAmount defaults to 0.15. The tilt is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF the bias term is zeroed and every agent starts from the true FV.">
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
               <span>Prior Bias</span>
               <label class="slide-toggle" for="p-applyBias">
                 <input type="checkbox" id="p-applyBias" checked>
                 <span class="slide-track"><span class="slide-thumb"></span></span>
               </label>
             </label>
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV × (1 + ε) where ε ~ U[−valuationNoise, +valuationNoise] (default ±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV_t · (1 + ε) where ε ~ U[−n, +n], n = 0.03 (±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
               <span>Prior Noise</span>
               <label class="slide-toggle" for="p-applyNoise">
                 <input type="checkbox" id="p-applyNoise" checked>
@@ -332,22 +332,22 @@
       <div class="const-item ext-only">
         <dt>naive prior weight <span class="const-val">= 0.60</span></dt>
         <dd class="const-label">Belief blend for naive Utility agents</dd>
-        <dd class="const-note">Weight on the agent's own prior when blending incoming peer messages: posterior = 0.60 × prior + 0.40 × mean(messages). Not specified by DLM 2005, which studies human subjects and has no belief-update model. Chosen so naive agents move noticeably toward peers without collapsing onto them.<span class="const-src">agents.js — UTILITY_DEFAULTS.naivePriorWeight</span></dd>
+        <dd class="const-note">Weight on the agent's own prior when blending incoming peer messages: $V_i^{\text{post}} = 0.60 \cdot V_i^{\text{prior}} + 0.40 \cdot \bar{m}$, i.e. $w = 0.60$ in the Plan I formula (see Architecture Figure 3). Not specified by DLM 2005, which studies human subjects and has no belief-update model. Chosen so naive agents move noticeably toward peers without collapsing onto them.<span class="const-src">agents.js — UTILITY_DEFAULTS.naivePriorWeight</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>skeptical prior weight <span class="const-val">= 0.90</span></dt>
         <dd class="const-label">Belief blend for skeptical Utility agents</dd>
-        <dd class="const-note">Same convex combination as the naive weight but 90% prior + 10% peer average, so a skeptical agent hears messages but is barely moved by them. Not in DLM 2005; introduced so the strategy cube contains a "listen but don't trust" archetype.<span class="const-src">agents.js — UTILITY_DEFAULTS.skepticalPriorWeight</span></dd>
+        <dd class="const-note">Same convex combination as the naive weight but $w = 0.90$: $V_i^{\text{post}} = 0.90 \cdot V_i^{\text{prior}} + 0.10 \cdot \bar{m}$, so a skeptical agent hears messages but is barely moved by them. Not in DLM 2005; introduced so the strategy cube contains a "listen but don't trust" archetype.<span class="const-src">agents.js — UTILITY_DEFAULTS.skepticalPriorWeight</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>adaptive weight cap <span class="const-val">= 0.50</span></dt>
         <dd class="const-label">Max one-period belief shift toward peers</dd>
-        <dd class="const-note">Upper bound on the fraction of belief an adaptive agent can shift toward the trust-weighted message mean in a single period: even with fully-trusted senders the new belief is at most 50% messages + 50% prior. Not in DLM 2005; guards against runaway over-update from a single high-trust period.<span class="const-src">agents.js — UTILITY_DEFAULTS.adaptiveWeightCap</span></dd>
+        <dd class="const-note">Upper bound on the fraction of belief an adaptive agent can shift toward the trust-weighted message mean $\bar{m}$ in a single period: even with fully-trusted senders, $w \geq 0.50$ so $V_i^{\text{post}}$ is at most 50% $\bar{m}$ + 50% $V_i^{\text{prior}}$. Not in DLM 2005; guards against runaway over-update from a single high-trust period.<span class="const-src">agents.js — UTILITY_DEFAULTS.adaptiveWeightCap</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>valuation noise <span class="const-val">= ±3%</span></dt>
         <dd class="const-label">Per-tick uniform noise on the Utility-agent prior</dd>
-        <dd class="const-note">Before any bias or message update, each Utility agent draws prior = FV × (1 + bias + U(−0.03, +0.03)). Not in DLM 2005; added so trade decisions do not degenerate to lockstep when every biased/unbiased agent starts each tick from the identical prior.<span class="const-src">agents.js — UTILITY_DEFAULTS.valuationNoise</span></dd>
+        <dd class="const-note">Before any bias or message update, each Utility agent draws $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$, $\varepsilon \sim \mathcal{U}[-n,\, n]$, $n = 0.03$ (see Architecture Figure 2). Not in DLM 2005; added so trade decisions do not degenerate to lockstep when every biased/unbiased agent starts each tick from the identical prior.<span class="const-src">agents.js — UTILITY_DEFAULTS.valuationNoise</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>trust λ <span class="const-val">= 0.30</span></dt>
@@ -356,13 +356,13 @@
       </div>
       <div class="const-item ext-only">
         <dt>passive fill probability <span class="const-val">= 0.30</span></dt>
-        <dd class="const-label">pFill heuristic for scoring non-crossing quotes</dd>
-        <dd class="const-note">Expected-utility score for a passive quote is EU = pFill × U(filled) + (1 − pFill) × U(not filled) with pFill pinned at 0.30. A full model would estimate pFill from order-book state; this is a deliberate constant placeholder and is not proposed by DLM 2005.<span class="const-src">agents.js — UtilityAgent scoring loop</span></dd>
+        <dd class="const-label">$p_{\text{fill}}$ heuristic for scoring non-crossing quotes</dd>
+        <dd class="const-note">Expected-utility score for a passive quote is $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$ with $p_{\text{fill}} = 0.30$ (see Architecture Figure 2). A full model would estimate $p_{\text{fill}}$ from order-book state; this is a deliberate constant placeholder and is not proposed by DLM 2005.<span class="const-src">agents.js — UtilityAgent scoring loop</span></dd>
       </div>
       <div class="const-item ext-only">
         <dt>bias magnitude <span class="const-val">= 15%</span></dt>
         <dd class="const-label">Persistent over/under-valuation of biased Utility agents</dd>
-        <dd class="const-note">Applied as prior = FV × (1 + biasAmount) with sign set by the per-slot bias mode (high/low). Drives the biased U-agent slots in the default strategy cube (U2, U4, U5). Not in DLM 2005; chosen large enough to perturb the market without dominating the risk-preference split.<span class="const-src">agents.js — UTILITY_DEFAULTS.biasAmount</span></dd>
+        <dd class="const-note">Applied as $b_i = \delta_i \cdot \beta$ with $\beta = 0.15$; sign set by the per-slot bias direction $\delta_i \in \{-1, 0, +1\}$ (see Architecture Figure 2). Drives the biased U-agent slots in the default strategy cube (U2, U4, U5). Not in DLM 2005; chosen large enough to perturb the market without dominating the risk-preference split.<span class="const-src">agents.js — UTILITY_DEFAULTS.biasAmount</span></dd>
       </div>
           </dl>
         </div>
@@ -399,11 +399,11 @@
         <dt>P&amp;L <span data-sym="pnl"></span></dt>
         <dd>running change in total wealth relative to the initial endowment <span data-sym="wealth0"></span>, reported in experimental cents. Positive values render in green, losses in red. Aggregated across all agents, P&amp;L equals the cumulative dividends paid so the market is zero-sum up to the dividend stream, as in the Smith–Suchanek–Williams design replicated by DLM.</dd>
         <dt>Subj V <span data-sym="subjV"></span></dt>
-        <dd>the Utility agent's private subjective valuation per share, updated each tick from its prior, persistent bias, per-tick noise, and trust-weighted peer messages. Corresponds to the <em>valuation</em> field in Lopez-Lira's (2025) TradeDecisionSchema.</dd>
+        <dd>the Utility agent's private subjective valuation per share — the posterior $V_i^{\text{post}}$ from the active plan (Architecture Figure 3), updated each tick from $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$ via the Plan I/II/III belief-revision protocol. Corresponds to the <em>valuation</em> field in Lopez-Lira's (2025) TradeDecisionSchema.</dd>
         <dt>Report <span data-sym="reportV"></span></dt>
-        <dd>the valuation the Utility agent broadcasts to peers in its messages. Under a deceptive strategy <span data-sym="reportV"></span> ≠ <span data-sym="subjV"></span>; the lie-gap magnitude <span data-sym="lieGap"></span> drives the Trust Matrix EMA update and the mean-lie-magnitude statistic in the Experiment Metrics table.</dd>
+        <dd>the valuation the Utility agent broadcasts to peers in its messages. Under communication strategy $\sigma_m = D$ (deceptive), <span data-sym="reportV"></span> ≠ <span data-sym="subjV"></span> via the distortion multiplier $\phi_m$ (see Architecture Figure 3, Plan I card); the lie-gap magnitude <span data-sym="lieGap"></span> drives the trust EMA update $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau + \lambda \cdot \text{closeness}$ and the mean-lie-magnitude statistic in the Experiment Metrics table.</dd>
         <dt>Last action <span data-sym="action"></span></dt>
-        <dd>the most recent decision taken by agent <em>i</em> at tick <em>t</em>, one of {bid, ask, hold}, displayed as a coloured tag on the card. For Utility agents this is the argmax over candidate orders scored under the agent's expected-utility functional <span data-sym="uOfW"></span> (Lopez-Lira 2025).</dd>
+        <dd>the most recent decision taken by agent <em>i</em> at tick <em>t</em>, displayed as a coloured tag on the card. In Plan I the agent selects $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$ scored under the risk-typed utility functional <span data-sym="uOfW"></span> (see Architecture Figure 2).</dd>
         <dt>Subtitle</dt>
         <dd>for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced) together with set membership (<span data-sym="inF"></span>, <span data-sym="inT"></span>, <span data-sym="inR"></span>, <span data-sym="inE"></span>). For Utility agents, the risk preference and its functional: <em>Risk-loving</em> <span data-sym="uLoving"></span> (convex, upside-seeking), <em>Risk-neutral</em> <span data-sym="uNeutral"></span> (linear expected value), and <em>Risk-averse</em> <span data-sym="uAverse"></span> (concave, downside-sensitive).</dd>
       </dl>
@@ -632,7 +632,7 @@
         <h4 class="fig-note-title">Note</h4>
         <dl class="fig-note-list">
           <dt><span data-sym="trustRS"></span></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
-          <dt><span data-sym="alphaRate"></span></dt><dd>trust learning rate (exponential-moving-average weight)</dd>
+          <dt><span data-sym="lambdaRate"></span></dt><dd>trust learning rate (exponential-moving-average weight)</dd>
           <dt><span data-sym="closenessRS"></span></dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
         </dl>
       </div>
