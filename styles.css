@@ -2706,6 +2706,32 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .arch-def-card.card-metric { border-left-color: var(--red); }
 .arch-def-card.card-metric h4 { color: var(--red); }
 
+/* Sample-prompt block (Figure 5). A fixed-height scrollable monospace
+   box reproducing verbatim the system/user prompt that AI.getPlanBeliefs
+   ships to the LLM. Retains the surrounding card's colour key via the
+   parent .card-wang accent. */
+.arch-def-card .prompt-sample {
+  margin: 6px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 11.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+  overflow: auto;
+  max-height: 460px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
+}
+@media (max-width: 700px) {
+  .arch-def-card .prompt-sample {
+    font-size: 10.5px;
+    padding: 10px 12px;
+    max-height: 360px;
+  }
+}
+
 /* ---------- Glossary tab ---------- */
 /*
  * Reference section for every abbreviation, symbol, figure, and source

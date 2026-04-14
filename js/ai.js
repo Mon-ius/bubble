@@ -344,14 +344,16 @@ const AI = {
           const sign = closeDev >= 0 ? '+' : '';
           lines.push(`  - Round-end last price: ${lastSeenPrice.toFixed(0)} (FV at p${periods} = ${dividendAvg}; gap ${sign}${closeDev})`);
         }
-        // Agent's own payoff for round r — requires logger.
+        // Agent's own payoff for round r — requires logger. `initialWealth`
+        // is mark-to-market round-start wealth (cash + shares × FV₁), so
+        // the line reports both the end-of-round cash (what you walked
+        // away with) and that baseline so the LLM can judge whether
+        // trading beat buy-and-hold.
         if (logger && logger.roundFinalCash && logger.roundFinalCash[r - 1]) {
           const finalCash = logger.roundFinalCash[r - 1][a.id];
           if (finalCash != null) {
-            const openingCash = Math.round(a.initialWealth || 0);
-            const delta = Math.round(finalCash - openingCash);
-            const sign  = delta >= 0 ? '+' : '';
-            lines.push(`  - Your end-of-round cash: ${Math.round(finalCash)}¢  (opened with ${openingCash}¢, P&L ${sign}${delta}¢)`);
+            const startWealth = Math.round(a.initialWealth || 0);
+            lines.push(`  - Your end-of-round cash: ${Math.round(finalCash)}¢  (round-start mark-to-market wealth = ${startWealth}¢ = cash + shares × FV₁)`);
           }
         }
         lines.push('');
