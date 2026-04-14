@@ -466,7 +466,7 @@ class Engine {
     const logger     = this.logger;
     Promise.resolve().then(async () => {
       try {
-        const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables);
+        const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables, logger);
         if (!results) return;
         for (const k of Object.keys(results)) {
           ctx.llmActions[k] = results[k];

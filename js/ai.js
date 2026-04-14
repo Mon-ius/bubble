@@ -261,9 +261,13 @@ const AI = {
    * @param {{apiKey:string, endpoint?:string, model?:string}} aiCfg
    * @param {'II'|'III'} plan
    * @param {object} [tunables]
+   * @param {object} [logger] — optional; when provided the prompt includes
+   *   per-round P&L from `logger.roundFinalCash`, so the LLM can reason
+   *   about its own past performance instead of a rule-based experience
+   *   label.
    * @returns {Promise<{[id:number]: number}>}
    */
-  async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables) {
+  async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables, logger) {
     if (!aiCfg || !aiCfg.apiKey) return {};
     if (plan !== 'II' && plan !== 'III') return {};
     const utilityAgents = Object.values(agents).filter(
@@ -290,6 +294,70 @@ const AI = {
     const prevPrice    = prevTrades.length
       ? prevTrades[prevTrades.length - 1].price
       : lastPrice;
+
+    // Per-period last-trade price for the current round so far — gives
+    // the LLM the within-round trajectory (bubble forming? converging?)
+    // instead of a single "previous reference price" number.
+    const currentRoundPath = [];
+    for (let p = 1; p < periodNow; p++) {
+      const tr = market.trades.filter(t => t.round === round && t.period === p);
+      const last = tr.length ? tr[tr.length - 1].price : null;
+      currentRoundPath.push({ period: p, price: last, fv: dividendAvg * (periods - p + 1) });
+    }
+
+    // Build a per-agent history block from prior rounds the agent has
+    // actually lived through. Fresh replacements (roundsPlayed = 0) get
+    // no history — they are the "inexperienced" type and their prompt
+    // says so explicitly, so the LLM can reason about its own naivety.
+    const buildHistoryBlock = (a) => {
+      const exp = a.roundsPlayed | 0;
+      if (exp <= 0) return null;
+      const lines = [];
+      const firstRound = Math.max(1, round - exp);
+      for (let r = firstRound; r <= round - 1; r++) {
+        const pricePath = [];
+        const fvPath    = [];
+        let peakPrice = -Infinity, peakPeriod = 0;
+        let lastSeenPrice = null;
+        for (let p = 1; p <= periods; p++) {
+          const tr = market.trades.filter(t => t.round === r && t.period === p);
+          const last = tr.length ? tr[tr.length - 1].price : null;
+          const fvP  = dividendAvg * (periods - p + 1);
+          pricePath.push(last != null ? last.toFixed(0) : '—');
+          fvPath.push(String(fvP));
+          if (last != null) {
+            lastSeenPrice = last;
+            if (last > peakPrice) { peakPrice = last; peakPeriod = p; }
+          }
+        }
+        lines.push(`Round ${r} (${r === firstRound && exp > 1 ? 'your first in this market' : r === round - 1 ? 'most recent' : 'past'}):`);
+        lines.push(`  - FV path (p1..p${periods}):    ${fvPath.join(' / ')}`);
+        lines.push(`  - Last-trade price path:        ${pricePath.join(' / ')}`);
+        if (peakPeriod > 0 && peakPrice > -Infinity) {
+          const peakFV  = dividendAvg * (periods - peakPeriod + 1);
+          const devPct  = peakFV > 0 ? Math.round((peakPrice - peakFV) / peakFV * 100) : 0;
+          const devSign = devPct >= 0 ? '+' : '';
+          lines.push(`  - Peak price: ${peakPrice.toFixed(0)} at p${peakPeriod} (FV then = ${peakFV}, deviation ${devSign}${devPct}%)`);
+        }
+        if (lastSeenPrice != null) {
+          const closeDev = Math.round(lastSeenPrice - dividendAvg);  // FV at p_final = dividendAvg
+          const sign = closeDev >= 0 ? '+' : '';
+          lines.push(`  - Round-end last price: ${lastSeenPrice.toFixed(0)} (FV at p${periods} = ${dividendAvg}; gap ${sign}${closeDev})`);
+        }
+        // Agent's own payoff for round r — requires logger.
+        if (logger && logger.roundFinalCash && logger.roundFinalCash[r - 1]) {
+          const finalCash = logger.roundFinalCash[r - 1][a.id];
+          if (finalCash != null) {
+            const openingCash = Math.round(a.initialWealth || 0);
+            const delta = Math.round(finalCash - openingCash);
+            const sign  = delta >= 0 ? '+' : '';
+            lines.push(`  - Your end-of-round cash: ${Math.round(finalCash)}¢  (opened with ${openingCash}¢, P&L ${sign}${delta}¢)`);
+          }
+        }
+        lines.push('');
+      }
+      return lines.length ? lines.join('\n').trimEnd() : null;
+    };
 
     const system =
       'You are a trader in an experimental double auction asset market. ' +
@@ -364,8 +432,6 @@ const AI = {
         `【Your Type】`,
         `- Risk Preference Type: ${labelOf(a.riskPref)}`,
         `  ${riskDesc(a.riskPref)}`,
-        `- Experience level: ${exp}`,
-        `  The higher the experience level, the more anchored to fundamental value, the less likely to follow recent prices and price trends, and the lower the decision noise.`,
       ];
 
       // Plan II — explicit utility formula.
@@ -373,6 +439,27 @@ const AI = {
         lines.push(
           `- Your utility function: ${formulaOf(a.riskPref)}`,
           `  w0 (initial wealth) = ${Math.round(a.initialWealth)} cents.`,
+        );
+      }
+
+      // Experience is conveyed as actual lived history (or lack of it),
+      // not as a rule-based label. An agent with roundsPlayed > 0 sees
+      // per-round price paths and its own P&L; a fresh participant sees
+      // a short note explaining it is new to this market.
+      const historyBlock = buildHistoryBlock(a);
+      if (historyBlock) {
+        lines.push(
+          ``,
+          `【Your Past Experience in This Market】`,
+          `You have already traded ${exp} round${exp === 1 ? '' : 's'} in this market. The records below are the price paths you observed and the payoff you earned. Use them to judge how seriously to weight fundamental value vs. recent prices and short-term trends — your own memory is the best guide.`,
+          ``,
+          historyBlock,
+        );
+      } else {
+        lines.push(
+          ``,
+          `【Your Past Experience in This Market】`,
+          `This is your first round in this market. You have never traded this asset before and have no memory of prior rounds — you only see the rules, the fundamental value, and whatever trading has happened so far in the current round.`,
         );
       }
 
@@ -406,6 +493,14 @@ const AI = {
         `- Highest Bid: ${bidPrice != null ? bidPrice.toFixed(0) : '—'}`,
         `- Lowest Ask: ${askPrice != null ? askPrice.toFixed(0) : '—'}`,
         `- Previous Reference Price: ${prevPrice.toFixed(0)}`,
+      );
+      if (currentRoundPath.length) {
+        const pathStr = currentRoundPath
+          .map(x => `p${x.period}=${x.price != null ? x.price.toFixed(0) : '—'} (FV ${x.fv})`)
+          .join(', ');
+        lines.push(`- This round so far (last trade per period): ${pathStr}`);
+      }
+      lines.push(
         ``,
         `【Your Decision-Making Principles】`,
         `You want to maximize the following intuitive utilities:`,
@@ -414,7 +509,6 @@ const AI = {
         `3. Buying at a price lower than the last traded price increases utility; buying at a price higher than the last traded price decreases utility;`,
         `4. Selling at a price higher than the last traded price increases utility; selling at a price lower than the last traded price decreases utility;`,
         `5. Holding too many positions increases inventory risk;`,
-        `6. The higher the experience, the more you should refer to fundamental value, rather than blindly following the last price and short-term trends.`,
         ``,
         `【Additional Requirements】`,
         `1. You cannot mechanically favor holding.`,
@@ -432,11 +526,12 @@ const AI = {
       } else {
         lines.push(`- As a risk-neutral trader, you should focus more on expected returns.`);
       }
-      if (exp >= 2) {
-        lines.push(`- As a highly experienced trader (level ${exp}), you should rely more on fundamental value.`);
-      } else {
-        lines.push(`- As a less experienced trader (level ${exp}), you can be more influenced by last price and recent price changes.`);
-      }
+      // Note: we deliberately do NOT instruct the agent how experience
+      // should change its behaviour. Experience (or its absence) is
+      // conveyed by the 【Your Past Experience in This Market】 block
+      // above — a record of price paths and payoffs the agent actually
+      // observed. The LLM is expected to reason from that lived history
+      // the way a human subject would, not from a rule-based label.
 
       // Peer messages.
       const msgs = (a.receivedMsgs || []).filter(m => m.senderId !== a.id);
