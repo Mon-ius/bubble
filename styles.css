@@ -1592,6 +1592,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   gap: 5px;
 }
 .agent-card .metric-val { color: var(--fg-0); font-weight: 600; text-align: right; }
+/* Utility formula row — fixed height so the card size stays constant
+   regardless of which risk-typed formula (loving/neutral/averse) is
+   shown, keeping the "click to view prompt" hint at the same Y. */
+.agent-card .metric-util,
+.agent-card .metric-util-val { height: 20px; overflow: hidden; align-content: center; }
 /* Paper-symbol wrapper. Real math typography (font selection,
    sub/sup sizing, baseline shift) is delegated to the browser's
    native MathML engine — this rule only paints the wrapper a muted
