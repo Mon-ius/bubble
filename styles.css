@@ -292,7 +292,7 @@ math[display="inline"] { white-space: nowrap; }
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-.controls { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .controls label {
   color: var(--fg-2);
   font-size: 10px;
