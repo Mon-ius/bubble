@@ -1675,7 +1675,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    and LLM prompt (back). Only agents with Plan II/III data get the
    flippable class; others render a plain static card. */
 .agent-card-wrap {
-  perspective: 800px;
+  perspective: 1000px;
   display: flex;
 }
 .agent-card-wrap.flippable {
@@ -1684,8 +1684,9 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .agent-card-inner {
   position: relative;
   width: 100%;
-  transition: transform 0.45s var(--ease);
+  transition: transform 0.5s cubic-bezier(.15,.9,.35,1);
   transform-style: preserve-3d;
+  will-change: transform;
 }
 .agent-card-inner > .card-front {
   height: 100%;
@@ -1693,13 +1694,14 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .agent-card-wrap.flipped .agent-card-inner {
   transform: rotateY(180deg);
 }
-.card-front {
+.card-front,
+.card-back {
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .card-back {
   position: absolute;
   inset: 0;
-  backface-visibility: hidden;
   transform: rotateY(180deg);
   transform-style: flat;
   background: var(--bg-2);
