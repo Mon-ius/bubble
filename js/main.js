@@ -426,6 +426,7 @@ const App = {
     document.querySelectorAll('.nav-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.tab;
+        if (!key) return;   // external link (e.g. Analytics) — don't switch panes
         document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b === btn));
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + key));
         const active = document.getElementById('tab-' + key);
